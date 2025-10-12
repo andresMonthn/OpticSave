@@ -48,7 +48,7 @@ export function HomeSidebar(props: HomeSidebarProps) {
           </div>
         </div>
       </SidebarHeader>
-
+      
       <SidebarContent>
         <SidebarNavigation config={personalAccountNavigationConfig} />
       </SidebarContent>

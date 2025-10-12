@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { ArrowDown, ArrowUp, Menu, TrendingUp } from 'lucide-react';
+import { ArrowDown, ArrowUp, Menu, TrendingUp, Users, Calendar, CheckCircle, Clock } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -37,12 +37,181 @@ import {
   TableHeader,
   TableRow,
 } from '@kit/ui/table';
+import { Button } from '@kit/ui/button';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@kit/ui/dropdown-menu';
+import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
+import MagicBento from './MagicBento';
+import MagicBentoDemo from './MagicBentoDemo';
+
+// Definición de tipos
+type Paciente = {
+  id: string;
+  nombre: string;
+  apellido: string;
+  edad: number;
+  sexo: string;
+  domicilio: string;
+  motivo_consulta: string;
+  telefono: string;
+  fecha_de_cita: string;
+  estado: string;
+  created_at: string;
+  user_id: string;
+};
 
 export default function DashboardDemo() {
-  const mrr = useMemo(() => generateDemoData(), []);
-  const netRevenue = useMemo(() => generateDemoData(), []);
-  const fees = useMemo(() => generateDemoData(), []);
-  const newCustomers = useMemo(() => generateDemoData(), []);
+  // Estados para almacenar datos reales
+  const [pacientes, setPacientes] = useState<Paciente[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Datos procesados para gráficos
+  const [pacientesPorMes, setPacientesPorMes] = useState<any[]>([]);
+  const [pacientesPorEstado, setPacientesPorEstado] = useState<any[]>([]);
+  const [comparacionMensual, setComparacionMensual] = useState<number>(0);
+  const [totalPacientes, setTotalPacientes] = useState<number>(0);
+  const [pacientesAtendidos, setPacientesAtendidos] = useState<number>(0);
+  const [pacientesPendientes, setPacientesPendientes] = useState<number>(0);
+  const [pacientesNuevos, setPacientesNuevos] = useState<number>(0);
+  const [pacientesActivos, setPacientesActivos] = useState<number>(0);
+  const [activosPorMes, setActivosPorMes] = useState<any[]>([]);
+  const [chartVisibility, setChartVisibility] = useState({
+    pacientesPorMes: true,
+    estadoPacientes: true,
+    pacientesActivos: true,
+    pacientesDestacados: true,
+  });
+
+  // Función para obtener datos de pacientes desde Supabase
+  const fetchPacientes = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const supabase = getSupabaseBrowserClient();
+
+      // Verificar si el usuario está logueado
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        throw new Error("Usuario no autenticado");
+      }
+
+      // Obtener pacientes del usuario actual
+      const { data, error } = await supabase
+        .from("pacientes" as any)
+        .select("*")
+        .eq("user_id", userData.user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setPacientes(data as unknown as Paciente[]);
+      procesarDatos(data as unknown as Paciente[]);
+    } catch (err: any) {
+      console.error("Error al obtener pacientes:", err);
+      setError(err.message || "Error al cargar los pacientes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para procesar los datos y generar métricas
+  const procesarDatos = (data: Paciente[]) => {
+    if (!data || data.length === 0) return;
+
+    // Total de pacientes
+    setTotalPacientes(data.length);
+
+    // Pacientes por estado
+    const atendidos = data.filter(p => (p.estado || '').toLowerCase() === 'atendido').length;
+    const pendientes = data.filter(p => (p.estado || '').toLowerCase() === 'pendiente').length;
+    const activos = data.filter(p => (p.estado || '').toLowerCase() === 'activo').length;
+    setPacientesAtendidos(atendidos);
+    setPacientesPendientes(pendientes);
+    setPacientesActivos(activos);
+
+    // Datos para gráfico de estados
+    setPacientesPorEstado([
+      { name: 'Atendidos', value: atendidos },
+      { name: 'Pendientes', value: pendientes },
+      { name: 'Activos', value: activos },
+      { name: 'Otros', value: data.length - atendidos - pendientes - activos }
+    ]);
+
+    // Agrupar pacientes por mes
+    const porMes = agruparPorMes(data);
+    setPacientesPorMes(porMes);
+
+    // Agrupar activos por mes
+    const porMesActivos = agruparPorMesActivos(data);
+    setActivosPorMes(porMesActivos);
+
+    // Calcular comparación con mes anterior
+    if (porMes.length >= 2) {
+      const ultimoMes = porMes[porMes.length - 1];
+      const penultimoMes = porMes[porMes.length - 2];
+
+      if (ultimoMes && penultimoMes && penultimoMes.value > 0) {
+        const mesActual = ultimoMes.value;
+        const mesAnterior = penultimoMes.value;
+        const porcentaje = ((mesActual - mesAnterior) / mesAnterior) * 100;
+        setComparacionMensual(Math.round(porcentaje));
+      }
+    }
+  };
+
+  // Función para agrupar pacientes por mes
+  const agruparPorMes = (pacientes: Paciente[]) => {
+    const hoy = new Date();
+    const meses: { [key: string]: number } = {};
+
+    // Inicializar los últimos 8 meses
+    for (let i = 7; i >= 0; i--) {
+      const fecha = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+      const key = fecha.toLocaleDateString('es-ES', { month: 'long', year: '2-digit' });
+      meses[key] = 0;
+    }
+
+    // Contar pacientes por mes
+    pacientes.forEach(paciente => {
+      const fecha = new Date(paciente.created_at);
+      const key = fecha.toLocaleDateString('es-ES', { month: 'long', year: '2-digit' });
+      if (meses[key] !== undefined) {
+        meses[key]++;
+      }
+    });
+
+    // Convertir a formato para gráficos
+    return Object.entries(meses).map(([name, value]) => ({ name, value }));
+  };
+
+  // Función para agrupar pacientes activos por mes
+  const agruparPorMesActivos = (pacientes: Paciente[]) => {
+    const hoy = new Date();
+    const meses: { [key: string]: number } = {};
+
+    for (let i = 7; i >= 0; i--) {
+      const fecha = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+      const key = fecha.toLocaleDateString('es-ES', { month: 'long', year: '2-digit' });
+      meses[key] = 0;
+    }
+
+    pacientes.forEach(paciente => {
+      const fecha = new Date(paciente.created_at);
+      const key = fecha.toLocaleDateString('es-ES', { month: 'long', year: '2-digit' });
+      const estado = (paciente.estado || '').toLowerCase();
+      if (meses[key] !== undefined && estado === 'activo') {
+        meses[key]++;
+      }
+    });
+
+    return Object.entries(meses).map(([name, value]) => ({ name, value }));
+  };
+
+  // Cargar datos al montar el componente
+  useEffect(() => {
+    fetchPacientes();
+  }, []);
 
   return (
     <div
@@ -50,156 +219,251 @@ export default function DashboardDemo() {
         'animate-in fade-in flex flex-col space-y-4 pb-36 duration-500'
       }
     >
-      <div
-        className={
-          'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
-        }
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle className={'flex items-center gap-2.5'}>
-              <span>MRR</span>
-              <Trend trend={'up'}>20%</Trend>
-            </CardTitle>
+      {loading ? (
+        <div className="flex justify-center items-center h-40">
+          <p>Cargando datos de pacientes...</p>
+        </div>
+      ) : error ? (
+        <div className="flex justify-center items-center h-40">
+          <p className="text-red-500">Error: {error}</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-end mb-2">
+            {/* Botón de configuración de gráficos */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Menu className="h-4 w-4 mr-2" />
+                  Configurar gráficos
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Mostrar</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
+                  checked={chartVisibility.pacientesPorMes}
+                  onCheckedChange={(checked) =>
+                    setChartVisibility((s) => ({ ...s, pacientesPorMes: !!checked }))
+                  }
+                >
+                  Pacientes por Mes
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={chartVisibility.estadoPacientes}
+                  onCheckedChange={(checked) =>
+                    setChartVisibility((s) => ({ ...s, estadoPacientes: !!checked }))
+                  }
+                >
+                  Estado de Pacientes
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={chartVisibility.pacientesActivos}
+                  onCheckedChange={(checked) =>
+                    setChartVisibility((s) => ({ ...s, pacientesActivos: !!checked }))
+                  }
+                >
+                  Pacientes Activos
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={chartVisibility.pacientesDestacados}
+                  onCheckedChange={(checked) =>
+                    setChartVisibility((s) => ({ ...s, pacientesDestacados: !!checked }))
+                  }
+                >
+                  Pacientes Destacados
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-            <CardDescription>
-              <span>Monthly recurring revenue</span>
-            </CardDescription>
+          <div
+            className={
+              'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
+            }
+          >
+            <MagicBento
+              variant="overlay"
+              enableSpotlight
+              enableStars
+              enableBorderGlow
+              clickEffect
+              glowColor="0, 0, 25"
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className={'flex items-center gap-2.5'}>
+                    <span>Total Pacientes</span>
+                    <Trend trend={comparacionMensual > 0 ? 'up' : comparacionMensual < 0 ? 'down' : 'stale'}>
+                      {comparacionMensual > 0 ? `+${comparacionMensual}%` : `${comparacionMensual}%`}
+                    </Trend>
+                  </CardTitle>
 
+                  <CardDescription>
+                    <span>Número total de pacientes registrados</span>
+                  </CardDescription>
+
+                  <div>
+                    <Figure>{totalPacientes}</Figure>
+                  </div>
+                </CardHeader>
+
+                <CardContent className={'space-y-4'}>
+                  <Chart data={pacientesPorMes} />
+                </CardContent>
+              </Card>
+            </MagicBento>
+
+
+            <MagicBento
+              variant="overlay"
+              enableSpotlight
+              enableStars
+              enableBorderGlow
+              clickEffect
+              glowColor="0, 0, 25"
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className={'flex items-center gap-2.5'}>
+                    <span>Pacientes Atendidos</span>
+                    <Trend trend={'up'}>{pacientesAtendidos > 0 && totalPacientes > 0 ?
+                      `${Math.round((pacientesAtendidos / totalPacientes) * 100)}%` : '0%'}
+                    </Trend>
+                  </CardTitle>
+
+                  <CardDescription>
+                    <span>Pacientes con estado "atendido"</span>
+                  </CardDescription>
+
+                  <div>
+                    <Figure>{pacientesAtendidos}</Figure>
+                  </div>
+                </CardHeader>
+
+                <CardContent>
+                  <Chart data={pacientesPorMes.map(item => ({
+                    name: item.name,
+                    value: Math.round(item.value * (pacientesAtendidos / totalPacientes || 0))
+                  }))} />
+                </CardContent>
+              </Card>
+            </MagicBento>
+
+            {/* Magic Bento demo card */}
+            <MagicBento
+              variant="overlay"
+              enableSpotlight
+              enableStars
+              enableBorderGlow
+              clickEffect
+              glowColor="0, 0, 25"
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className={'flex items-center gap-2.5'}>
+                    <span>Pacientes Pendientes</span>
+                    <Trend trend={pacientesPendientes > pacientesAtendidos ? 'down' : 'up'}>
+                      {pacientesPendientes > 0 && totalPacientes > 0 ?
+                        `${Math.round((pacientesPendientes / totalPacientes) * 100)}%` : '0%'}
+                    </Trend>
+                  </CardTitle>
+
+                  <CardDescription>
+                    <span>Pacientes con estado "pendiente"</span>
+                  </CardDescription>
+
+                  <div>
+                    <Figure>{pacientesPendientes}</Figure>
+                  </div>
+                </CardHeader>
+
+                <CardContent>
+                  <Chart data={pacientesPorMes.map(item => ({
+                    name: item.name,
+                    value: Math.round(item.value * (pacientesPendientes / totalPacientes || 0))
+                  }))} />
+                </CardContent>
+              </Card>
+            </MagicBento>
+
+
+            <MagicBento variant="overlay" enableSpotlight enableStars enableBorderGlow clickEffect glowColor="0, 0, 25">
+              <Card>
+                <CardHeader>
+                  <CardTitle className={'flex items-center gap-2.5'}>
+                    <span>Nuevos Pacientes</span>
+                    <Trend trend={comparacionMensual > 0 ? 'up' : 'down'}>
+                      {comparacionMensual > 0 ? `+${comparacionMensual}%` : `${comparacionMensual}%`}
+                    </Trend>
+                  </CardTitle>
+
+                  <CardDescription>
+                    <span>Pacientes registrados este mes</span>
+                  </CardDescription>
+
+                  <div>
+                    <Figure>{pacientesPorMes.length > 0 ? pacientesPorMes[pacientesPorMes.length - 1].value : 0}</Figure>
+                  </div>
+                </CardHeader>
+
+                <CardContent>
+                  <Chart data={pacientesPorMes} />
+                </CardContent>
+              </Card>
+            </MagicBento>
+          </div>
+
+          {chartVisibility.pacientesPorMes && (
+            <PacientesPorMesChart data={pacientesPorMes} />
+          )}
+
+          {chartVisibility.estadoPacientes && (
+            <EstadoPacientesChart data={pacientesPorEstado} />
+          )}
+
+          {chartVisibility.pacientesActivos && (
+            <PacientesActivosChart data={activosPorMes} />
+          )}
+
+          {chartVisibility.pacientesDestacados && (
             <div>
-              <Figure>{`$${mrr[1]}`}</Figure>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pacientes Destacados</CardTitle>
+                  <CardDescription>Mostrando los pacientes más recientes</CardDescription>
+                </CardHeader>
+
+                <CardContent>
+                  <PacientesTable pacientes={pacientes.slice(0, 10)} />
+                </CardContent>
+              </Card>
             </div>
-          </CardHeader>
+          )}
+        </>
+      )}
 
-          <CardContent className={'space-y-4'}>
-            <Chart data={mrr[0]} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className={'flex items-center gap-2.5'}>
-              <span>Revenue</span>
-              <Trend trend={'up'}>12%</Trend>
-            </CardTitle>
-
-            <CardDescription>
-              <span>Total revenue including fees</span>
-            </CardDescription>
-
-            <div>
-              <Figure>{`$${netRevenue[1]}`}</Figure>
-            </div>
-          </CardHeader>
-
-          <CardContent>
-            <Chart data={netRevenue[0]} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className={'flex items-center gap-2.5'}>
-              <span>Fees</span>
-              <Trend trend={'up'}>9%</Trend>
-            </CardTitle>
-
-            <CardDescription>
-              <span>Total fees collected</span>
-            </CardDescription>
-
-            <div>
-              <Figure>{`$${fees[1]}`}</Figure>
-            </div>
-          </CardHeader>
-
-          <CardContent>
-            <Chart data={fees[0]} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className={'flex items-center gap-2.5'}>
-              <span>New Customers</span>
-              <Trend trend={'down'}>-25%</Trend>
-            </CardTitle>
-
-            <CardDescription>
-              <span>Customers who signed up this month</span>
-            </CardDescription>
-
-            <div>
-              <Figure>{`${Number(newCustomers[1]).toFixed(0)}`}</Figure>
-            </div>
-          </CardHeader>
-
-          <CardContent>
-            <Chart data={newCustomers[0]} />
-          </CardContent>
-        </Card>
-      </div>
-
-      <VisitorsChart />
-
-      <PageViewsChart />
-
-      <div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Best Customers</CardTitle>
-            <CardDescription>Showing the top customers by MRR</CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            <CustomersTable />
-          </CardContent>
-        </Card>
-      </div>
+      {/* Demostración de MagicBento como contenedor */}
+      {/* <div className="mt-8">
+        <MagicBentoDemo />
+      </div> */}
     </div>
   );
 }
 
-function generateDemoData() {
-  const today = new Date();
-  const formatter = new Intl.DateTimeFormat('en-us', {
-    month: 'long',
-    year: '2-digit',
-  });
-
-  const data: { value: string; name: string }[] = [];
-
-  for (let n = 8; n > 0; n -= 1) {
-    const date = new Date(today.getFullYear(), today.getMonth() - n, 1);
-
-    data.push({
-      name: formatter.format(date),
-      value: (Math.random() * 10).toFixed(1),
-    });
-  }
-
-  const lastValue = data[data.length - 1]?.value;
-
-  return [data, lastValue] as [typeof data, string];
-}
-
 function Chart(
-  props: React.PropsWithChildren<{ data: { value: string; name: string }[] }>,
+  props: React.PropsWithChildren<{ data: { value: number; name: string }[] }>,
 ) {
   const chartConfig = {
-    desktop: {
-      label: 'Desktop',
+    pacientes: {
+      label: 'Pacientes',
       color: 'var(--chart-1)',
-    },
-    mobile: {
-      label: 'Mobile',
-      color: 'var(--chart-2)',
     },
   } satisfies ChartConfig;
 
   return (
     <ChartContainer config={chartConfig}>
-      <LineChart accessibilityLayer data={props.data}>
+      <LineChart data={props.data}>
         <CartesianGrid vertical={false} />
         <XAxis
           dataKey="name"
@@ -214,7 +478,7 @@ function Chart(
         <Line
           dataKey="value"
           type="natural"
-          stroke="var(--color-desktop)"
+          stroke="var(--color-pacientes)"
           strokeWidth={2}
           dot={false}
         />
@@ -223,216 +487,196 @@ function Chart(
   );
 }
 
-function CustomersTable() {
-  const customers = [
-    {
-      name: 'John Doe',
-      email: 'john@makerkit.dev',
-      plan: 'Pro',
-      mrr: '$120.5',
-      logins: 1020,
-      status: 'Healthy',
-      trend: 'up',
+function PacientesPorMesChart({ data }: { data: { name: string; value: number }[] }) {
+  const chartConfig = {
+    pacientes: {
+      label: 'Pacientes',
+      color: 'var(--chart-1)',
     },
-    {
-      name: 'Emma Smith',
-      email: 'emma@makerit.dev',
-      plan: 'Basic',
-      mrr: '$65.4',
-      logins: 570,
-      status: 'Possible Churn',
-      trend: 'stale',
-    },
-    {
-      name: 'Robert Johnson',
-      email: 'robert@makerkit.dev',
-      plan: 'Pro',
-      mrr: '$500.1',
-      logins: 2050,
-      status: 'Healthy',
-      trend: 'up',
-    },
-    {
-      name: 'Olivia Brown',
-      email: 'olivia@makerkit.dev',
-      plan: 'Basic',
-      mrr: '$10',
-      logins: 50,
-      status: 'Churn',
-      trend: 'down',
-    },
-    {
-      name: 'Michael Davis',
-      email: 'michael@makerkit.dev',
-      plan: 'Pro',
-      mrr: '$300.2',
-      logins: 1520,
-      status: 'Healthy',
-      trend: 'up',
-    },
-    {
-      name: 'Emily Jones',
-      email: 'emily@makerkit.dev',
-      plan: 'Pro',
-      mrr: '$75.7',
-      logins: 780,
-      status: 'Healthy',
-      trend: 'up',
-    },
-    {
-      name: 'Daniel Garcia',
-      email: 'daniel@makerkit.dev',
-      plan: 'Basic',
-      mrr: '$50',
-      logins: 320,
-      status: 'Possible Churn',
-      trend: 'stale',
-    },
-    {
-      name: 'Liam Miller',
-      email: 'liam@makerkit.dev',
-      plan: 'Pro',
-      mrr: '$90.8',
-      logins: 1260,
-      status: 'Healthy',
-      trend: 'up',
-    },
-    {
-      name: 'Emma Clark',
-      email: 'emma@makerkit.dev',
-      plan: 'Basic',
-      mrr: '$0',
-      logins: 20,
-      status: 'Churn',
-      trend: 'down',
-    },
-    {
-      name: 'Elizabeth Rodriguez',
-      email: 'liz@makerkit.dev',
-      plan: 'Pro',
-      mrr: '$145.3',
-      logins: 1380,
-      status: 'Healthy',
-      trend: 'up',
-    },
-    {
-      name: 'James Martinez',
-      email: 'james@makerkit.dev',
-      plan: 'Pro',
-      mrr: '$120.5',
-      logins: 940,
-      status: 'Healthy',
-      trend: 'up',
-    },
-    {
-      name: 'Charlotte Ryan',
-      email: 'carlotte@makerkit.dev',
-      plan: 'Basic',
-      mrr: '$80.6',
-      logins: 460,
-      status: 'Possible Churn',
-      trend: 'stale',
-    },
-    {
-      name: 'Lucas Evans',
-      email: 'lucas@makerkit.dev',
-      plan: 'Pro',
-      mrr: '$210.3',
-      logins: 1850,
-      status: 'Healthy',
-      trend: 'up',
-    },
-    {
-      name: 'Sophia Wilson',
-      email: 'sophia@makerkit.dev',
-      plan: 'Basic',
-      mrr: '$10',
-      logins: 35,
-      status: 'Churn',
-      trend: 'down',
-    },
-    {
-      name: 'William Kelly',
-      email: 'will@makerkit.dev',
-      plan: 'Pro',
-      mrr: '$350.2',
-      logins: 1760,
-      status: 'Healthy',
-      trend: 'up',
-    },
-    {
-      name: 'Oliver Thomas',
-      email: 'olly@makerkit.dev',
-      plan: 'Pro',
-      mrr: '$145.6',
-      logins: 1350,
-      status: 'Healthy',
-      trend: 'up',
-    },
-    {
-      name: 'Samantha White',
-      email: 'sam@makerkit.dev',
-      plan: 'Basic',
-      mrr: '$60.3',
-      logins: 425,
-      status: 'Possible Churn',
-      trend: 'stale',
-    },
-    {
-      name: 'Benjamin Lewis',
-      email: 'ben@makerkit.dev',
-      plan: 'Pro',
-      mrr: '$175.8',
-      logins: 1600,
-      status: 'Healthy',
-      trend: 'up',
-    },
-    {
-      name: 'Zoe Harris',
-      email: 'zoe@makerkit.dev',
-      plan: 'Basic',
-      mrr: '$0',
-      logins: 18,
-      status: 'Churn',
-      trend: 'down',
-    },
-    {
-      name: 'Zachary Nelson',
-      email: 'zac@makerkit.dev',
-      plan: 'Pro',
-      mrr: '$255.9',
-      logins: 1785,
-      status: 'Healthy',
-      trend: 'up',
-    },
-  ];
+  } satisfies ChartConfig;
 
+  return (
+    <MagicBento variant="overlay" enableSpotlight enableStars enableBorderGlow clickEffect glowColor="0, 0, 25"> <Card>
+      <CardHeader>
+        <CardTitle>Pacientes por Mes</CardTitle>
+        <CardDescription>
+          Mostrando el número de pacientes registrados por mes
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        <ChartContainer className={'h-64 w-full'} config={chartConfig}>
+          <AreaChart data={data}>
+            <defs>
+              <linearGradient id="fillPacientes" x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="5%"
+                  stopColor="var(--color-pacientes)"
+                  stopOpacity={0.8}
+                />
+                <stop
+                  offset="95%"
+                  stopColor="var(--color-pacientes)"
+                  stopOpacity={0.1}
+                />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="name"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent indicator="dot" />}
+            />
+            <Area
+              dataKey="value"
+              type="natural"
+              fill="url(#fillPacientes)"
+              fillOpacity={0.4}
+              stroke="var(--color-pacientes)"
+              stackId="a"
+            />
+          </AreaChart>
+        </ChartContainer>
+      </CardContent>
+
+      <CardFooter>
+        <div className="flex w-full items-start gap-2 text-sm">
+          <div className="grid gap-2">
+            <div className="flex items-center gap-2 leading-none font-medium">
+              {data.length >= 2 && ((data[data.length - 1]?.value || 0) > (data[data.length - 2]?.value || 0)) ? (
+                <>Tendencia al alza este mes <TrendingUp className="h-4 w-4" /></>
+              ) : (
+                <>Tendencia a la baja este mes <ArrowDown className="h-4 w-4" /></>
+              )}
+            </div>
+            <div className="text-muted-foreground flex items-center gap-2 leading-none">
+              Últimos 8 meses
+            </div>
+          </div>
+        </div>
+      </CardFooter>
+    </Card></MagicBento>
+   
+  );
+}
+
+function EstadoPacientesChart({ data }: { data: { name: string; value: number }[] }) {
+  const chartConfig = {
+    estados: {
+      label: 'Estados',
+      color: 'var(--chart-1)',
+    },
+  } satisfies ChartConfig;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Estado de Pacientes</CardTitle>
+        <CardDescription>
+          Distribución de pacientes por estado
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        <ChartContainer className={'h-64 w-full'} config={chartConfig}>
+          <BarChart data={data}>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="name"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent />}
+            />
+            <Bar
+              dataKey="value"
+              fill="var(--color-estados)"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PacientesActivosChart({ data }: { data: { name: string; value: number }[] }) {
+  const chartConfig = {
+    activos: {
+      label: 'Activos',
+      color: 'var(--chart-2)',
+    },
+  } satisfies ChartConfig;
+
+  return (
+    <MagicBento variant="overlay" enableSpotlight enableStars enableBorderGlow clickEffect glowColor="0, 0, 25">
+      <Card>
+        <CardHeader>
+          <CardTitle>Pacientes Activos por Mes</CardTitle>
+          <CardDescription>Conteo de pacientes con estado "activo" por mes</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer className={'h-64 w-full'} config={chartConfig}>
+            <AreaChart data={data}>
+              <defs>
+                <linearGradient id="fillActivos" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-activos)" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="var(--color-activos)" stopOpacity={0.1} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+              <Area dataKey="value" type="natural" fill="url(#fillActivos)" fillOpacity={0.4} stroke="var(--color-activos)" stackId="a" />
+            </AreaChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
+    </MagicBento>
+  );
+}
+
+function PacientesTable({ pacientes }: { pacientes: Paciente[] }) {
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Customer</TableHead>
-          <TableHead>Plan</TableHead>
-          <TableHead>MRR</TableHead>
-          <TableHead>Logins</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead>Paciente</TableHead>
+          <TableHead>Edad</TableHead>
+          <TableHead>Fecha de Cita</TableHead>
+          <TableHead>Estado</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {customers.map((customer) => (
-          <TableRow key={customer.name}>
+        {pacientes.map((paciente) => (
+          <TableRow key={paciente.id}>
             <TableCell className={'flex flex-col'}>
-              <span>{customer.name}</span>
+              <span>{`${paciente.nombre} ${paciente.apellido}`}</span>
               <span className={'text-muted-foreground text-sm'}>
-                {customer.email}
+                {paciente.telefono}
               </span>
             </TableCell>
-            <TableCell>{customer.plan}</TableCell>
-            <TableCell>{customer.mrr}</TableCell>
-            <TableCell>{customer.logins}</TableCell>
+            <TableCell>{paciente.edad}</TableCell>
+            <TableCell>{new Date(paciente.fecha_de_cita).toLocaleDateString('es-ES')}</TableCell>
             <TableCell>
-              <BadgeWithTrend trend={customer.trend}>
-                {customer.status}
+              <BadgeWithTrend
+                trend={
+                  paciente.estado === 'atendido'
+                    ? 'up'
+                    : paciente.estado === 'pendiente'
+                      ? 'stale'
+                      : 'down'
+                }
+              >
+                {paciente.estado ? paciente.estado.charAt(0).toUpperCase() + paciente.estado.slice(1) : 'Sin estado'}
               </BadgeWithTrend>
             </TableCell>
           </TableRow>
@@ -856,7 +1100,7 @@ export function PageViewsChart() {
           config={chartConfig}
           className="aspect-auto h-64 w-full"
         >
-          <BarChart accessibilityLayer data={chartData}>
+          <BarChart data={chartData}>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="date"

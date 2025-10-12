@@ -33,7 +33,7 @@ function TeamAccountHomePage({ params }: TeamAccountHomePageProps) {
         title={<Trans i18nKey={'common:routes.dashboard'} />}
         description={<AppBreadcrumbs />}
       />
-
+      <p>hola</p>
       <PageBody>
         <DashboardDemo />
       </PageBody>

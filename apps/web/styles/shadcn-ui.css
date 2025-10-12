@@ -11,17 +11,19 @@
         --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
         --font-heading: var(--font-sans);
 
-        --background: var(--color--slate-500);
-        --foreground: var(--color-cyan-400);
+        --background: var(--color-neutral-50);
+        --foreground: var(--color-slate-700);
 
-        --card: var(--color-white);
+        --card: var(--color-neutral-50);
         --card-foreground: var(--color-neutral-950);
 
-        --popover: var(--color-white);
-        --popover-foreground: var(--color-neutral-950);
+        --popover: var(--color-neutral-50);
+        --popover-foreground: var(--color-slate-700);
 
-        --primary: var(--color-neutral-950);
-        --primary-foreground: var(--color-white);
+
+
+        --primary: var(--color-slate-700);
+        --primary-foreground: var(--color-stone-50);
 
         --secondary: oklch(96.76% 0.0013 286.38);
         --secondary-foreground: oklch(21.03% 0.0318 264.65);
@@ -39,16 +41,16 @@
         --input: var(--color-gray-200);
         --ring: var(--color-neutral-800);
 
-        --radius: 0.5rem;
+        --radius: 0.3rem;
 
-        --chart-1: var(--color-orange-400);
-        --chart-2: var(--color-teal-600);
+        --chart-1: var(--color-sky-600);
+        --chart-2: var(--color-purple-500);
         --chart-3: var(--color-green-800);
         --chart-4: var(--color-yellow-200);
         --chart-5: var(--color-orange-200);
 
         --sidebar-background: var(--color-neutral-50);
-        --sidebar-foreground: oklch(37.05% 0.012 285.8);
+        --sidebar-foreground: oklch(--color-slate-700);
         --sidebar-primary: var(--color-neutral-950);
         --sidebar-primary-foreground: var(--color-white);
         --sidebar-accent: var(--color-neutral-100);
@@ -58,14 +60,14 @@
     }
 
     .dark {
-        --background: var(--color-neutral-800);
-        --foreground: var(--color-teal-500);
+        --background: var(--color-slate-900);
+        --foreground: var(--color-blue-50);
 
-        --card: var(--color-neutral-900);
-        --card-foreground: var(--color-emerald-400);
+        --card: var(--color-slate-900);
+        --card-foreground: var(--color-blue-50);
 
         --popover: var(--color-neutral-900);
-        --popover-foreground: var(--color-sky-500);
+        --popover-foreground: var(---color-blue-50);
 
         --primary: var(--color-cyan-100);
         --primary-foreground: var(--color-neutral-900);
@@ -82,11 +84,11 @@
         --destructive: var(--color-red-700);
         --destructive-foreground: var(--color-white);
 
-        --border: var(--color-cyan-900);
+        --border: var(--color-gray-300);
         --input: var(--color-neutral-700);
         --ring: oklch(87.09% 0.0055 286.29);
 
-        --chart-1: var(--color-blue-600);
+        --chart-1: var(--color-purple-50);
         --chart-2: var(--color-emerald-400);
         --chart-3: var(--color-orange-400);
         --chart-4: var(--color-purple-500);

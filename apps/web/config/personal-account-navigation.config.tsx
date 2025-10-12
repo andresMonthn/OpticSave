@@ -1,4 +1,4 @@
-import { CreditCard, Home, User } from 'lucide-react';
+import { CreditCard, Home, User, UserPlus, Package, Calendar, ClipboardCheck } from 'lucide-react';
 import { z } from 'zod';
 
 import { NavigationConfigSchema } from '@kit/ui/navigation-schema';
@@ -16,6 +16,36 @@ const routes = [
         label: 'common:routes.home',
         path: pathsConfig.app.home,
         Icon: <Home className={iconClasses} />,
+        end: true,
+      },
+      {
+        label: 'Crear Paciente',
+        path: pathsConfig.app.crearpaciente,
+        Icon: <UserPlus className={iconClasses} />,
+        end: true,
+      },
+            {
+        label: 'Nuevo diagnostico',
+        path: pathsConfig.app.creardiagnostico,
+        Icon: <ClipboardCheck className={iconClasses} />,
+        end: true,
+      },
+      {
+        label: 'Inventario',
+        path: pathsConfig.app.inventario,
+        Icon: <Package className={iconClasses} />,
+        end: true,
+      },
+      {
+        label: 'Agenda',
+        path: pathsConfig.app.agenda,
+        Icon: <Calendar className={iconClasses} />,
+        end: true,
+      },
+      {
+        label: 'Ver Pacientes',
+        path: pathsConfig.app.pacientes,
+        Icon: <User className={iconClasses} />,
         end: true,
       },
     ],
