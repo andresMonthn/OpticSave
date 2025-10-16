@@ -260,6 +260,17 @@ export function DiagnosticoForm({ pacienteId, userId, open, onClose, onSaved }: 
         throw new Error("Error al guardar diagnóstico: " + error.message);
       }
       
+      // 4. Actualizar el estado del paciente a 'activo'
+      const { error: errorPaciente } = await supabase
+        .from("pacientes" as any)
+        .update({ estado: 'activo' })
+        .eq("id", pacienteId);
+        
+      if (errorPaciente) {
+        console.error("Error al actualizar estado del paciente:", errorPaciente);
+        // No lanzamos error para no interrumpir el flujo principal
+      }
+      
       // Notificar al componente padre del éxito
       onSaved(true);
       onClose();

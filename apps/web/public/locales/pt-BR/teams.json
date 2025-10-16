@@ -1,0 +1,26 @@
+{
+  "home": {
+    "pageTitle": "Início"
+  },
+  "settings": {
+    "pageTitle": "Configurações",
+    "pageDescription": "Gerencie os detalhes da sua Equipe",
+    "teamLogo": "Logo da Equipe",
+    "teamLogoDescription": "Atualize o logo da sua equipe para facilitar sua identificação",
+    "teamName": "Nome da Equipe",
+    "teamNameDescription": "Atualize o nome da sua equipe",
+    "dangerZone": "Zona de Perigo",
+    "dangerZoneDescription": "Esta seção contém ações que são irreversíveis"
+  },
+  "members": {
+    "pageTitle": "Membros"
+  },
+  "billing": {
+    "pageTitle": "Faturamento"
+  },
+  "yourTeams": "Suas Equipes ({{teamsCount}})",
+  "createTeam": "Criar uma Equipe",
+  "creatingTeam": "Criando Equipe...",
+  "personalAccount": "Conta Pessoal",
+  "searchAccount": "Buscar Conta..."
+}

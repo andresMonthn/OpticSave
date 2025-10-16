@@ -1,15 +1,11 @@
 "use client";
-
-import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Home, Users } from "lucide-react";
-
 import { format, isSameDay, startOfDay, addDays } from "date-fns";
 import { es, id } from "date-fns/locale";
-
+import { useState, useEffect, useRef } from "react";
 // Constante para monitorear la fecha actual
 const FECHA_HOY = startOfDay(new Date());
-
 // Importaciones de componentes UI desde @kit/ui
 import { Button } from "@kit/ui/button";
 import { Input } from "@kit/ui/input";
@@ -23,6 +19,7 @@ import { Switch } from "@kit/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@kit/ui/tooltip";
 import { Badge } from "@kit/ui/badge";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
+
 // Inicializa Supabase
 
 
@@ -98,7 +95,8 @@ export default function CrearPacientePage() {
       setAlertInfo(prev => ({ ...prev, show: false }));
     }, 3000);
   };
-  
+
+
   // Verificar usuario logueado al cargar el componente
   const supabase = getSupabaseBrowserClient();
   useEffect(() => {
@@ -113,10 +111,11 @@ export default function CrearPacientePage() {
         console.error("Error al verificar usuario:", error);
       }
     };
-    
     checkUser();
   }, []);
-  
+
+
+
   // Función para obtener las citas existentes
   const obtenerCitasExistentes = async (userId: string) => {
     setCargandoCitas(true);
@@ -291,7 +290,6 @@ const handleSubmit = async (e: React.FormEvent) => {
       setError("Debes iniciar sesión para crear un paciente");
       return;
     }
-
     // Preparar el domicilio según el tipo seleccionado
     let domicilioFinal = domicilio;
     if (domicilioCompleto) {
@@ -313,11 +311,63 @@ const handleSubmit = async (e: React.FormEvent) => {
         fecha_de_cita: (fechaCita ? addDays(fechaCita, 1) : addDays(new Date(), 1)).toISOString(),
         estado: "pendiente",
       }]);
-
+    
     if (insertError) {
       console.error("Error insertando paciente:", insertError);
       setError("No se pudo crear el paciente");
       return;
+    }
+    const pacienteId = (data as any)?.id as string | undefined;
+
+    // Obtener el account_id del usuario para enviar la notificación (primera membresía encontrada)
+    let accountId: string | undefined;
+    try {
+      const { data: membership, error: membershipError } = await (supabase
+        .from("accounts_memberships" as any)
+        .select("account_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle() as any);
+
+      if (membershipError) {
+        console.warn("No se pudo obtener accounts_memberships, intentando memberships:", membershipError);
+        const { data: membership2 } = await (supabase
+          .from("memberships" as any)
+          .select("account_id")
+          .eq("user_id", user.id)
+          .limit(1)
+          .maybeSingle() as any);
+        accountId = (membership2 as any)?.account_id;
+      } else {
+        accountId = (membership as any)?.account_id;
+      }
+    } catch (e) {
+      console.warn("Error obteniendo account_id:", e);
+    }
+
+    // Construir link local al historial clínico del paciente recién creado
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const linkLocal = `http://localhost:3000/home/dashboard/view`;
+
+    // Enviar notificación vía ruta de servidor (usa client admin en el servidor)
+    if (accountId && linkLocal) {
+      try {
+        await fetch("/api/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            account_id: accountId,
+            body: `Has creado un nuevo paciente: ${nombre} ${apellido}`,
+            link: linkLocal,
+            type: "info",
+            channel: "in_app",
+          }),
+        });
+      } catch (err) {
+        console.error("Error al enviar notificación:", err);
+      }
+    } else {
+      console.warn("No se pudo determinar accountId o linkLocal para la notificación");
     }
 
     setSuccess(true);
@@ -328,8 +378,6 @@ const handleSubmit = async (e: React.FormEvent) => {
     // Normalizar la fecha de cita usando startOfDay para garantizar consistencia
     const fechaCitaObj = startOfDay(fechaCita ? new Date(fechaCita) : new Date());
     
-    // Obtener el ID del paciente recién creado
-    const pacienteId = data && data.length > 0 ? data[0].id : null;
     
     // Mostrar mensaje de éxito
     setSuccess(true);
@@ -356,32 +404,32 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   
   return (
-    <div className="container mx-auto py-6">
-      <h1 className="text-2xl font-bold mb-6">Crear Nuevo Paciente</h1>
+    <div className="container mx-auto px-4 sm:px-6 py-6">
+      <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Crear Nuevo Paciente</h1>
       
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 flex items-center">
-          <XCircle className="h-5 w-5 mr-2" />
-          {error}
+        <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-4 flex items-center text-sm sm:text-base">
+          <XCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
+          <span className="break-words">{error}</span>
         </div>
       )}
       
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4 flex items-center">
-          <CheckCircle2 className="h-5 w-5 mr-2" />
-          Paciente creado exitosamente. {fechaCita && FECHA_HOY.getTime() === startOfDay(new Date(fechaCita)).getTime() 
+        <div className="bg-green-50 border border-green-200 text-green-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-4 flex items-center text-sm sm:text-base">
+          <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
+          <span className="break-words">Paciente creado exitosamente. {fechaCita && FECHA_HOY.getTime() === startOfDay(new Date(fechaCita)).getTime() 
             ? "La cita es para hoy. Redirigiendo al historial clínico..." 
-            : "La cita no es para hoy. Redirigiendo a la página principal..."}
+            : "La cita no es para hoy. Redirigiendo a la página principal..."}</span>
         </div>
       )}
       
       <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle>Información del Paciente</CardTitle>
+        <CardHeader className="px-4 sm:px-6 py-4 sm:py-5">
+          <CardTitle className="text-lg sm:text-xl">Información del Paciente</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="px-4 sm:px-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {/* Nombre - Campo requerido */}
               <div className="space-y-2">
                 <Label htmlFor="nombre">
@@ -680,12 +728,13 @@ const handleSubmit = async (e: React.FormEvent) => {
               </div>
             </div>
             
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-3 sm:space-x-4 mt-4 sm:mt-6">
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={limpiarFormulario}
-                className="flex items-center"
+                disabled={isSubmitting}
+                className="w-full sm:w-auto order-2 sm:order-1 flex items-center justify-center"
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Limpiar datos
@@ -694,14 +743,11 @@ const handleSubmit = async (e: React.FormEvent) => {
               <Button 
                 type="submit" 
                 disabled={!isFormValid || isSubmitting}
-                className="flex items-center"
+                className="bg-primary text-white w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center"
               >
                 {isSubmitting ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                     Guardando...
                   </>
                 ) : (

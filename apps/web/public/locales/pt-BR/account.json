@@ -1,0 +1,9 @@
+{
+  "accountTabLabel": "Configurações da Conta",
+  "accountTabDescription": "Gerencie as configurações da sua conta",
+  "homePage": "Início",
+  "billingTab": "Faturamento",
+  "settingsTab": "Configurações",
+  "multiFactorAuth": "Autenticação Multi-Fator",
+  "multiFactorAuthDescription": "Configure um método de Autenticação Multi-Fator para proteger ainda mais sua conta"
+}

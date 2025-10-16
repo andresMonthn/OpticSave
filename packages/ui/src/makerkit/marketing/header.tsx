@@ -16,7 +16,7 @@ export const Header: React.FC<HeaderProps> = function ({
   return (
     <div
       className={cn(
-        'site-header bg-background/80 dark:bg-background/50 sticky top-0 z-10 w-full py-1 backdrop-blur-md',
+        'site-header bg-background dark:bg-background sticky top-0 z-50 w-full py-1 shadow-sm backdrop-blur-lg',
         className,
       )}
       {...props}

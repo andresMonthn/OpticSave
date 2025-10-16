@@ -1,0 +1,58 @@
+{
+  "heroTitle": "gerenciador de óticas",
+  "heroSubtitle": "A web é uma plataforma abrangente para gerenciamento de óticas, projetada para otimizar a administração de clientes, consultas, inventário e vendas. Seu objetivo é facilitar o trabalho diário da equipe da ótica e melhorar a experiência do paciente.",
+  "blog": "Blog",
+  "documentacion": "Documentação",
+  "precios": "Preços",
+  "faq": "FAQ",
+  "contacto": "Contato",
+  "contact": "Contato",
+  "contactDescription": "Entre em contato conosco",
+  "contactHeading": "Envie-nos uma mensagem",
+  "contactSubheading": "Preencha o formulário e responderemos o mais rápido possível",
+  "contactName": "Nome",
+  "contactEmail": "E-mail",
+  "contactMessage": "Mensagem",
+  "sendMessage": "Enviar mensagem",
+  "contactSuccess": "Mensagem enviada!",
+  "contactSuccessDescription": "Obrigado por entrar em contato. Responderemos o mais rápido possível.",
+  "contactError": "Erro ao enviar mensagem",
+  "contactErrorDescription": "Desculpe, ocorreu um erro ao enviar sua mensagem. Por favor, tente novamente mais tarde.",
+  "home": {
+    "pageTitle": "Início"
+  },
+  "settings": {
+    "pageTitle": "Configurações",
+    "pageDescription": "Gerencie os detalhes da sua Equipe",
+    "teamLogo": "Logo da Equipe",
+    "teamLogoDescription": "Atualize o logo da sua equipe para facilitar a identificação",
+    "teamName": "Nome da Equipe",
+    "teamNameDescription": "Atualize o nome da sua equipe",
+    "dangerZone": "Zona de Perigo",
+    "dangerZoneDescription": "Esta seção contém ações irreversíveis"
+  },
+  "members": {
+    "pageTitle": "Membros"
+  },
+  "billing": {
+    "pageTitle": "Faturamento"
+  },
+  "yourTeams": "Suas Equipes ({{teamsCount}})",
+  "createTeam": "Criar uma Equipe",
+  "creatingTeam": "Criando Equipe...",
+  "personalAccount": "Conta Pessoal",
+  "searchAccount": "Buscar Conta...",
+  "membersTabLabel": "Membros",
+  "memberName": "Nome",
+  "youLabel": "Você",
+  "emailLabel": "E-mail",
+  "roleLabel": "Função",
+  "primaryOwnerLabel": "Proprietário Principal",
+  "joinedAtLabel": "Entrou em",
+  "invitedAtLabel": "Convidado em",
+  "documentation": "Documentação",
+  "termsOfService": "Termos de Serviço",
+  "privacyPolicy": "Política de Privacidade",
+  "cookiePolicy": "Política de Cookies",
+  "legal": "Legal"
+}

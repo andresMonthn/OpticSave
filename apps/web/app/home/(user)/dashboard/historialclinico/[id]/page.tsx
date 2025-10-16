@@ -245,7 +245,7 @@ export default function PacienteDetalle() {
         showAlert('success', 'Receta guardada', 'La receta ha sido guardada exitosamente');
     };
     
-    // Escuchar el evento personalizado para actualizar las recetas
+    // Escuchar eventos personalizados para actualizar las recetas y el estado del paciente
     useEffect(() => {
         const handleRecetasUpdated = (event: any) => {
             if (event.detail) {
@@ -253,14 +253,22 @@ export default function PacienteDetalle() {
             }
         };
         
-        // Agregar el listener para el evento personalizado
-        window.addEventListener('recetasUpdated', handleRecetasUpdated);
+        const handlePacienteEstadoActualizado = (event: any) => {
+            if (event.detail && event.detail.pacienteId === pacienteId) {
+                setPaciente(prev => prev ? { ...prev, estado: event.detail.nuevoEstado } : null);
+            }
+        };
         
-        // Limpiar el listener cuando el componente se desmonte
+        // Agregar los listeners para los eventos personalizados
+        window.addEventListener('recetasUpdated', handleRecetasUpdated);
+        window.addEventListener('pacienteEstadoActualizado', handlePacienteEstadoActualizado);
+        
+        // Limpiar los listeners cuando el componente se desmonte
         return () => {
             window.removeEventListener('recetasUpdated', handleRecetasUpdated);
+            window.removeEventListener('pacienteEstadoActualizado', handlePacienteEstadoActualizado);
         };
-    }, []);
+    }, [pacienteId]);
 
     // Función para obtener las recetas del paciente
     const fetchRx = async () => {

@@ -1,0 +1,12 @@
+{
+  "subscriptionTabSubheading": "Gerencie sua Assinatura e Faturamento",
+  "planCardTitle": "Seu Plano",
+  "planCardDescription": "Abaixo estão os detalhes do seu plano atual. Você pode alterar seu plano ou cancelar sua assinatura a qualquer momento.",
+  "planRenewal": "Renova a cada {{interval}} por {{price}}",
+  "planDetails": "Detalhes do Plano",
+  "checkout": "Prosseguir para Pagamento",
+  "trialEndsOn": "Sua avaliação termina em",
+  "billingPortalCardButton": "Visitar Portal de Faturamento",
+  "billingPortalCardTitle": "Gerencie seus Detalhes de Faturamento",
+  "billingPortalCardDescription": "Visite seu Portal de Faturamento para gerenciar sua assinatura e faturamento. Você pode atualizar ou cancelar seu plano, ou baixar suas faturas."
+}

@@ -320,6 +320,23 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
         return;
       }
 
+      // Actualizar el estado del paciente a 'finalizado'
+      supabase
+        .from("pacientes" as any)
+        .update({ estado: 'finalizado' })
+        .eq("id", pacienteId)
+        .then(({ error }) => {
+          if (error) {
+            console.error("Error al actualizar estado del paciente:", error);
+          } else {
+            // Disparar un evento para notificar que el estado del paciente ha cambiado
+            const event = new CustomEvent('pacienteEstadoActualizado', { 
+              detail: { pacienteId, nuevoEstado: 'finalizado' } 
+            });
+            window.dispatchEvent(event);
+          }
+        });
+
       // Crear contenido HTML para imprimir la orden de RX
       const printContent = `
         <html>

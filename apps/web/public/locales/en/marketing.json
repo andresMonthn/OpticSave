@@ -1,4 +1,23 @@
 {
+  "heroTitle": "Gestor de Ópticas",
+  "heroSubtitle": "La web es una plataforma integral para la gestión de ópticas, diseñada para optimizar la administración de clientes, citas, inventario y ventas. Su objetivo es facilitar el trabajo diario del personal de la óptica y mejorar la experiencia de los pacientes.",
+  "blog": "Blog",
+  "documentacion": "Documentación",
+  "precios": "Precios",
+  "faq": "FAQ",
+  "contacto": "Contacto",
+  "contact": "Contacto",
+  "contactDescription": "Ponte en contacto con nosotros",
+  "contactHeading": "Envíanos un mensaje",
+  "contactSubheading": "Completa el formulario y te responderemos lo antes posible",
+  "contactName": "Nombre",
+  "contactEmail": "Correo electrónico",
+  "contactMessage": "Mensaje",
+  "sendMessage": "Enviar mensaje",
+  "contactSuccess": "¡Mensaje enviado!",
+  "contactSuccessDescription": "Gracias por contactarnos. Te responderemos lo antes posible.",
+  "contactError": "Error al enviar el mensaje",
+  "contactErrorDescription": "Lo sentimos, ha ocurrido un error al enviar tu mensaje. Por favor, inténtalo de nuevo más tarde.",
   "home": {
     "pageTitle": "Inicio"
   },
@@ -168,8 +187,6 @@
   "termsOfService": "Términos de Servicio",
   "privacyPolicy": "Política de Privacidad",
   "cookiePolicy": "Política de Cookies",
-  "contact": "Contacto",
-  "blog": "Blog",
   "documentation": "Documentación",
   "termsOfServiceDescription": "Estos términos y condiciones rigen el uso de OptiSave por parte de los usuarios. Al utilizar OptiSave, aceptas cumplir con estos términos y condiciones.",
  "legal": "legal"

@@ -44,7 +44,7 @@ async function ContactPage() {
             </div>
 
             <ContactForm />
-          </div>
+          </div> 
         </div>
       </div>
     </div>

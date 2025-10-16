@@ -3,7 +3,7 @@
 import PrismaticBurst from './componentes_animados/PrismaticBurst';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRightIcon, LayoutDashboard } from 'lucide-react';
+import { ArrowRightIcon, LayoutDashboard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PricingTable } from '@kit/billing-gateway/marketing';
 import {
   CtaButton,
@@ -19,7 +19,7 @@ import {
 import { Trans } from '@kit/ui/trans';
 import billingConfig from '~/config/billing.config';
 import pathsConfig from '~/config/paths.config';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import ShinyText from './componentes_animados/ShinyText';
 
 function MainCallToActionButton() {
@@ -56,15 +56,46 @@ export function MyMarketing() {
   const logoRef = useRef(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Efecto para manejar el scroll
+  // Total de imágenes en el carrusel
+  const totalSlides = 7;
+
+  // Funciones para controlar el carrusel
+  const nextSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev === totalSlides - 1 ? 0 : prev + 1));
+  }, [totalSlides]);
+
+  const prevSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev === 0 ? totalSlides - 1 : prev - 1));
+  }, [totalSlides]);
+
+  // Cambio automático de diapositivas
   useEffect(() => {
+    const interval = setInterval(() => {
+      nextSlide();
+    }, 5000); // Cambiar cada 5 segundos
+
+    return () => clearInterval(interval);
+  }, [nextSlide]);
+
+  // Efecto para manejar el scroll con optimización de rendimiento
+  useEffect(() => {
+    let ticking = false;
+
     const handleScroll = () => {
-      setScrollPosition(window.scrollY);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrollPosition(window.scrollY);
+          ticking = false;
+        });
+
+        ticking = true;
+      }
     };
 
     // Agregar event listener
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     // Limpiar event listener
     return () => {
@@ -127,16 +158,17 @@ export function MyMarketing() {
               title={
                 <>
                   <ShinyText text="OpticSave" speed={5} />
-                  <ShinyText text="gestor de opticas" speed={5} />
+                  <Trans i18nKey="marketing:heroTitle">
+                    <ShinyText text="marketing:heroTitle" speed={5} />
+                  </Trans>
                 </>
               }
               subtitle={
                 <div className="relative">
                   <div className="">
-                    <ShinyText
-                      text="La web es una plataforma integral para la gestión de ópticas, diseñada para optimizar la administración de clientes, citas, inventario y ventas. Su objetivo es facilitar el trabajo diario del personal de la óptica y mejorar la experiencia de los pacientes."
-                      speed={5}
-                    />
+                    <Trans i18nKey="marketing:heroSubtitle">
+                      <ShinyText text="marketing:heroSubtitle" speed={5} />
+                    </Trans>
                   </div>
                   {/* Espacio reservado para la imagen que se posicionará junto al texto */}
                   <div className="absolute left-0 top-0 w-12 md:w-20 opacity-0" style={{
@@ -147,16 +179,70 @@ export function MyMarketing() {
               }
               cta={<MainCallToActionButton />}
               image={
-                <Image
-                  priority
-                  className={
-                    'dark:border-primary/10 rounded-xl border border-gray-200'
-                  }
-                  width={3558}
-                  height={2222}
-                  src={`/images/dashboard.webp`}
-                  alt={`App Image`}
-                />
+                <div className="relative w-full overflow-hidden rounded-xl border border-gray-200 dark:border-primary/10">
+                  {/* Carrusel de imágenes */}
+                  <div className="relative w-full h-[500px]">
+                    {[
+                      "/images/Marketing/Captura de pantalla 2025-10-12 114242.png",
+                      "/images/Marketing/Captura de pantalla 2025-10-12 114253.png",
+                      "/images/Marketing/Captura de pantalla 2025-10-12 114305.png",
+                      "/images/Marketing/Captura de pantalla 2025-10-12 114311.png",
+                      "/images/Marketing/Captura de pantalla 2025-10-12 114324.png",
+                      "/images/Marketing/Captura de pantalla 2025-10-12 114330.png",
+                      "/images/Marketing/Captura de pantalla 2025-10-12 114356.png"
+                    ].map((src, index) => (
+                      <div
+                        key={index}
+                        className="absolute inset-0 transition-opacity duration-500 ease-in-out"
+                        style={{
+                          opacity: index === currentSlide ? 1 : 0,
+                          zIndex: index === currentSlide ? 10 : 0
+                        }}
+                      >
+                        <Image
+                          priority={index === 0}
+                          className="w-full h-full object-contain"
+                          width={1200}
+                          height={800}
+                          src={src}
+                          alt={`Captura de pantalla de la aplicación ${index + 1}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Controles del carrusel */}
+                  <button
+                    onClick={prevSlide}
+                    className="absolute left-2 top-1/2 z-20 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 p-2 rounded-full shadow-md hover:bg-white dark:hover:bg-gray-800 transition-colors"
+                    aria-label="Imagen anterior"
+                  >
+                    <ChevronLeft className="h-6 w-6 text-gray-800 dark:text-white" />
+                  </button>
+
+                  <button
+                    onClick={nextSlide}
+                    className="absolute right-2 top-1/2 z-20 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 p-2 rounded-full shadow-md hover:bg-white dark:hover:bg-gray-800 transition-colors"
+                    aria-label="Imagen siguiente"
+                  >
+                    <ChevronRight className="h-6 w-6 text-gray-800 dark:text-white" />
+                  </button>
+
+                  {/* Indicadores */}
+                  <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center space-x-2">
+                    {[0, 1, 2, 3, 4, 5, 6].map((index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentSlide(index)}
+                        className={`h-2 w-2 rounded-full transition-all ${index === currentSlide
+                            ? 'bg-white w-4'
+                            : 'bg-white/50 hover:bg-white/80'
+                          }`}
+                        aria-label={`Ir a la imagen ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
               }
             />
           </div>
@@ -177,40 +263,41 @@ export function MyMarketing() {
                 icon={
                   <FeatureShowcaseIconContainer>
                     <LayoutDashboard className="h-5" />
-                    <span>Simple Soluciones</span>
+                    <span>Simples Soluciones</span>
                   </FeatureShowcaseIconContainer>
                 }
               >
                 {/* seccion de funcionalidades que contiene el app */}
-                <FeatureGrid>
+                <FeatureGrid className="hover:-translate-y-1 transition-transform duration-300 ease-in-out">
                   <FeatureCard
-                    className={'relative col-span-1 overflow-hidden'}
-                    label={'Beautiful Dashboard'}
-                    description={`Makerkit provides a beautiful dashboard to manage your SaaS business.`}
+                    className={'relative col-span-1 overflow-hidden hover:scale-105 transition-transform duration-300'}
+                    label={'Interfaz de Usuario Intuitiva'}
+                    description={`Diseño moderno y accesible que facilita la navegación y el uso diario, adaptado específicamente para profesionales de ópticas.`}
+                  >
+                  </FeatureCard>
+
+                  <FeatureCard
+                    className={'relative col-span-1 w-full overflow-hidden hover:scale-105 transition-transform duration-300'}
+                    label={'Gestión de Agenda'}
+                    description={`Sistema completo para administrar citas, recordatorios automáticos y seguimiento de pacientes, optimizando el flujo de trabajo diario.`}
                   ></FeatureCard>
 
                   <FeatureCard
-                    className={'relative col-span-1 w-full overflow-hidden'}
-                    label={'Authentication'}
-                    description={`Makerkit provides a variety of providers to allow your users to sign in.`}
-                  ></FeatureCard>
-
-                  <FeatureCard
-                    className={'relative col-span-1 overflow-hidden'}
-                    label={'Multi Tenancy'}
-                    description={`Multi tenant memberships for your SaaS business.`}
+                    className={'relative col-span-1 overflow-hidden hover:scale-105 transition-transform duration-300'}
+                    label={'Levantamiento de Pedidos'}
+                    description={`Proceso simplificado para crear, rastrear y gestionar pedidos de productos ópticos, desde la solicitud inicial hasta la entrega final.`}
                   />
 
                   <FeatureCard
-                    className={'relative col-span-1 overflow-hidden md:col-span-2'}
-                    label={'Billing'}
-                    description={`Makerkit supports multiple payment gateways to charge your customers.`}
+                    className={'relative col-span-1 overflow-hidden md:col-span-2 hover:scale-105 transition-transform duration-300'}
+                    label={'Seguridad para el Usuario'}
+                    description={`Protección avanzada de datos personales y médicos, cumpliendo con normativas de privacidad y garantizando la confidencialidad de la información sensible.`}
                   />
 
                   <FeatureCard
-                    className={'relative col-span-1 overflow-hidden'}
-                    label={'Plugins'}
-                    description={`Extend your SaaS with plugins that you can install using the CLI.`}
+                    className={'relative col-span-1 overflow-hidden hover:scale-105 transition-transform duration-300'}
+                    label={'Reportes y Análisis'}
+                    description={`Herramientas analíticas para visualizar tendencias de ventas, comportamiento de clientes y rendimiento del negocio.`}
                   />
                 </FeatureGrid>
               </FeatureShowcase>

@@ -1,0 +1,9 @@
+{
+  "accountTabLabel": "Account Settings",
+  "accountTabDescription": "Manage your account settings",
+  "homePage": "Home",
+  "billingTab": "Billing",
+  "settingsTab": "Settings",
+  "multiFactorAuth": "Multi-Factor Authentication",
+  "multiFactorAuthDescription": "Set up a Multi-Factor Authentication method to further protect your account"
+}

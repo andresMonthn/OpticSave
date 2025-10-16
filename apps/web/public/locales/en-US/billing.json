@@ -1,0 +1,23 @@
+{
+  "subscriptionTabSubheading": "Manage your Subscription and Billing",
+  "planCardTitle": "Your Plan",
+  "planCardDescription": "Below are the details of your current plan. You can change your plan or cancel your subscription at any time.",
+  "planRenewal": "Renews every {{interval}} for {{price}}",
+  "planDetails": "Plan Details",
+  "checkout": "Proceed to Checkout",
+  "trialEndsOn": "Your trial ends on",
+  "billingPortalCardButton": "Visit Billing Portal",
+  "billingPortalCardTitle": "Manage your Billing Details",
+  "billingPortalCardDescription": "Visit your Billing Portal to manage your subscription and billing. You can upgrade or cancel your plan, or download your invoices.",
+  "cancelAtPeriodEndDescription": "Your subscription is scheduled to cancel on {{- endDate}}.",
+  "renewAtPeriodEndDescription": "Your subscription is scheduled to renew on {{- endDate}}",
+  "noPermissionsAlertHeading": "You don't have permissions to change billing settings",
+  "noPermissionsAlertBody": "Please contact the account owner to change your account's billing settings.",
+  "checkoutSuccessTitle": "All set! You're good to go.",
+  "checkoutSuccessDescription": "Thank you for subscribing, we've successfully processed your subscription! A confirmation email will be sent to {{ customerEmail }}.",
+  "checkoutSuccessBackButton": "Continue to Application",
+  "cannotManageBillingAlertTitle": "You cannot manage billing",
+  "cannotManageBillingAlertDescription": "You don't have permissions to manage billing. Please contact the account owner.",
+  "manageTeamPlan": "Manage your Team Plan",
+  "manageTeamPlanDescription": "Choose a plan that fits your team's needs. You can upgrade or downgrade your plan at any time."
+}

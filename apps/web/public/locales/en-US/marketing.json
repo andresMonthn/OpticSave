@@ -1,0 +1,58 @@
+{
+  "heroTitle": "optical management",
+  "heroSubtitle": "The web is a comprehensive platform for optical management, designed to optimize customer administration, appointments, inventory, and sales. Its goal is to facilitate the daily work of optical staff and improve the patient experience.",
+  "blog": "Blog",
+  "documentacion": "Documentation",
+  "precios": "Pricing",
+  "faq": "FAQ",
+  "contacto": "Contact",
+  "contact": "Contact",
+  "contactDescription": "Get in touch with us",
+  "contactHeading": "Send us a message",
+  "contactSubheading": "Fill out the form and we'll get back to you as soon as possible",
+  "contactName": "Name",
+  "contactEmail": "Email",
+  "contactMessage": "Message",
+  "sendMessage": "Send message",
+  "contactSuccess": "Message sent!",
+  "contactSuccessDescription": "Thank you for contacting us. We'll respond as soon as possible.",
+  "contactError": "Error sending message",
+  "contactErrorDescription": "Sorry, there was an error sending your message. Please try again later.",
+  "home": {
+    "pageTitle": "Home"
+  },
+  "settings": {
+    "pageTitle": "Settings",
+    "pageDescription": "Manage your Team details",
+    "teamLogo": "Team Logo",
+    "teamLogoDescription": "Update your team logo to make it easier to identify",
+    "teamName": "Team Name",
+    "teamNameDescription": "Update your team name",
+    "dangerZone": "Danger Zone",
+    "dangerZoneDescription": "This section contains actions that are irreversible"
+  },
+  "members": {
+    "pageTitle": "Members"
+  },
+  "billing": {
+    "pageTitle": "Billing"
+  },
+  "yourTeams": "Your Teams ({{teamsCount}})",
+  "createTeam": "Create a Team",
+  "creatingTeam": "Creating Team...",
+  "personalAccount": "Personal Account",
+  "searchAccount": "Search Account...",
+  "membersTabLabel": "Members",
+  "memberName": "Name",
+  "youLabel": "You",
+  "emailLabel": "Email",
+  "roleLabel": "Role",
+  "primaryOwnerLabel": "Primary Owner",
+  "joinedAtLabel": "Joined on",
+  "invitedAtLabel": "Invited on",
+  "documentation": "Documentation",
+  "termsOfService": "Terms of Service",
+  "privacyPolicy": "Privacy Policy",
+  "cookiePolicy": "Cookie Policy",
+  "legal": "Legal"
+}

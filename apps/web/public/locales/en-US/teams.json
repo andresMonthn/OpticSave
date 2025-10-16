@@ -1,0 +1,26 @@
+{
+  "home": {
+    "pageTitle": "Home"
+  },
+  "settings": {
+    "pageTitle": "Settings",
+    "pageDescription": "Manage your Team details",
+    "teamLogo": "Team Logo",
+    "teamLogoDescription": "Update your team logo to make it easier to identify",
+    "teamName": "Team Name",
+    "teamNameDescription": "Update your team name",
+    "dangerZone": "Danger Zone",
+    "dangerZoneDescription": "This section contains actions that are irreversible"
+  },
+  "members": {
+    "pageTitle": "Members"
+  },
+  "billing": {
+    "pageTitle": "Billing"
+  },
+  "yourTeams": "Your Teams ({{teamsCount}})",
+  "createTeam": "Create a Team",
+  "creatingTeam": "Creating Team...",
+  "personalAccount": "Personal Account",
+  "searchAccount": "Search Account..."
+}
