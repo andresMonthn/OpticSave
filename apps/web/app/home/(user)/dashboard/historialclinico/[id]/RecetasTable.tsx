@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@kit/ui/table";
 import { Button } from "@kit/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@kit/ui/tooltip";
 import { PencilIcon } from "lucide-react";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
 import {
@@ -15,6 +14,30 @@ import {
 } from "@kit/ui/popover";
 import { Checkbox } from "@kit/ui/checkbox";
 import { Label } from "@kit/ui/label";
+
+// Helper: parseo seguro de fechas para evitar RangeError al convertir a ISO
+function parseDateSafe(input: unknown): Date | null {
+  if (input === null || input === undefined) return null;
+  if (input instanceof Date) return isValid(input) ? input : null;
+  if (typeof input === "string") {
+    const str = input.trim();
+    if (!str) return null;
+    const d1 = new Date(str);
+    if (isValid(d1)) return d1;
+    try {
+      const d2 = parseISO(str);
+      return isValid(d2) ? d2 : null;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof input === "number") {
+    const d = new Date(input);
+    return isValid(d) ? d : null;
+  }
+  return null;
+}
+
 
 interface RecetaRelacion {
   tipo: "uso" | "final";
@@ -57,9 +80,11 @@ interface RecetasTableProps {
   setRxDialogOpen: (open: boolean) => void;
   handleDeleteRx: (id: string) => void;
   pacienteId: string;
+  diagnosticoId?: string;
 }
 
-export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, handleDeleteRx, pacienteId }: RecetasTableProps) {
+
+export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, handleDeleteRx, pacienteId, diagnosticoId: propDiagnosticoId }: RecetasTableProps) {
   const supabase = getSupabaseBrowserClient();
   
   // Estado para los datos de la receta en el popover
@@ -76,9 +101,10 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
   
   // Estado para la fecha de la receta en el popover
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
+  const [fechaCita, setFechaCita] = useState<string | null>(null);
   
   // Estados para el contexto de la receta que se está editando
-  const [diagnosticoId, setDiagnosticoId] = useState<string | undefined>(undefined);
+  const [diagnosticoId, setDiagnosticoId] = useState<string | undefined>(propDiagnosticoId);
   const [rxType, setRxType] = useState<'uso' | 'final'>('uso');
   const [eyeType, setEyeType] = useState<'OD' | 'OI'>('OD');
   const [rxId, setRxId] = useState<string | null>(null);
@@ -86,46 +112,107 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
   // Estado para controlar el popover
   const [openPopover, setOpenPopover] = useState<string | null>(null);
   
-  if (!recetas || recetas.length === 0) {
-    return (
-      <div className="text-center py-4">
-        <p className="text-muted-foreground">No hay recetas registradas</p>
-      </div>
-    );
-  }
+  // Estado para controlar si está cargando
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Orden requerido: uso OD, uso OI, final OD, final OI
-  const orderMap: Record<string, number> = {
-    "uso_OD": 0,
-    "uso_OI": 1,
-    "final_OD": 2,
-    "final_OI": 3,
-  };
+  // Estado para almacenar el valor DIP
+  const [dipValue, setDipValue] = useState<number | null>(null);
+  const [isDipPopoverOpen, setIsDipPopoverOpen] = useState(false);
 
-  const sortedRecetas = [...recetas].sort((a, b) => {
-    const keyA = `${a.relacion?.tipo ?? "zzz"}_${a.relacion?.ojo ?? "ZZ"}`;
-    const keyB = `${b.relacion?.tipo ?? "zzz"}_${b.relacion?.ojo ?? "ZZ"}`;
-    const weightA = orderMap[keyA] ?? 999;
-    const weightB = orderMap[keyB] ?? 999;
-    return weightA - weightB;
-  });
-  
-  // Interfaz para los datos de rx desde la base de datos
-  interface RxData {
-    id: string;
-    tipo: string;
-    ojo: string;
-    esf: string | number | null;
-    cil: string | number | null;
-    eje: string | number | null;
-    add: string | number | null;
-    fecha: string | null;
-    esfDisabled?: boolean;
-    cilDisabled?: boolean;
-    ejeDisabled?: boolean;
-    addDisabled?: boolean;
-  }
-  
+  // Estado para almacenar el estado del paciente
+  const [estadoPaciente, setEstadoPaciente] = useState<string | null>(null);
+
+  // Obtener el valor DIP de la tabla diagnostico
+  useEffect(() => {
+    const fetchDipValue = async () => {
+      // Usar pacienteId si no hay diagnosticoId
+      if (!pacienteId) {
+        console.log("No hay pacienteId, no se puede obtener el valor DIP");
+        return;
+      }
+
+      try {
+        // Primero intentamos obtener el diagnóstico por ID si está disponible
+        if (diagnosticoId) {
+          const { data, error } = await supabase
+            .from("diagnostico" as any)
+            .select("dip")
+            .eq("id", diagnosticoId)
+            .single();
+
+          if (!error && data && 'dip' in data) {
+            console.log("Valor DIP obtenido por diagnosticoId:", data.dip);
+            setDipValue(data.dip as any);
+            return;
+          }
+        }
+
+        // Si no hay diagnosticoId o no se encontró, buscamos por pacienteId
+        const { data, error } = await supabase
+          .from("diagnostico" as any)
+          .select("dip")
+          .eq("paciente_id", pacienteId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (error) {
+          console.log("No se encontró diagnóstico para el paciente:", pacienteId);
+          return;
+        }
+
+        if (data && 'dip' in data) {
+          console.log("Valor DIP obtenido por pacienteId:", data.dip);
+          setDipValue(data.dip as any);
+        }
+      } catch (error) {
+        console.error("Error al obtener valor DIP:", error);
+      }
+    };
+
+    fetchDipValue();
+  }, [diagnosticoId, pacienteId, supabase]);
+
+  // Obtener la fecha de cita y el estado del paciente al cargar el componente
+  useEffect(() => {
+    const fetchPacienteData = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("pacientes" as any)
+          .select("fecha_de_cita, estado")
+          .eq("id", pacienteId)
+          .single();
+
+        if (error) throw error;
+
+        if (data && typeof data === 'object') {
+          // Guardar el estado del paciente
+          if ('estado' in data) {
+            setEstadoPaciente((data as any).estado);
+          }
+
+          // Procesar la fecha de cita
+          if ('fecha_de_cita' in data && (data as any).fecha_de_cita) {
+            setFechaCita((data as any).fecha_de_cita);
+            const d = parseDateSafe((data as any).fecha_de_cita);
+            if (d) {
+              setFecha(d.toISOString().split('T')[0]);
+            } else {
+              console.warn('Fecha inválida o vacía desde API.fecha_de_cita:', (data as any).fecha_de_cita);
+              setFecha(new Date().toISOString().split('T')[0]);
+              showAlert('warning', 'Fecha inválida', 'Fecha de cita inválida desde API, usando fecha actual.');
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error al obtener datos del paciente:", error);
+      }
+    };
+
+    fetchPacienteData();
+  }, [pacienteId, supabase]);
+
+
   /**
    * Carga los datos existentes de una receta desde la base de datos
    */
@@ -154,9 +241,13 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
             ejeDisabled: false,
             addDisabled: false
           });
-          
-          if (typedRxData.fecha) {
-            setFecha(typedRxData.fecha);
+
+          // Usar la fecha de cita si está disponible, de lo contrario usar la fecha actual
+          if (fechaCita) {
+            const d = parseDateSafe(fechaCita);
+            setFecha(d ? d.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+          } else {
+            setFecha(new Date().toISOString().split('T')[0]);
           }
           return;
         }
@@ -213,9 +304,8 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
               addDisabled: typedRxData.add === 'N'
             });
             
-            if (typedRxData.fecha) {
-              setFecha(typedRxData.fecha);
-            }
+            // Set current date as fecha since it's not in the database
+            setFecha(new Date().toISOString().split('T')[0]);
           }
         }
       }
@@ -225,7 +315,32 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
     }
   };
   
-  // Cargar datos existentes cuando se abre el popover, cambia el diagnóstico o el ID de receta
+  // Declarar todos los useEffect aquí para mantener el orden consistente
+  // Efecto para cargar el valor DIP
+  useEffect(() => {
+    const fetchDipValue = async () => {
+      if (!diagnosticoId) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("diagnostico" as any)
+          .select("dip")
+          .eq("id", diagnosticoId)
+          .single();
+
+        if (error) throw error;
+
+        if (data && 'dip' in data) {
+          setDipValue(data.dip as any);
+        }
+      } catch (error) {
+        console.error("Error al obtener el valor DIP:", error);
+      }
+    };
+
+    fetchDipValue();
+  }, [diagnosticoId, supabase]);
+
   useEffect(() => {
     console.log("RecetaPopover - Cargando datos con:", { 
       openPopover, 
@@ -236,6 +351,249 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
     });
     fetchExistingRxData();
   }, [openPopover, diagnosticoId, rxId, rxType, eyeType]);
+
+  /**
+   * Guarda el valor de DIP en la base de datos
+   * @param newValue Valor opcional para actualizar directamente (usado por los botones + y -)
+   */
+  const handleSaveDip = async (newValue?: number | React.MouseEvent<HTMLButtonElement>) => {
+    // Si es un evento de clic, no usamos su valor
+    const isMouseEvent = newValue && typeof newValue === 'object' && 'target' in newValue;
+    
+    // Determinar el valor a guardar
+    const valueToSave = !isMouseEvent && newValue !== undefined ? (newValue as number) : dipValue;
+    
+    if (!diagnosticoId && !pacienteId) {
+      showAlert('error', 'Error', 'No se encontró información del paciente o diagnóstico');
+      return;
+    }
+
+    try {
+      // Verificar que el valor esté en el rango permitido (0-100)
+      if (valueToSave !== null && (valueToSave < 0 || valueToSave > 100)) {
+        showAlert('warning', 'Advertencia', 'El valor DIP debe estar entre 0 y 100');
+        return;
+      }
+
+      console.log("Guardando DIP:", { valueToSave, diagnosticoId, pacienteId });
+
+      // Primero intentamos buscar el diagnóstico por ID si está disponible
+      let existingDiagId: string | null = null;
+      
+      if (diagnosticoId) {
+        const { data, error: checkError } = await supabase
+          .from("diagnostico" as any)
+          .select("id")
+          .eq("id", diagnosticoId)
+          .maybeSingle();
+          
+        if (!checkError && data) {
+          if (data && typeof data === 'object' && 'id' in data) {
+            existingDiagId = (data as any).id;
+          }
+        }
+      }
+      
+      // Si no encontramos por diagnosticoId, buscamos el diagnóstico más reciente del paciente
+      if (!existingDiagId && pacienteId) {
+        const { data, error: latestError } = await supabase
+          .from("diagnostico" as any)
+          .select("id")
+          .eq("paciente_id", pacienteId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+          
+        if (!latestError && data) {
+          if (data && typeof data === 'object' && 'id' in data) {
+            existingDiagId = (data as any).id;
+          }
+        }
+      }
+
+      // Si encontramos un diagnóstico, lo actualizamos
+      if (existingDiagId) {
+        const { error } = await supabase
+          .from("diagnostico" as any)
+          .update({ dip: valueToSave })
+          .eq("id", existingDiagId);
+
+        if (error) throw error;
+        
+        console.log("DIP actualizado correctamente en diagnóstico:", existingDiagId);
+        showAlert('success', 'Éxito', 'Valor DIP actualizado correctamente');
+      } 
+      // Si no encontramos ningún diagnóstico, creamos uno nuevo
+      else if (pacienteId) {
+        const newDiagId = diagnosticoId || crypto.randomUUID();
+        const { data, error: createError } = await supabase
+          .from("diagnostico" as any)
+          .insert({
+            id: newDiagId,
+            paciente_id: pacienteId,
+            dip: valueToSave
+          })
+          .select("id")
+          .single();
+
+        if (createError) throw createError;
+        
+        console.log("Nuevo diagnóstico creado con DIP:", newDiagId);
+        showAlert('success', 'Éxito', 'Diagnóstico creado y valor DIP insertado correctamente');
+      } else {
+        throw new Error("No se pudo encontrar o crear un diagnóstico para guardar el valor DIP");
+      }
+      
+      // Actualizamos el estado local
+      setDipValue(valueToSave);
+      setIsDipPopoverOpen(false);
+    } catch (error: any) {
+      console.error("Error al guardar el valor DIP:", error);
+      showAlert('error', 'Error', error.message || 'Error al guardar el valor DIP');
+    }
+  };
+
+  /**
+   * Inicializa 4 registros rx con valores por defecto y los asocia al diagnóstico
+   */
+  const inicializarRecetas = async () => {
+    try {
+      setIsLoading(true);
+
+      // Verificar si ya existen recetas
+      if (recetas && recetas.length > 0) {
+        showAlert("warning", "Advertencia", "Ya existen recetas para este paciente");
+        setIsLoading(false);
+        return;
+      }
+
+      // Obtener el user_id actual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("No se pudo obtener el usuario actual");
+      }
+
+      // Primero, crear o obtener el diagnóstico
+      let diagnosticoId;
+
+      // Obtener el diagnóstico actual o crear uno nuevo si no existe
+      const { data: diagData, error: diagError } = await supabase
+        .from("diagnostico" as any)
+        .select("id")
+        .eq("paciente_id", pacienteId)
+        .maybeSingle();
+
+      if (diagError) throw diagError;
+
+      if (diagData && 'id' in diagData) {
+        // Usar el diagnóstico existente
+        diagnosticoId = diagData.id;
+      } else {
+        // Crear un nuevo diagnóstico con DIP por defecto
+        const { data: newDiagData, error: newDiagError } = await supabase
+          .from("diagnostico" as any)
+          .insert({
+            paciente_id: pacienteId,
+            user_id: user.id,
+            dip: 1 // Valor DIP por defecto
+          })
+          .select("id")
+          .single();
+
+        if (newDiagError) throw newDiagError;
+        if (newDiagData && 'id' in newDiagData) {
+          diagnosticoId = newDiagData.id;
+        } else {
+          throw new Error("No se pudo obtener el ID del diagnóstico creado");
+        }
+      }
+
+      // Ahora crear los registros rx con el diagnostico_id
+      const rxDefaults = {
+        esf: "N",
+        cil: "N",
+        eje: "N",
+        add: "N",
+        user_id: user.id,
+        paciente_id: pacienteId,
+        diagnostico_id: diagnosticoId // Añadir el diagnostico_id aquí
+      };
+
+      // Insertar los 4 registros rx con sus tipos y ojos correspondientes
+      // Nota: No incluimos tipo, ojo o fecha ya que no existen en el esquema de la base de datos
+      const { data: rxData, error: rxError } = await supabase
+        .from("rx" as any)
+        .insert([
+          { ...rxDefaults }, // rx_uso_od (primer registro)
+          { ...rxDefaults }, // rx_uso_oi (segundo registro)
+          { ...rxDefaults }, // rx_final_od (tercer registro)
+          { ...rxDefaults }  // rx_final_oi (cuarto registro)
+        ])
+        .select();
+
+      if (rxError) throw rxError;
+      if (!rxData || rxData.length !== 4) {
+        throw new Error("No se pudieron crear todos los registros rx");
+      }
+
+      // Actualizar el diagnóstico con los IDs de rx
+      const { error: updateError } = await supabase
+        .from("diagnostico" as any)
+        .update({
+          rx_uso_od_id: rxData[0] && 'id' in rxData[0] ? rxData[0].id : null,
+          rx_uso_oi_id: rxData[1] && 'id' in rxData[1] ? rxData[1].id : null,
+          rx_final_od_id: rxData[2] && 'id' in rxData[2] ? rxData[2].id : null,
+          rx_final_oi_id: rxData[3] && 'id' in rxData[3] ? rxData[3].id : null
+        })
+        .eq("id", diagnosticoId);
+
+      if (updateError) throw updateError;
+
+      showAlert("success", "Éxito", "Se han inicializado las recetas correctamente");
+
+      // Recargar la página para mostrar las nuevas recetas
+      window.location.reload();
+    } catch (error: any) {
+      console.error("Error al inicializar recetas:", error);
+      showAlert("error", "Error", error.message || "Error al inicializar recetas");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Orden requerido: uso OD, uso OI, final OD, final OI
+  const orderMap: Record<string, number> = {
+    "uso_OD": 0,
+    "uso_OI": 1,
+    "final_OD": 2,
+    "final_OI": 3,
+  };
+
+  const sortedRecetas = [...recetas].sort((a, b) => {
+    const keyA = `${a.relacion?.tipo ?? "zzz"}_${a.relacion?.ojo ?? "ZZ"}`;
+    const keyB = `${b.relacion?.tipo ?? "zzz"}_${b.relacion?.ojo ?? "ZZ"}`;
+    const weightA = orderMap[keyA] ?? 999;
+    const weightB = orderMap[keyB] ?? 999;
+    return weightA - weightB;
+  });
+
+  // Interfaz para los datos de rx desde la base de datos
+  interface RxData {
+    id: string;
+    tipo: string;
+    ojo: string;
+    esf: string | number | null;
+    cil: string | number | null;
+    eje: string | number | null;
+    add: string | number | null;
+    fecha: string | null;
+    esfDisabled?: boolean;
+    cilDisabled?: boolean;
+    ejeDisabled?: boolean;
+    addDisabled?: boolean;
+  }
+
+  // Este useEffect se ha movido al inicio del componente para mantener el orden consistente
 
   // Función para formatear números a dos decimales
   const formatToTwoDecimals = (value: number | null): string => {
@@ -257,8 +615,6 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
       
       // Datos de la receta a guardar
       const rxDataToSave = {
-        tipo: rxType,
-        ojo: eyeType,
         esf: editRxData.esfDisabled ? 'N' : (editRxData.esf === null ? 'N' : editRxData.esf),
         // Asegurar que el cilindro sea siempre negativo
         cil: editRxData.cilDisabled ? 'N' : 
@@ -267,7 +623,6 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
              'N'),
         eje: editRxData.ejeDisabled ? 'N' : (editRxData.eje === null ? 'N' : editRxData.eje),
         add: editRxData.addDisabled ? 'N' : (editRxData.add === null ? 'N' : editRxData.add),
-        fecha: fecha,
         user_id: userData.user.id
       };
       
@@ -354,6 +709,7 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
     await fetchExistingRxData();
   };
   
+
   /**
    * Función para recargar los datos de las recetas
    */
@@ -382,11 +738,67 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
 
   return (
     <div className="rounded-md border">
-      {/* Mostrar la fecha como un label en la parte superior */}
-      <div className="bg-slate-100 dark:bg-slate-800 p-3 text-center border-b">
-        <span className="font-medium">Recetas creadas el: </span>
-        <span>{fechaFormateada}</span>
+      <div className="bg-blue-500 dark:bg-blue-700 p-6 border-b flex justify-center items-center">
+        <div className="flex flex-col items-center">
+          <span className="font-bold text-white mb-1">DIP</span>
+          <span className="text-4xl font-bold text-white">
+            {dipValue !== null ? `${dipValue}` : '-'}
+          </span>
+
+          <Popover open={isDipPopoverOpen} onOpenChange={setIsDipPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="secondary" size="sm" className="mt-2">
+                <PencilIcon className="h-4 w-4 mr-2" />
+                Editar DIP
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <h4 className="font-medium leading-none">Distancia Interpupilar (DIP)</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Ingrese un valor entre 0 y 100
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  <div className="grid grid-cols-3 items-center gap-4">
+                    <Label htmlFor="dip">Valor DIP</Label>
+                    <input
+                      id="dip"
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="col-span-2 h-8 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                      value={dipValue !== null ? dipValue : ''}
+                      onChange={(e) => setDipValue(e.target.value === '' ? null : Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+                <Button onClick={handleSaveDip}>Guardar</Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
+
+      {/* Renderizar mensaje si no hay recetas */}
+      {(!recetas || recetas.length === 0) && (
+        <div className="text-center py-4">
+          <p className="text-muted-foreground">No hay recetas registradas</p>
+          {/* Ocultar el botón si la fecha de cita es anterior a la fecha actual */}
+          {(!fechaCita || new Date(fechaCita) >= new Date()) && (
+            <Button
+              onClick={inicializarRecetas}
+              className="mt-4"
+              disabled={isLoading}
+            >
+              {isLoading ? "Inicializando..." : "Inicializar Recetas"}
+            </Button>
+          )}
+        </div>
+      )}
+
+
 
       {/* Renderizar tablas separadas para cada tipo de receta */}
       {Object.entries(recetasPorTipo).map(([tipo, recetasDelTipo]) => (
@@ -394,6 +806,8 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
           <div className="bg-slate-200 dark:bg-slate-700 p-2 font-semibold text-center">
             {tipo === 'uso' ? 'Recetas de Uso' : 'Recetas Finales'}
           </div>
+
+
           
           <div className="overflow-x-auto">
             <Table>
@@ -465,7 +879,10 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
                               addDisabled: false
                             });
                             
-                            setFecha(receta.fecha ?? new Date().toISOString().split("T")[0]);
+                            {
+                              const d = parseDateSafe(receta.fecha);
+                              setFecha(d ? d.toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
+                            }
                             setOpenPopover(receta.id);
                           } else {
                             setOpenPopover(null);
