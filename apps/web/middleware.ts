@@ -1,12 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse, URLPattern } from 'next/server';
-
 import { CsrfError, createCsrfProtect } from '@edge-csrf/nextjs';
-
 import { isSuperAdmin } from '@kit/admin';
 import { checkRequiresMultiFactorAuthentication } from '@kit/supabase/check-requires-mfa';
 import { createMiddlewareClient } from '@kit/supabase/middleware-client';
-
 import appConfig from '~/config/app.config';
 import pathsConfig from '~/config/paths.config';
 
@@ -19,40 +16,32 @@ export const config = {
 
 const getUser = (request: NextRequest, response: NextResponse) => {
   const supabase = createMiddlewareClient(request, response);
-
   return supabase.auth.getClaims();
 };
 
 export async function middleware(request: NextRequest) {
   const secureHeaders = await createResponseWithSecureHeaders();
   const response = NextResponse.next(secureHeaders);
-
   // set a unique request ID for each request
   // this helps us log and trace requests
   setRequestId(request);
-
   // apply CSRF protection for mutating requests
   const csrfResponse = await withCsrfMiddleware(request, response);
-
   // handle patterns for specific routes
   const handlePattern = matchUrlPattern(request.url);
-
   // if a pattern handler exists, call it
   if (handlePattern) {
     const patternHandlerResponse = await handlePattern(request, csrfResponse);
-
     // if a pattern handler returns a response, return it
     if (patternHandlerResponse) {
       return patternHandlerResponse;
     }
   }
-
   // append the action path to the request headers
   // which is useful for knowing the action path in server actions
   if (isServerAction(request)) {
     csrfResponse.headers.set('x-action-path', request.nextUrl.pathname);
   }
-
   // if no pattern handler returned a response,
   // return the session response
   return csrfResponse;

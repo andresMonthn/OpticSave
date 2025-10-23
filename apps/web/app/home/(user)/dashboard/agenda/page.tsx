@@ -1,7 +1,8 @@
 "use client";
-import { TeamAccountLayoutPageHeader } from '../../../[account]/_components/team-account-layout-page-header';
+import { HomeLayoutPageHeader } from '../../../(user)/_components/home-page-header';
 import { Trans } from '@kit/ui/trans';
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
+import { PageBody } from '@kit/ui/page';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
@@ -16,26 +17,35 @@ import { Avatar, AvatarFallback } from '@kit/ui/avatar';
 interface Paciente {
   id: string;
   user_id: string;
-  nombre: string;
-  apellido: string;
+  nombre: string | null;
+  apellido: string | null;
   edad: number | null;
   sexo: string | null;
   domicilio: string | null;
   motivo_consulta: string | null;
+  diagnostico_id: string | null;
   telefono: string | null;
   fecha_de_cita: string | null;
   created_at: string;
   updated_at: string;
-  estado?: string | null;
+  estado: string | null;
+  fecha_nacimiento: string | null;
+  ocupacion: string | null;
+  sintomas_visuales: string | null;
+  ultimo_examen_visual: string | null;
+  uso_lentes: boolean | null;
+  tipos_de_lentes: string | null;
+  tiempo_de_uso_lentes: string | null;
+  cirujias: boolean | null;
+  traumatismos_oculares: boolean | null;
+  nombre_traumatismos_oculares: string | null;
+  antecedentes_visuales_familiares: string | null;
+  antecedente_familiar_salud: string | null;
+  habitos_visuales: string | null;
+  salud_general: string | null;
+  medicamento_actual: string | null;
 }
 
-// Nueva interfaz para diagnosticos
-interface Diagnostico {
-  id: string;
-  paciente_id: string;
-  proxima_visita: string | null;
-  created_at?: string;
-}
 
 export default function Agenda() {
   const account = useParams().account as string;
@@ -44,8 +54,6 @@ export default function Agenda() {
   const [showHelp, setShowHelp] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
-  // Estado para mapear paciente_id -> proxima_visita
-  const [diagnosticosMap, setDiagnosticosMap] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,30 +95,6 @@ export default function Agenda() {
 
       const pacientesList = (pacientesData as unknown as Paciente[]) || [];
       setPacientes(pacientesList);
-
-      // Obtener diagnosticos de esos pacientes para leer su proxima_visita
-      const pacienteIds = pacientesList.map((p) => p.id);
-      if (pacienteIds.length > 0) {
-        const { data: diagnosticosData, error: diagnosticosError } = await supabase
-          .from('diagnostico' as any)
-          .select('id,paciente_id,proxima_visita,created_at')
-          .in('paciente_id', pacienteIds)
-          .not('proxima_visita', 'is', null)
-          .order('created_at', { ascending: false });
-
-        if (diagnosticosError) {
-          console.error('Error fetching diagnosticos:', diagnosticosError);
-        } else {
-          const map: Record<string, string> = {};
-          (diagnosticosData as any[])?.forEach((d) => {
-            // Guardar la más reciente por paciente (lista ya viene ordenada desc por created_at)
-            if (!map[d.paciente_id] && d.proxima_visita) {
-              map[d.paciente_id] = d.proxima_visita as string;
-            }
-          });
-          setDiagnosticosMap(map);
-        }
-      }
     } catch (error) {
       console.error('Error:', error);
       setError('Error de conexión al cargar las citas');
@@ -126,24 +110,13 @@ export default function Agenda() {
     localDate.setHours(0, 0, 0, 0);
     
     return pacientes.filter(paciente => {
-      let coincide = false;
-      
       // Verificar cita programada en pacientes
       if (paciente.fecha_de_cita) {
         const citaDate = new Date(paciente.fecha_de_cita);
         citaDate.setHours(0, 0, 0, 0);
-        coincide = coincide || (citaDate.getTime() === localDate.getTime());
+        return citaDate.getTime() === localDate.getTime();
       }
-
-      // Verificar próxima visita desde diagnosticos
-      const proxima = diagnosticosMap[paciente.id];
-      if (proxima) {
-        const proxDate = new Date(proxima);
-        proxDate.setHours(0, 0, 0, 0);
-        coincide = coincide || (proxDate.getTime() === localDate.getTime());
-      }
-
-      return coincide;
+      return false;
     });
   };
 
@@ -156,8 +129,8 @@ export default function Agenda() {
     
     const normalizedTerm = term.toLowerCase().trim();
     const results = pacientes.filter(paciente => 
-      paciente.nombre.toLowerCase().includes(normalizedTerm) || 
-      paciente.apellido.toLowerCase().includes(normalizedTerm) ||
+      (paciente.nombre && paciente.nombre.toLowerCase().includes(normalizedTerm)) || 
+      (paciente.apellido && paciente.apellido.toLowerCase().includes(normalizedTerm)) ||
       (paciente.telefono && paciente.telefono.includes(normalizedTerm))
     );
     
@@ -348,10 +321,10 @@ export default function Agenda() {
                         <div className="flex items-center space-x-1">
                           <Avatar className="w-4 h-4">
                             <AvatarFallback className="text-xs bg-blue-400">
-                              {paciente.nombre.charAt(0)}{paciente.apellido.charAt(0)}
+                              {paciente.nombre ? paciente.nombre.charAt(0) : ''}{paciente.apellido ? paciente.apellido.charAt(0) : ''}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="truncate">{paciente.nombre} {paciente.apellido}</span>
+                          <span className="truncate">{paciente.nombre || ''} {paciente.apellido || ''}</span>
                         </div>
                       </div>
                     </DialogTrigger>
@@ -360,10 +333,10 @@ export default function Agenda() {
                         <DialogTitle className="flex items-center space-x-2">
                           <Avatar className="w-8 h-8">
                             <AvatarFallback>
-                              {paciente.nombre.charAt(0)}{paciente.apellido.charAt(0)}
+                              {paciente.nombre ? paciente.nombre.charAt(0) : ''}{paciente.apellido ? paciente.apellido.charAt(0) : ''}
                             </AvatarFallback>
                           </Avatar>
-                          <span>{paciente.nombre} {paciente.apellido}</span>
+                          <span>{paciente.nombre || ''} {paciente.apellido || ''}</span>
                         </DialogTitle>
                         <DialogDescription>
                           Información del paciente y cita médica
@@ -400,7 +373,7 @@ export default function Agenda() {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-500">Próxima visita</p>
-                            <p className="text-sm">{diagnosticosMap[paciente.id] ? new Date(diagnosticosMap[paciente.id] as string).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'No programada'}</p>
+                            <p className="text-sm">No programada</p>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-500">Estado</p>
@@ -423,11 +396,10 @@ export default function Agenda() {
 
   return (
     <div className="space-y-4 lg:space-y-6" style={{ height: 'calc(100vh - 160px)', margin: '50px' }}>
-      <TeamAccountLayoutPageHeader
-        account={account}
-        title={<Trans i18nKey={'common:routes.dashboard'} />}
-        description={<AppBreadcrumbs />}
-      />
+      <HomeLayoutPageHeader
+           title={<Trans i18nKey={'common:routes.home'} />}
+           description={<Trans i18nKey={'common:homeTabDescription'} />}
+        />
       
       <div className="flex h-[800px] rounded-lg shadow-sm border border-gray-200">
         {/* Sidebar izquierdo */}
@@ -485,10 +457,10 @@ export default function Agenda() {
                           <CardTitle className="text-sm flex items-center space-x-2">
                             <Avatar className="w-6 h-6">
                               <AvatarFallback className="text-xs">
-                                {paciente.nombre.charAt(0)}{paciente.apellido.charAt(0)}
+                                {paciente.nombre ? paciente.nombre.charAt(0) : ''}{paciente.apellido ? paciente.apellido.charAt(0) : ''}
                               </AvatarFallback>
                             </Avatar>
-                            <span>{paciente.nombre} {paciente.apellido}</span>
+                            <span>{paciente.nombre || ''} {paciente.apellido || ''}</span>
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="p-3 pt-2">
@@ -503,7 +475,7 @@ export default function Agenda() {
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6M7 8h10a2 2 0 012 2v8a2 2 0 01-2 2H7a2 2 0 01-2-2v-8a2 2 0 012-2z" />
                               </svg>
-                              <span>Próxima visita: {diagnosticosMap[paciente.id] ? new Date(diagnosticosMap[paciente.id] as string).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'No programada'}</span>
+                              <span>Próxima visita: No programada</span>
                             </div>
                             {paciente.telefono && (
                               <div className="flex items-center space-x-1">
@@ -519,11 +491,9 @@ export default function Agenda() {
                             size="sm" 
                             className="w-full mt-2 text-xs"
                             onClick={() => {
-                              // Navegar a la fecha en el calendario: prioridad fecha_de_cita, luego proxima_visita
+                              // Navegar a la fecha en el calendario si hay fecha de cita
                               if (paciente.fecha_de_cita) {
                                 setCurrentDate(new Date(paciente.fecha_de_cita));
-                              } else if (diagnosticosMap[paciente.id]) {
-                                setCurrentDate(new Date(diagnosticosMap[paciente.id] as string));
                               }
                             }}
                           >

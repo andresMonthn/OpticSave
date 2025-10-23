@@ -31,6 +31,7 @@ async function PricingPage() {
 
       <div className={'container mx-auto pb-8 xl:pb-16'}>
         <PricingTable paths={paths} config={billingConfig} />
+        
       </div>
     </div>
   );

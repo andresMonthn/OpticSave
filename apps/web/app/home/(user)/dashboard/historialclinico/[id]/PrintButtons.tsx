@@ -18,31 +18,36 @@ import { Input } from "@kit/ui/input";
 import { Label } from "@kit/ui/label";
 import { Textarea } from "@kit/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@kit/ui/select";
+import { RadioGroup, RadioGroupItem } from "@kit/ui/radio-group";
 
 // Interfaces para los tipos de datos
 interface Paciente {
   id: string;
   nombre: string;
-  apellido: string;
   edad?: string | number;
   sexo?: string;
   telefono?: string;
-  email?: string;
   domicilio?: string;
   fecha_de_cita?: string;
   motivo_consulta?: string;
+  fecha_nacimiento?: string;
+  ocupacion?: string;
+  sintomas_visuales?: string;
   [key: string]: any;
 }
 
 interface Diagnostico {
   id: string;
   paciente_id: string;
-  fecha_diagnostico: string;
+  user_id: string;
+  created_at: string;
+  updated_at?: string;
   rx_uso_od_id?: string;
   rx_uso_oi_id?: string;
   rx_final_od_id?: string;
   rx_final_oi_id?: string;
-  observaciones?: string;
+  vb_salud_ocular?: boolean;
+  dip?: string;
   [key: string]: any;
 }
 
@@ -66,8 +71,14 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
     laboratorio: "VALCAST",
     observaciones: "",
     folio: "",
-    tipoMaterial: "CRISTALES LIBERTY PROGRESIVO FOCUS CR39",
-    tipoVision: "Progresivo / Multifocal",
+    material: "CR-39",
+    materialOtro: "",
+    tratamiento: "Antirreflejante",
+    tratamientoOtro: "",
+    tipoLente: "Monofocal",
+    tipoLenteOtro: "",
+    tipoMontura: "Completa",
+    tipoMonturaOtro: "",
     observacionesAdicionales: "MONTURA PROPIA DE PASTA ARO COMPLETO H 54 V 38 P"
   });
   const [diagnosticoReciente, setDiagnosticoReciente] = useState<Diagnostico | null>(null);
@@ -112,7 +123,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
         .from("diagnostico" as any)
         .select("*")
         .eq("paciente_id", pacienteId)
-        .order("fecha_diagnostico", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(1); // Obtener el diagnóstico más reciente
 
       if (diagnosticosError) throw diagnosticosError;
@@ -260,7 +271,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
             <div class="patient-info">
               <h3>Información Personal</h3>
               <div class="section">
-                <span class="label">Nombre:</span> ${paciente.nombre} ${paciente.apellido}
+                <span class="label">Nombre:</span> ${paciente.nombre}
               </div>
               <div class="section">
                 <span class="label">Edad:</span> ${paciente.edad || 'No especificada'}
@@ -320,22 +331,23 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
         return;
       }
 
-      // Actualizar el estado del paciente a 'finalizado'
-      supabase
-        .from("pacientes" as any)
-        .update({ estado: 'finalizado' })
-        .eq("id", pacienteId)
-        .then(({ error }) => {
-          if (error) {
-            console.error("Error al actualizar estado del paciente:", error);
-          } else {
-            // Disparar un evento para notificar que el estado del paciente ha cambiado
-            const event = new CustomEvent('pacienteEstadoActualizado', { 
-              detail: { pacienteId, nuevoEstado: 'finalizado' } 
-            });
-            window.dispatchEvent(event);
-          }
+      // Actualizar el estado del paciente a 'ENVIO DE RECETA' usando Supabase directamente
+      try {
+        // Actualizar el estado del paciente a 'ENVIO DE RECETA' usando Supabase directamente
+        supabase
+          .from("pacientes" as any)
+          .update({ estado: 'ENVIO DE RECETA' })
+          .eq("id", pacienteId);
+          
+        // Disparar un evento para notificar que el estado del paciente ha cambiado
+        const event = new CustomEvent('pacienteEstadoActualizado', { 
+          detail: { pacienteId, nuevoEstado: 'ENVIO DE RECETA' } 
         });
+        window.dispatchEvent(event);
+        console.log("Estado del paciente actualizado a 'ENVIO DE RECETA'");
+      } catch (error: any) {
+        console.error("Error al actualizar estado del paciente:", error);
+      }
 
       // Crear contenido HTML para imprimir la orden de RX
       const printContent = `
@@ -350,7 +362,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
                 font-size: 12px;
               }
               .container {
-                width: 100%;
+                width: 90%;
                 max-width: 800px;
                 margin: 0 auto;
                 padding: 20px;
@@ -417,7 +429,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
               
               <div class="info-row">
                 <div class="info-cell">
-                  <span class="label">Nombre Optica:</span> OPTIBLUE
+                  <span class="label">Nombre Optica:</span> PRECISO
                 </div>
                 <div class="info-cell">
                   <span class="label">ORDEN DE TRABAJO NRO.-</span> ${printData.folio || diagnosticoReciente.id}
@@ -429,7 +441,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
                   <span class="label">Fecha Creación:</span> ${format(new Date(), "dd/MM/yyyy HH:mm:ss", { locale: es })}
                 </div>
                 <div class="info-cell">
-                  <span class="label">Paciente:</span> ${paciente.nombre} ${paciente.apellido}
+                  <span class="label">Paciente:</span> ${paciente.nombre}
                 </div>
               </div>
               
@@ -454,8 +466,8 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
                 <thead>
                   <tr>
                     <th></th>
-                    <th>MATERIAL: ${printData.tipoMaterial}</th>
-                    <th colspan="4">TIPO DE VISIÓN: ${printData.tipoVision}</th>
+                    <th>MATERIAL: ${printData.material === "Otro" ? printData.materialOtro : printData.material}</th>
+                    <th colspan="4">TIPO DE LENTE: ${printData.tipoLente === "Otro" ? printData.tipoLenteOtro : printData.tipoLente}</th>
                   </tr>
                   <tr>
                     <th></th>
@@ -476,8 +488,8 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
                     <td>${od ? (od.eje === 'N' ? 'N' : od.eje || '') : ''}</td>
                     <td>${od ? (od.add === 'N' ? 'N' : od.add !== undefined ? typeof od.add === 'number' ? od.add.toFixed(2) : od.add : '') : ''}</td>
                     <td>30.00</td>
-                    <td>26</td>
                     <td></td>
+                    <td>26</td>
                   </tr>
                   <tr>
                     <td><strong>OI</strong></td>
@@ -486,11 +498,19 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
                     <td>${oi ? (oi.eje === 'N' ? 'N' : oi.eje || '') : ''}</td>
                     <td>${oi ? (oi.add === 'N' ? 'N' : oi.add !== undefined ? typeof oi.add === 'number' ? oi.add.toFixed(2) : oi.add : '') : ''}</td>
                     <td>30.00</td>
-                    <td>26</td>
                     <td></td>
+                    <td>26</td>
                   </tr>
                 </tbody>
               </table>
+              
+              <div style="margin-top: 15px; border: 1px solid #000; padding: 5px;">
+                <strong>Tratamiento:</strong> ${printData.tratamiento === "Otro" ? printData.tratamientoOtro : printData.tratamiento}
+              </div>
+              
+              <div style="margin-top: 15px; border: 1px solid #000; padding: 5px;">
+                <strong>Tipo de Montura:</strong> ${printData.tipoMontura === "Otro" ? printData.tipoMonturaOtro : printData.tipoMontura}
+              </div>
               
               <div class="observations">
                 <strong>Observaciones:</strong> ${printData.observacionesAdicionales}
@@ -584,30 +604,175 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tipoMaterial" className="text-right">
+            
+            {/* Material */}
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right pt-2">
                 Material
               </Label>
-              <Input
-                id="tipoMaterial"
-                value={printData.tipoMaterial}
-                onChange={(e) => setPrintData({ ...printData, tipoMaterial: e.target.value })}
-                className="col-span-3"
-                placeholder="Tipo de material"
-              />
+              <div className="col-span-3 space-y-2">
+                <RadioGroup 
+                  value={printData.material} 
+                  onValueChange={(value) => setPrintData({ ...printData, material: value })}
+                  className="flex flex-col space-y-1"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="CR-39" id="material-cr39" />
+                    <Label htmlFor="material-cr39">CR-39</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Policarbonato" id="material-policarbonato" />
+                    <Label htmlFor="material-policarbonato">Policarbonato</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Trivex" id="material-trivex" />
+                    <Label htmlFor="material-trivex">Trivex</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Alto Índice 1.61" id="material-indice161" />
+                    <Label htmlFor="material-indice161">Alto Índice 1.61</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Alto Índice 1.67" id="material-indice167" />
+                    <Label htmlFor="material-indice167">Alto Índice 1.67</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Otro" id="material-otro" />
+                    <Label htmlFor="material-otro">Otro</Label>
+                  </div>
+                </RadioGroup>
+                {printData.material === "Otro" && (
+                  <Input
+                    value={printData.materialOtro}
+                    onChange={(e) => setPrintData({ ...printData, materialOtro: e.target.value })}
+                    placeholder="Especifique el material"
+                    className="mt-2"
+                  />
+                )}
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tipoVision" className="text-right">
-                Tipo de Visión
+            
+            {/* Tratamiento */}
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right pt-2">
+                Tratamiento
               </Label>
-              <Input
-                id="tipoVision"
-                value={printData.tipoVision}
-                onChange={(e) => setPrintData({ ...printData, tipoVision: e.target.value })}
-                className="col-span-3"
-                placeholder="Tipo de visión"
-              />
+              <div className="col-span-3 space-y-2">
+                <RadioGroup 
+                  value={printData.tratamiento} 
+                  onValueChange={(value) => setPrintData({ ...printData, tratamiento: value })}
+                  className="flex flex-col space-y-1"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Antirreflejante" id="tratamiento-antirreflejante" />
+                    <Label htmlFor="tratamiento-antirreflejante">Antirreflejante</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Fotocromático" id="tratamiento-fotocromático" />
+                    <Label htmlFor="tratamiento-fotocromático">Fotocromático</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Polarizado" id="tratamiento-polarizado" />
+                    <Label htmlFor="tratamiento-polarizado">Polarizado</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Blue Light" id="tratamiento-bluelight" />
+                    <Label htmlFor="tratamiento-bluelight">Blue Light</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Otro" id="tratamiento-otro" />
+                    <Label htmlFor="tratamiento-otro">Otro</Label>
+                  </div>
+                </RadioGroup>
+                {printData.tratamiento === "Otro" && (
+                  <Input
+                    value={printData.tratamientoOtro}
+                    onChange={(e) => setPrintData({ ...printData, tratamientoOtro: e.target.value })}
+                    placeholder="Especifique el tratamiento"
+                    className="mt-2"
+                  />
+                )}
+              </div>
             </div>
+            
+            {/* Tipo de Lente */}
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right pt-2">
+                Tipo de Lente
+              </Label>
+              <div className="col-span-3 space-y-2">
+                <RadioGroup 
+                  value={printData.tipoLente} 
+                  onValueChange={(value) => setPrintData({ ...printData, tipoLente: value })}
+                  className="flex flex-col space-y-1"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Monofocal" id="lente-monofocal" />
+                    <Label htmlFor="lente-monofocal">Monofocal</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Bifocal" id="lente-bifocal" />
+                    <Label htmlFor="lente-bifocal">Bifocal</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Progresivo" id="lente-progresivo" />
+                    <Label htmlFor="lente-progresivo">Progresivo</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Otro" id="lente-otro" />
+                    <Label htmlFor="lente-otro">Otro</Label>
+                  </div>
+                </RadioGroup>
+                {printData.tipoLente === "Otro" && (
+                  <Input
+                    value={printData.tipoLenteOtro}
+                    onChange={(e) => setPrintData({ ...printData, tipoLenteOtro: e.target.value })}
+                    placeholder="Especifique el tipo de lente"
+                    className="mt-2"
+                  />
+                )}
+              </div>
+            </div>
+            
+            {/* Tipo de Montura */}
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right pt-2">
+                Tipo de Montura
+              </Label>
+              <div className="col-span-3 space-y-2">
+                <RadioGroup 
+                  value={printData.tipoMontura} 
+                  onValueChange={(value) => setPrintData({ ...printData, tipoMontura: value })}
+                  className="flex flex-col space-y-1"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Completa" id="montura-completa" />
+                    <Label htmlFor="montura-completa">Completa</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Semi-Rim" id="montura-semirim" />
+                    <Label htmlFor="montura-semirim">Semi-Rim</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Al Aire" id="montura-alaire" />
+                    <Label htmlFor="montura-alaire">Al Aire</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Otro" id="montura-otro" />
+                    <Label htmlFor="montura-otro">Otro</Label>
+                  </div>
+                </RadioGroup>
+                {printData.tipoMontura === "Otro" && (
+                  <Input
+                    value={printData.tipoMonturaOtro}
+                    onChange={(e) => setPrintData({ ...printData, tipoMonturaOtro: e.target.value })}
+                    placeholder="Especifique el tipo de montura"
+                    className="mt-2"
+                  />
+                )}
+              </div>
+            </div>
+            
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="observaciones" className="text-right">
                 Observaciones

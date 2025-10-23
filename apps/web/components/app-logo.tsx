@@ -16,7 +16,7 @@ function LogoImage({
       alt="OpticSave Logo"
       width={width}
       height={width / 3}
-      className={cn("h-auto", className)}
+      className={cn("w-auto h-auto", className)}
       priority
     />
   );

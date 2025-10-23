@@ -10,6 +10,9 @@ import { Textarea } from "@kit/ui/textarea";
 import { createClient } from "@supabase/supabase-js";
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { HomeLayoutPageHeader } from '../../_components/home-page-header';
+import { Trans } from '@kit/ui/trans';
+import { PageBody } from '@kit/ui/page';
 import { DataTable } from "./data-table";
 import { columns, InventarioItem } from "./columns";
 
@@ -121,12 +124,18 @@ export default function InventarioPage() {
   };
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Inventario</h1>
-          <p className="text-muted-foreground">Gestiona tu inventario de productos</p>
-        </div>
+    <>
+      <HomeLayoutPageHeader
+        title={<Trans i18nKey={'common:routes.home'} />}
+        description={<Trans i18nKey={'common:homeTabDescription'} />}
+      />
+      <PageBody>
+        <div className="container mx-auto py-10">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold">Inventario</h1>
+              <p className="text-muted-foreground">Gestiona tu inventario de productos</p>
+            </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -270,6 +279,8 @@ export default function InventarioPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+        </div>
+      </PageBody>
+    </>
   );
 }

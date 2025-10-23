@@ -14,11 +14,11 @@ interface ClickSparkContainerProps {
 
 export default function ClickSparkContainer({
   children,
-  sparkColor = "#f00",
+  sparkColor = "rgba(170, 170, 170, 1)",
   sparkSize = 12,
-  sparkRadius = 42,
+  sparkRadius = 12,
   sparkCount = 14,
-  duration = 600,
+  duration = 200,
   easing = "ease-out",
   extraScale = 1,
 }: ClickSparkContainerProps) {
@@ -28,8 +28,10 @@ export default function ClickSparkContainer({
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    
+    // Asegurarse de que x e y sean números válidos
+    const x = isNaN(e.clientX - rect.left) ? 0 : e.clientX - rect.left;
+    const y = isNaN(e.clientY - rect.top) ? 0 : e.clientY - rect.top;
 
     const list: Array<{ id: number; x: number; y: number; angle: number }> = [];
     const base = Math.random() * 360;
@@ -55,8 +57,8 @@ export default function ClickSparkContainer({
             key={s.id}
             style={{
               position: "absolute",
-              left: s.x,
-              top: s.y,
+              left: isNaN(s.x) ? 0 : s.x,
+              top: isNaN(s.y) ? 0 : s.y,
               width: sparkSize,
               height: 2,
               background: sparkColor,

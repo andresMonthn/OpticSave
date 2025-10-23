@@ -10,7 +10,9 @@ import { Checkbox } from "@kit/ui/checkbox";
 import { Label } from "@kit/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@kit/ui/popover";
 import { Settings } from "lucide-react";
-import { Trans } from 'react-i18next';
+import { Trans } from '@kit/ui/trans';
+import { HomeLayoutPageHeader } from '../../../(user)/_components/home-page-header';
+import { PageBody } from '@kit/ui/page';
 import { columns, Paciente } from "./columns";
 import { DataTable } from "./data-table";
 import { renderEstado, formatDate } from "./columns";
@@ -54,7 +56,6 @@ export default function View() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     nombre: true,
-    apellido: true,
     edad: true,
     sexo: true,
     telefono: true,
@@ -113,8 +114,8 @@ export default function View() {
     const sortedData = [...pacientes].sort((a, b) => {
       if (sortField === "nombre") {
         // Safely handle null or undefined values
-        const nameA = `${a.nombre || ''} ${a.apellido || ''}`.toLowerCase();
-        const nameB = `${b.nombre || ''} ${b.apellido || ''}`.toLowerCase();
+        const nameA = (a.nombre || '').toLowerCase();
+        const nameB = (b.nombre || '').toLowerCase();
         return sortDirection === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
       } else {
         // Ordenar por fecha de creación con manejo seguro de valores nulos
@@ -142,14 +143,14 @@ export default function View() {
   };
 
   return (
-    <div className="space-y-6 mx-[45px]">
-      {/* Barra de herramientas */}
-      <div className="flex justify-between items-center py-4">
-        <div>
-          <h1 className="text-2xl font-bold"><Trans i18nKey={'common:routes.dashboard'} /></h1>
-          <div className="text-sm text-gray-500">Dashboard / Pacientes</div>
-        </div>
-      </div>
+    <>
+      <HomeLayoutPageHeader
+         title={<Trans i18nKey={'common:routes.home'} />}
+         description={<Trans i18nKey={'common:homeTabDescription'} />}
+      />
+      <PageBody>
+        <div className="space-y-6 mx-[45px]">
+          {/* Barra de herramientas */}
       <div className="flex justify-between items-center">
         <div className="flex gap-2">
           <Button
@@ -251,7 +252,7 @@ export default function View() {
             >
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg">{p.nombre} {p.apellido}</CardTitle>
+                  <CardTitle className="text-lg">{p.nombre}</CardTitle>
                   <EstadoCell estado={p.estado} />
                 </div>
               </CardHeader>
@@ -280,7 +281,9 @@ export default function View() {
           ))}
         </div>
       )}
-    </div>
+        </div>
+      </PageBody>
+    </>
   );
 }
 
