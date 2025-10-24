@@ -459,6 +459,12 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
                   <span class="label">Ojo:</span> AMBOS
                 </div>
               </div>
+
+               <div class="info-row">
+                <div class="info-cell">
+                  <span class="label">Dip:</span> ${diagnosticoReciente.dip}
+                </div>
+              </div>
               
               <div class="title">FÓRMULA DEFINITIVA</div>
               
