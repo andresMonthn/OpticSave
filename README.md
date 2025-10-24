@@ -1,4 +1,4 @@
-# OpticSave - Sistema de Gestión para Ópticas
+# OpticSave - Sistema de Gestión para Ópticas (SaaS Opticas)
 
 Sistema integral para la administración de ópticas, desarrollado con Supabase, Next.js y Tailwind CSS.
 
