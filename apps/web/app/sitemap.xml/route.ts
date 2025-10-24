@@ -1,7 +1,5 @@
 import { getServerSideSitemap } from 'next-sitemap';
-
 import { createCmsClient } from '@kit/cms';
-
 import appConfig from '~/config/app.config';
 
 /**
@@ -85,3 +83,6 @@ async function getContentItems() {
 
   return Promise.all([posts, docs]).then((items) => items.flat());
 }
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
