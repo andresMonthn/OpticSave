@@ -1,4 +1,4 @@
-import { CreditCard, Home, User, UserPlus, Package, Calendar, ClipboardCheck } from 'lucide-react';
+import { Search, CreditCard, Home, User, UserPlus, Package, Calendar, ClipboardCheck } from 'lucide-react';
 import { z } from 'zod';
 
 import { NavigationConfigSchema } from '@kit/ui/navigation-schema';
@@ -25,9 +25,9 @@ const routes = [
         end: true,
       },
             {
-        label: 'Nuevo diagnostico',
+        label: 'Buscar Paciente',
         path: pathsConfig.app.creardiagnostico,
-        Icon: <ClipboardCheck className={iconClasses} />,
+        Icon: <Search className={iconClasses} />,
         end: true,
       },
       {

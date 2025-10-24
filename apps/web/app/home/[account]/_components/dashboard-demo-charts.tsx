@@ -286,9 +286,9 @@ export default function DashboardDemo() {
               variant="overlay"
               enableSpotlight
               enableStars
-              enableBorderGlow
+             
               clickEffect
-              glowColor="0, 0, 25"
+              glowColor="0, 100, 255"
             >
               <Card>
                 <CardHeader>
@@ -319,9 +319,9 @@ export default function DashboardDemo() {
               variant="overlay"
               enableSpotlight
               enableStars
-              enableBorderGlow
+              
               clickEffect
-              glowColor="0, 0, 25"
+              glowColor="0, 100, 255"
             >
               <Card>
                 <CardHeader>
@@ -354,10 +354,9 @@ export default function DashboardDemo() {
             <MagicBento
               variant="overlay"
               enableSpotlight
-              enableStars
-              enableBorderGlow
+              enableStars      
               clickEffect
-              glowColor="0, 0, 25"
+              glowColor="0, 100, 255"
             >
               <Card>
                 <CardHeader>
@@ -388,7 +387,7 @@ export default function DashboardDemo() {
             </MagicBento>
 
 
-            <MagicBento variant="overlay" enableSpotlight enableStars enableBorderGlow clickEffect glowColor="0, 0, 25">
+            <MagicBento variant="overlay" enableSpotlight enableStars clickEffect glowColor="0, 100, 255">
               <Card>
                 <CardHeader>
                   <CardTitle className={'flex items-center gap-2.5'}>
@@ -496,7 +495,7 @@ function PacientesPorMesChart({ data }: { data: { name: string; value: number }[
   } satisfies ChartConfig;
 
   return (
-    <MagicBento variant="overlay" enableSpotlight enableStars enableBorderGlow clickEffect glowColor="0, 0, 25"> <Card>
+    <MagicBento variant="overlay" enableSpotlight enableStars clickEffect glowColor="0, 100, 255"> <Card>
       <CardHeader>
         <CardTitle>Pacientes por Mes</CardTitle>
         <CardDescription>
@@ -561,7 +560,7 @@ function PacientesPorMesChart({ data }: { data: { name: string; value: number }[
         </div>
       </CardFooter>
     </Card></MagicBento>
-   
+
   );
 }
 

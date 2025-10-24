@@ -149,37 +149,39 @@ export default function View() {
          description={<Trans i18nKey={'common:homeTabDescription'} />}
       />
       <PageBody>
-        <div className="space-y-6 mx-[45px]">
+        <div className="space-y-6 mx-2 sm:mx-4 md:mx-[45px]">
           {/* Barra de herramientas */}
-      <div className="flex justify-between items-center">
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             size="sm"
+            className="text-xs sm:text-sm"
             onClick={() => {
               setSortField("nombre");
               setSortDirection(sortDirection === "asc" ? "desc" : "asc");
             }}
           >
-            Ordenar por Nombre {sortField === "nombre" && (sortDirection === "asc" ? "↑" : "↓")}
+            Nombre {sortField === "nombre" && (sortDirection === "asc" ? "↑" : "↓")}
           </Button>
           <Button
             variant="outline"
             size="sm"
+            className="text-xs sm:text-sm"
             onClick={() => {
               setSortField("created_at");
               setSortDirection(sortDirection === "asc" ? "desc" : "asc");
             }}
           >
-            Ordenar por Fecha de Creación {sortField === "created_at" && (sortDirection === "asc" ? "↑" : "↓")}
+            Fecha {sortField === "created_at" && (sortDirection === "asc" ? "↑" : "↓")}
           </Button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setViewMode("table")}
-            className={viewMode === "table" ? "bg-primary/10" : ""}
+            className={`text-xs sm:text-sm ${viewMode === "table" ? "bg-primary/10" : ""}`}
           >
             Tabla
           </Button>
@@ -187,20 +189,25 @@ export default function View() {
             variant="outline"
             size="sm"
             onClick={() => setViewMode("cards")}
-            className={viewMode === "cards" ? "bg-primary/10" : ""}
+            className={`text-xs sm:text-sm ${viewMode === "cards" ? "bg-primary/10" : ""}`}
           >
             Tarjetas
           </Button>
-          <Button variant="outline" size="sm" onClick={fetchPacientes}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchPacientes}
+            className="text-xs sm:text-sm"
+          >
             Actualizar
           </Button>
           
           {/* Selector de campos */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
-                Campos
+              <Button variant="outline" size="sm" className="text-xs sm:text-sm">
+                <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="sm:inline">Campos</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-56">
@@ -219,7 +226,7 @@ export default function View() {
                           });
                         }}
                       />
-                      <Label htmlFor={`column-${column}`} className="capitalize">
+                      <Label htmlFor={`column-${column}`} className="capitalize text-sm">
                         {column.replace(/_/g, ' ')}
                       </Label>
                     </div>
@@ -233,31 +240,33 @@ export default function View() {
 
       {/* DataTable de pacientes */}
       {viewMode === "table" && (
-        <DataTable
-          columns={columns.filter(col => 'accessorKey' in col && visibleColumns[col.accessorKey as string])}
-          data={sortedPacientes}
-          searchPlaceholder="Buscar por nombre, apellido, motivo o estado..."
-          onRowClick={handleRowClick}
-        />
+        <div className="overflow-x-auto -mx-2 sm:mx-0">
+          <DataTable
+            columns={columns.filter(col => 'accessorKey' in col && visibleColumns[col.accessorKey as string])}
+            data={sortedPacientes}
+            searchPlaceholder="Buscar paciente..."
+            onRowClick={handleRowClick}
+          />
+        </div>
       )}
 
       {/* Cards individuales por paciente */}
       {viewMode === "cards" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {sortedPacientes.map((p) => (
             <Card 
               key={p.id} 
               className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleRowClick(p.id)}
             >
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                 <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg">{p.nombre}</CardTitle>
+                  <CardTitle className="text-base sm:text-lg line-clamp-1">{p.nombre}</CardTitle>
                   <EstadoCell estado={p.estado} />
                 </div>
               </CardHeader>
-              <CardContent className="pt-2">
-                <div className="grid grid-cols-2 gap-2 text-sm">
+              <CardContent className="pt-1 sm:pt-2 px-3 sm:px-6 pb-3 sm:pb-6">
+                <div className="grid grid-cols-2 gap-1 sm:gap-2 text-xs sm:text-sm">
                   <div className="text-muted-foreground">Edad:</div>
                   <div>{p.edad ?? "-"}</div>
 
@@ -265,16 +274,16 @@ export default function View() {
                   <div>{p.sexo ?? "-"}</div>
 
                   <div className="text-muted-foreground">Teléfono:</div>
-                  <div>{p.telefono ?? "-"}</div>
+                  <div className="truncate">{p.telefono ?? "-"}</div>
 
                   <div className="text-muted-foreground">Domicilio:</div>
-                  <div className="truncate max-w-[150px]">{p.domicilio ?? "-"}</div>
+                  <div className="truncate max-w-[120px] sm:max-w-[150px]">{p.domicilio ?? "-"}</div>
 
                   <div className="text-muted-foreground">Fecha cita:</div>
                   <div><FechaCitaCell fecha={p.fecha_de_cita} /></div>
 
-                  <div className="col-span-2 text-muted-foreground">Motivo consulta:</div>
-                  <div className="col-span-2">{p.motivo_consulta ?? "-"}</div>
+                  <div className="col-span-2 text-muted-foreground mt-1">Motivo consulta:</div>
+                  <div className="col-span-2 line-clamp-2">{p.motivo_consulta ?? "-"}</div>
                 </div>
               </CardContent>
             </Card>

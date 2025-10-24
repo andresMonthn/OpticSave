@@ -682,6 +682,9 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
         onSaveSuccess([rxIdToUpdate]);
       }
       
+      // Recargar la página para mostrar los cambios
+      window.location.reload();
+      
     } catch (err: any) {
       console.error("Error al guardar receta:", err);
       showAlert('error', 'Error', err.message || "Error al guardar la receta");
@@ -736,60 +739,88 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
     ? format(fechaMasReciente, "PPP", { locale: es }) 
     : "Fecha no disponible";
 
+  // Variable para controlar si se debe mostrar el card DIP con persistencia
+  const [showDipCard, setShowDipCard] = useState(() => {
+    // Recuperar el estado desde localStorage al cargar la página
+    if (typeof window !== 'undefined') {
+      const savedState = localStorage.getItem(`dipCard_${pacienteId}`);
+      return savedState ? JSON.parse(savedState) : false;
+    }
+    return false;
+  });
+
+  // Efecto para guardar el estado en localStorage cuando cambie
+  useEffect(() => {
+    if (typeof window !== 'undefined' && pacienteId) {
+      localStorage.setItem(`dipCard_${pacienteId}`, JSON.stringify(showDipCard));
+    }
+  }, [showDipCard, pacienteId]);
+
+  // Modificar la función inicializarRecetas para mostrar el card DIP
+  const handleInicializarRecetas = async () => {
+    // Mostrar el card DIP y persistir el estado
+    setShowDipCard(true);
+    // Llamar a la función original
+    await inicializarRecetas();
+  };
+
   return (
     <div className="rounded-md border">
-      <div className="bg-blue-500 dark:bg-blue-700 p-6 border-b flex justify-center items-center">
-        <div className="flex flex-col items-center">
-          <span className="font-bold text-white mb-1">DIP</span>
-          <span className="text-4xl font-bold text-white">
-            {dipValue !== null ? `${dipValue}` : '-'}
-          </span>
+      {/* Mostrar el card DIP solo cuando showDipCard es true */}
+      {showDipCard && (
+        <div className="bg-blue-500 dark:bg-blue-700 p-6 border-b flex justify-center items-center">
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-white mb-1">DIP</span>
+            <span className="text-4xl font-bold text-white">
+              {dipValue !== null ? `${dipValue}` : '-'}
+            </span>
 
-          <Popover open={isDipPopoverOpen} onOpenChange={setIsDipPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="secondary" size="sm" className="mt-2">
-                <PencilIcon className="h-4 w-4 mr-2" />
-                Editar DIP
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80">
-              <div className="grid gap-4">
-                <div className="space-y-2">
-                  <h4 className="font-medium leading-none">Distancia Interpupilar (DIP)</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Ingrese un valor entre 0 y 100
-                  </p>
-                </div>
-                <div className="grid gap-2">
-                  <div className="grid grid-cols-3 items-center gap-4">
-                    <Label htmlFor="dip">Valor DIP</Label>
-                    <input
-                      id="dip"
-                      type="number"
-                      min="0"
-                      max="100"
-                      className="col-span-2 h-8 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                      value={dipValue !== null ? dipValue : ''}
-                      onChange={(e) => setDipValue(e.target.value === '' ? null : Number(e.target.value))}
-                    />
+            <Popover open={isDipPopoverOpen} onOpenChange={setIsDipPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="secondary" size="sm" className="mt-2">
+                  <PencilIcon className="h-4 w-4 mr-2" />
+                  Editar DIP
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80">
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium leading-none">Distancia Interpupilar (DIP)</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Ingrese un valor entre 0 y 100
+                    </p>
                   </div>
+                  <div className="grid gap-2">
+                    <div className="grid grid-cols-3 items-center gap-4">
+                      <Label htmlFor="dip">Valor DIP</Label>
+                      <input
+                        id="dip"
+                        type="number"
+                        min="0"
+                        max="100"
+                        className="col-span-2 h-8 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                        value={dipValue !== null ? dipValue : ''}
+                        onChange={(e) => setDipValue(e.target.value === '' ? null : Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                  <Button onClick={handleSaveDip}>Guardar</Button>
                 </div>
-                <Button onClick={handleSaveDip}>Guardar</Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Renderizar mensaje si no hay recetas */}
       {(!recetas || recetas.length === 0) && (
         <div className="text-center py-4">
           <p className="text-muted-foreground">No hay recetas registradas</p>
-          {/* Ocultar el botón si la fecha de cita es anterior a la fecha actual */}
-          {(!fechaCita || new Date(fechaCita) >= new Date()) && (
+          {/* Mostrar el botón solo cuando el estado del paciente sea "Pendiente" */}
+          {estadoPaciente === "Pendiente" && (
             <Button
-              onClick={inicializarRecetas}
-              className="mt-4"
+              onClick={handleInicializarRecetas}
+              className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
               disabled={isLoading}
             >
               {isLoading ? "Inicializando..." : "Inicializar Recetas"}

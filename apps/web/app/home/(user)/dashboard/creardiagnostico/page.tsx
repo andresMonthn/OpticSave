@@ -5,20 +5,28 @@ import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@kit/ui/card';
 import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { useRouter } from 'next/navigation';
-import { Search, User, Calendar, Phone, ArrowRight } from 'lucide-react';
+import { Search, User, Calendar, Phone, ArrowRight, MapPin, FileText } from 'lucide-react';
 
-// Interfaz para el tipo de paciente
+// Interfaz para el tipo de paciente según la estructura de la tabla
 interface Paciente {
     id: string;
+    user_id: string;
     nombre: string;
-    apellido: string;
     edad: number | null;
+    sexo: string | null;
+    domicilio: string | null;
+    motivo_consulta: string | null;
+    diagnostico_id: string | null;
     telefono: string | null;
     fecha_de_cita: string | null;
+    created_at: string;
+    updated_at: string;
     estado: string | null;
+    fecha_nacimiento: string | null;
+    ocupacion: string | null;
 }
 
-export default function CrearDiagnostico() {
+export default function BuscarPaciente() {
     const [searchTerm, setSearchTerm] = useState('');
     const [pacientes, setPacientes] = useState<Paciente[]>([]);
     const [loading, setLoading] = useState(false);
@@ -37,18 +45,26 @@ export default function CrearDiagnostico() {
         setError(null);
         
         try {
-            // Buscar por nombre o apellido que contenga el término de búsqueda
+            // Verificar autenticación
+            const { data: userData } = await supabase.auth.getUser();
+            if (!userData.user) {
+                setError('Usuario no autenticado');
+                return;
+            }
+            
+            // Buscar por nombre que contenga el término de búsqueda
             const { data, error } = await supabase
                 .from('pacientes' as any)
-                .select('*')
-                .or(`nombre.ilike.%${term}%,apellido.ilike.%${term}%`)
+                .select('id, user_id, nombre, edad, sexo, domicilio, motivo_consulta, diagnostico_id, telefono, fecha_de_cita, created_at, updated_at, estado, fecha_nacimiento, ocupacion')
+                .eq('user_id', userData.user.id)
+                .ilike('nombre', `%${term}%`)
                 .order('created_at', { ascending: false });
                 
             if (error) throw error;
             
             // Convertir a tipo Paciente de forma segura
             if (data) {
-                setPacientes(data as unknown as Paciente[]);
+                setPacientes(data ? data as unknown as Paciente[] : []);
             } else {
                 setPacientes([]);
             }
@@ -105,64 +121,86 @@ export default function CrearDiagnostico() {
     };
 
     return (
-        <div className="container mx-auto p-4">
-            <h1 className="text-2xl font-bold mb-6">Buscar Paciente</h1>
-            
-            <div className="relative mb-6">
-                <div className="relative">
-                    <Input
-                        placeholder="Ingresa el nombre o apellido del paciente (mínimo 2 caracteres)"
-                        value={searchTerm}
-                        onChange={handleSearchChange}
-                        className="pl-10"
-                        autoFocus
-                    />
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                </div>
+        <div className="flex flex-col items-center justify-start min-h-screen p-4">
+            <div className="w-full max-w-3xl mx-auto text-center">
+                <h1 className="text-3xl font-bold mb-8">Buscar Paciente</h1>
                 
-                {loading && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <div className="animate-spin h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full"></div>
+                <div className="relative mb-10 w-full max-w-xl mx-auto">
+                    <div className="relative">
+                        <Input
+                            placeholder="Ingresa el nombre del paciente (mínimo 2 caracteres)"
+                            value={searchTerm}
+                            onChange={handleSearchChange}
+                            className="pl-10 h-12 text-lg"
+                            autoFocus
+                        />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                     </div>
-                )}
+                    
+                    {loading && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="animate-spin h-5 w-5 border-2 border-gray-500 border-t-transparent rounded-full"></div>
+                        </div>
+                    )}
+                </div>
             </div>
             
             {error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                <div className="w-full max-w-3xl mx-auto bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
                     {error}
                 </div>
             )}
             
             {pacientes.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {pacientes.map((paciente) => (
-                        <Card key={paciente.id} className="hover:shadow-md transition-shadow">
+                        <Card key={paciente.id} className="hover:shadow-lg transition-shadow">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-lg flex items-center">
-                                    <User className="mr-2" size={18} />
-                                    {paciente.nombre} {paciente.apellido}
+                                    <User className="mr-2 text-purple-600" size={20} />
+                                    {paciente.nombre}
                                 </CardTitle>
                                 <div className={`text-xs px-2 py-1 rounded-full inline-block mt-1 ${getEstadoColor(paciente.estado)}`}>
                                     {paciente.estado || 'Sin estado'}
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-sm flex items-center mb-1">
-                                    <Calendar className="mr-2 text-gray-500" size={16} />
-                                    Edad: {paciente.edad || 'No disponible'}
-                                </div>
-                                <div className="text-sm flex items-center mb-1">
-                                    <Phone className="mr-2 text-gray-500" size={16} />
-                                    Tel: {paciente.telefono || 'No disponible'}
-                                </div>
-                                <div className="text-sm flex items-center">
-                                    <Calendar className="mr-2 text-gray-500" size={16} />
-                                    Cita: {formatearFecha(paciente.fecha_de_cita)}
+                                <div className="space-y-2">
+                                    <div className="text-sm flex items-center">
+                                        <Calendar className="mr-2 text-gray-500" size={16} />
+                                        Edad: {paciente.edad || 'No disponible'}
+                                    </div>
+                                    <div className="text-sm flex items-center">
+                                        <Phone className="mr-2 text-gray-500" size={16} />
+                                        Tel: {paciente.telefono || 'No disponible'}
+                                    </div>
+                                    <div className="text-sm flex items-center">
+                                        <MapPin className="mr-2 text-gray-500" size={16} />
+                                        {paciente.domicilio ? (
+                                            paciente.domicilio.length > 30 
+                                                ? `${paciente.domicilio.substring(0, 30)}...` 
+                                                : paciente.domicilio
+                                        ) : 'Domicilio no disponible'}
+                                    </div>
+                                    <div className="text-sm flex items-start">
+                                        <FileText className="mr-2 text-gray-500 mt-1 flex-shrink-0" size={16} />
+                                        <span>
+                                            {paciente.motivo_consulta 
+                                                ? (paciente.motivo_consulta.length > 50 
+                                                    ? `${paciente.motivo_consulta.substring(0, 50)}...` 
+                                                    : paciente.motivo_consulta)
+                                                : 'Motivo no disponible'}
+                                        </span>
+                                    </div>
+                                    <div className="text-sm flex items-center">
+                                        <Calendar className="mr-2 text-gray-500" size={16} />
+                                        Cita: {formatearFecha(paciente.fecha_de_cita)}
+                                    </div>
                                 </div>
                             </CardContent>
                             <CardFooter className="pt-2 pb-3">
                                 <Button 
-                                    className="w-full" 
+                                    className="w-full bg-purple-600 hover:bg-purple-700" 
                                     onClick={() => navegarAHistorialClinico(paciente.id)}
                                 >
                                     Ver Historial Clínico
@@ -173,14 +211,19 @@ export default function CrearDiagnostico() {
                     ))}
                 </div>
             ) : searchTerm.length >= 2 ? (
-                <div className="text-center py-8 text-gray-500">
-                    No se encontraron pacientes con ese nombre o apellido
+                <div className="text-center py-12 text-gray-500">
+                    No se encontraron pacientes con ese nombre
                 </div>
             ) : searchTerm.length > 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-12 text-gray-500">
                     Ingresa al menos 2 caracteres para buscar
                 </div>
-            ) : null}
+            ) : (
+                <div className="text-center py-12 text-gray-400">
+                    <Search className="mx-auto mb-4" size={48} />
+                    <p className="text-xl">Ingresa el nombre del paciente para comenzar la búsqueda</p>
+                </div>
+            )}
         </div>
     );
 }

@@ -62,6 +62,10 @@ const PrintButtons = dynamic(() => import("./PrintButtons").then(mod => ({ defau
     ssr: false,
     loading: () => <div>Cargando opciones de impresión...</div>
 });
+const ProximaVisitaSelector = dynamic(() => import("./ProximaVisitaSelector").then(mod => ({ default: mod.ProximaVisitaSelector })), {
+    ssr: false,
+    loading: () => <div>Cargando selector de próxima visita...</div>
+});
 
 
 // Interfaces
@@ -287,7 +291,7 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
             // Cerrar el modal
             setRxDialogOpen(false);
             // Mostrar alerta de éxito
-            showAlert('success', 'Receta guardada', 'La receta ha sido guardada exitosamente');
+            showAlert('success', 'Receta guardada', 'La receta ha sido guardada exitosamente ');
         };
     
         // Escuchar eventos personalizados para actualizar las recetas y el estado del paciente
@@ -479,7 +483,7 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
 
             checkUser();
             fetchPaciente();
-            fetchDiagnosticos();
+            // Se eliminó la llamada a fetchDiagnosticos para evitar solicitudes innecesarias
             fetchRx();
         }, [pacienteId]);
     
@@ -594,27 +598,7 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
             }
         };
 
-        const fetchDiagnosticos = async () => {
-            try {
-                // Usar aserciones de tipo para evitar errores de TypeScript
-                const { data, error } = await supabase
-                    .from("diagnostico" as any)
-                    .select("*")
-                    .eq("paciente_id", pacienteId);
-                // Se eliminó la ordenación por fecha_diagnostico ya que la columna no existe
-
-                if (error) {
-                    throw error;
-                }
-
-                // Convertir explícitamente a unknown primero para evitar errores de TypeScript
-                setDiagnosticos(data as unknown as Diagnostico[]);
-            } catch (err: any) {
-                console.error("Error fetching diagnosticos:", err);
-                setError(err.message || "Error al cargar los diagnósticos");
-                showAlert('error', 'Error', err.message || "Error al cargar los diagnósticos");
-            }
-        };
+        // Se eliminó la función fetchDiagnosticos para evitar solicitudes innecesarias a la API
 
         const handleNuevoDiagnostico = () => {
             // Verificar si el usuario está logueado
@@ -732,7 +716,7 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
                 if (error) throw error;
 
                 showAlert('success', 'Diagnóstico actualizado', 'El diagnóstico ha sido actualizado correctamente');
-                fetchDiagnosticos(); // Recargar los diagnósticos
+                // Se eliminó la llamada a fetchDiagnosticos
                 setEditDiagnosticoDialogOpen(false);
             } catch (err: any) {
                 console.error("Error al actualizar diagnóstico:", err);
@@ -837,8 +821,7 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
                     ojo: 'OD'
                 });
 
-                // Recargar los diagnósticos para mostrar la nueva receta
-                fetchDiagnosticos();
+                // Se eliminó la recarga de diagnósticos
             } catch (err: any) {
                 console.error("Error al guardar receta:", err);
                 showAlert('error', 'Error', err.message || "Error al guardar la receta");
@@ -913,7 +896,7 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
                 if (error) throw error;
 
                 showAlert('success', 'Diagnóstico eliminado', 'El diagnóstico y sus recetas asociadas han sido eliminados correctamente');
-                fetchDiagnosticos(); // Recargar los diagnósticos
+                // Se eliminó la recarga de diagnósticos
                 fetchRx(); // Recargar las recetas
             } catch (err: any) {
                 console.error("Error al eliminar diagnóstico:", err);
@@ -1020,7 +1003,7 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
 
         const handleDiagnosticoSaved = (success: boolean, errorMessage?: string) => {
             if (success) {
-                fetchDiagnosticos(); // Recargar los diagnósticos
+                // Se eliminó la recarga de diagnósticos
                 showAlert('success', 'Diagnóstico guardado', 'El diagnóstico se ha guardado correctamente');
             } else if (errorMessage) {
                 setError(errorMessage);
@@ -1650,6 +1633,24 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
                     </AlertDialogContent>
                 </AlertDialog>
             
+                {/* Componente para seleccionar la fecha de próxima visita */}
+                <Card className="mt-6 mb-8">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Programar próxima visita</CardTitle>
+                        <CardDescription>Selecciona una fecha para la próxima visita del paciente</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ProximaVisitaSelector 
+                            pacienteId={pacienteId} 
+                            onSuccess={() => {
+                                // Recargar los datos del paciente y diagnósticos
+                                fetchPaciente();
+                                showAlert('success', 'Próxima visita programada', 'Se ha programado correctamente la próxima visita del paciente');
+                            }}
+                        />
+                    </CardContent>
+                </Card>
+
                 {/* Componente de botones de impresión */}
                 <PrintButtons pacienteId={params.id as string} />
             </div>
