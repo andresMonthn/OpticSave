@@ -1,0 +1,2 @@
+Este es un archivo de prueba para verificar que Git está funcionando correctamente.
+Fecha: 23/10/2023
