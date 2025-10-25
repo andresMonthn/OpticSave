@@ -110,79 +110,43 @@ export default function CrearPacientePage() {
   // Estado para el id_account
   const [accountId, setAccountId] = useState<string | null>(null);
   
-  // Obtener el id_account de la URL y verificar usuario (opcional)
+  // Obtener el user_id y account_id de la URL
   const supabase = getSupabaseBrowserClient();
   useEffect(() => {
-    // Obtener el id_account de la URL
+    // Obtener parámetros de la URL
     const params = new URLSearchParams(window.location.search);
+    const userIdFromUrl = params.get('user_id');
     const accountIdFromUrl = params.get('account_id');
     
+    // Establecer user_id si está presente en la URL
+    if (userIdFromUrl) {
+      setUserId(userIdFromUrl);
+      console.log("ID de usuario desde URL:", userIdFromUrl);
+    }
+    
+    // Establecer account_id si está presente en la URL
     if (accountIdFromUrl) {
       setAccountId(accountIdFromUrl);
       console.log("ID de cuenta desde URL:", accountIdFromUrl);
-      // Cargar citas existentes con el id_account
+      // Cargar citas existentes con el account_id
       obtenerCitasExistentes(accountIdFromUrl);
     }
-    
-    // Verificar si hay un usuario logueado (opcional, no es requerido)
-    const checkUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (data.user && !accountIdFromUrl) {
-        setUserId(data.user.id);
-        console.log("Usuario logueado:", data.user.id);
-        // Si no hay account_id en la URL pero hay usuario logueado
-        // Intentar obtener su account_id
-        try {
-          const { data: membership } = await supabase
-            .from("accounts_memberships" as any)
-            .select("account_id")
-            .eq("user_id", data.user.id)
-            .limit(1)
-            .maybeSingle() as any;
-            
-          if (membership?.account_id) {
-            setAccountId(membership.account_id);
-            console.log("ID de cuenta desde usuario:", membership.account_id);
-            obtenerCitasExistentes(membership.account_id);
-          }
-        } catch (e) {
-          console.warn("Error obteniendo account_id del usuario:", e);
-        }
-      }
-    };
-    
-    checkUser();
   }, []);
 
   // Función para obtener las citas existentes
   const obtenerCitasExistentes = async (id: string) => {
+    if (!id) {
+      console.warn("No se proporcionó ID para obtener citas");
+      return;
+    }
+
     setCargandoCitas(true);
     try {
-      // Obtener pacientes con sus fechas de cita
-      // Primero intentamos obtener los usuarios asociados a la cuenta
-      const { data: usersData, error: usersError } = await supabase
-        .from('accounts_memberships' as any)
-        .select('user_id')
-        .eq('account_id', id);
-        
-      if (usersError) {
-        console.error("Error al obtener usuarios de la cuenta:", usersError);
-        return;
-      }
-      
-      // Extraer los IDs de usuario
-      const userIds = usersData ? usersData.map((item: any) => item.user_id) : [];
-      
-      // Si no hay usuarios, usar el ID proporcionado directamente
-      if (userIds.length === 0) {
-        userIds.push(id);
-      }
-      
-      // Obtener pacientes con sus fechas de cita para todos los usuarios de la cuenta
+      // Obtener directamente las citas usando el account_id
       const { data, error } = await supabase
         .from('pacientes' as any)
         .select('fecha_de_cita')
-        .in('user_id', userIds)
+        .eq('account_id', id)
         .not('fecha_de_cita', 'is', null);
 
       if (error) {
@@ -192,15 +156,15 @@ export default function CrearPacientePage() {
 
       // Procesar los datos para contar pacientes por fecha
       const citasPorFecha = new Map<string, number>();
-
-      // Asegurarse de que data es un array y hacer type assertion
       const pacientes = (data as any[]) || [];
+      
       pacientes.forEach(paciente => {
-        if (paciente && paciente.fecha_de_cita) {
-          const fecha = paciente.fecha_de_cita.split('T')[0]; // Formato YYYY-MM-DD
+        if (paciente?.fecha_de_cita) {
+          const fecha = paciente.fecha_de_cita.split('T')[0];
           citasPorFecha.set(fecha, (citasPorFecha.get(fecha) || 0) + 1);
         }
       });
+
       // Convertir a array de CitaInfo
       const citasInfoArray: CitaInfo[] = Array.from(citasPorFecha.entries()).map(
         ([fechaStr, cantidad]) => ({
@@ -210,6 +174,7 @@ export default function CrearPacientePage() {
       );
 
       setCitasInfo(citasInfoArray);
+      console.log('Citas obtenidas exitosamente para account_id:', id);
     } catch (err) {
       console.error("Error al procesar citas:", err);
     } finally {
@@ -403,25 +368,13 @@ export default function CrearPacientePage() {
     setError(null);
 
     try {
-      // Intentar obtener un usuario asociado a la cuenta para asignarlo como user_id
-      let userId = null;
-      
-      // Primero verificamos si hay un usuario logueado
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (!userError && user) {
-        userId = user.id;
-      } else {
-        // Si no hay usuario logueado, intentamos obtener el primer usuario asociado a la cuenta
-        const { data: usersData } = await supabase
-          .from('accounts_memberships' as any)
-          .select('user_id')
-          .eq('account_id', accountId)
-          .limit(1);
-          
-        if (usersData && usersData.length > 0) {
-          userId = usersData[0]?.user_id;
-        }
+      // Usar el user_id de la URL o el account_id como respaldo
+      const finalUserId = userId || accountId;
+      if (!finalUserId) {
+        setError("No se pudo identificar el usuario. Verifique el enlace o escanee nuevamente el código QR.");
+        return;
       }
+      
       // Preparar el domicilio según el tipo seleccionado
       let domicilioFinal = domicilio;
       if (domicilioCompleto) {
@@ -431,7 +384,7 @@ export default function CrearPacientePage() {
       // Insertar en Supabase
       const { data, error: insertError } = await (supabase.from("pacientes" as any) as any)
         .insert([{
-          user_id: userId, // Usar userId si está disponible, o accountId como respaldo
+          user_id: finalUserId, // Usar el user_id de la URL o el account_id como respaldo
           account_id: accountId, // Guardar el account_id explícitamente
           nombre,
           edad: edad ? parseInt(edad) : undefined,
