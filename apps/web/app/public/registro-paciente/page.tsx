@@ -27,6 +27,31 @@ import { createNotificationsApi } from '@kit/notifications/api';
 import { getMailer } from '@kit/mailers';
 import { unknown } from "zod";
 
+// Estilos de animación personalizados
+const styles = `
+  @keyframes scale-in-center {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  .scale-in-center {
+    animation: scale-in-center 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
+  }
+`;
+
+// Agregar los estilos al documento
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.textContent = styles;
+  document.head.appendChild(styleSheet);
+}
+
 // Definición de la interfaz para el tipo Paciente
 interface Paciente {
   id?: string;
@@ -74,6 +99,21 @@ interface CitaInfo {
 }
 
 export default function CrearPacientePage() {
+  // Componente de mensaje de éxito a pantalla completa
+  const SuccessMessage = () => (
+    <div className="fixed inset-0 bg-primary/95 flex items-center justify-center z-50 animate-in fade-in duration-300">
+      <div className="text-white text-center p-8 scale-in-center">
+        <CheckCircle2 className="w-24 h-24 mx-auto mb-6 animate-bounce" />
+        <div className="text-5xl font-bold mb-4">
+          SU CITA YA ESTÁ REGISTRADA
+        </div>
+        <div className="text-xl opacity-90">
+          ¡Gracias por confiar en nosotros!
+        </div>
+      </div>
+    </div>
+  );
+
   const router = useRouter();
   // Referencias para los inputs
   const nombreRef = useRef<HTMLInputElement>(null);
@@ -81,6 +121,8 @@ export default function CrearPacientePage() {
   // Estado para el usuario actual
   const [userId, setUserId] = useState<string | null>(null);
   // Estado para las alertas
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  
   const [alertInfo, setAlertInfo] = useState<{
     show: boolean;
     type: 'success' | 'error' | 'warning';
@@ -191,6 +233,7 @@ export default function CrearPacientePage() {
   const [sintomasVisualesSeleccionados, setSintomasVisualesSeleccionados] = useState<string[]>([]);
   const [sintomasVisualesOtro, setSintomasVisualesOtro] = useState("");
   const [ultimoExamenVisual, setUltimoExamenVisual] = useState<Date | undefined>(undefined);
+  const [ultimoExamenVisualOpen, setUltimoExamenVisualOpen] = useState(false);
   const [usaLentes, setUsaLentes] = useState(false);
   const [tipoLentesSeleccionados, setTipoLentesSeleccionados] = useState<string[]>([]);
   const [tiempoUsoLentes, setTiempoUsoLentes] = useState("");
@@ -308,13 +351,17 @@ export default function CrearPacientePage() {
     setTelefonoError(null);
   };
 
+  // Función para manejar la selección de fechas
+  const handleDateSelect = (date: Date | undefined, setDate: (date: Date | undefined) => void, setOpen: (open: boolean) => void) => {
+    setDate(date);
+    setOpen(false); // Cerrar el calendario automáticamente
+  };
+
   // Función para establecer la fecha actual exacta sin modificaciones
   const establecerFechaHoy = () => {
     // Usamos startOfDay para normalizar la fecha actual sin hora/minutos/segundos
     const fechaHoy = startOfDay(new Date());
-    setFechaCita(fechaHoy);
-    // Cerramos el popover del calendario para evitar modificaciones manuales
-    setFechaCitaOpen(false);
+    handleDateSelect(fechaHoy, setFechaCita, setFechaCitaOpen);
   };
 
   // Función para manejar el envío del formulario
@@ -489,31 +536,31 @@ export default function CrearPacientePage() {
         console.warn("No se pudo determinar accountId o linkLocal para las notificaciones");
       }
 
+      try {
+        // Enviar notificación in-app
+        const notificationsApi = createNotificationsApi(supabase);
+        // Use the correct method name based on the NotificationsApi interface
+        await (notificationsApi as any).createNotification({
+          title: 'Nuevo Paciente Registrado',
+          content: `Se ha registrado un nuevo paciente: ${nombre}`,
+          type: 'patient_registered',
+          user_id: userId
+        });
+        console.log('Notificación in-app enviada correctamente');
+      } catch (notificationError) {
+        console.error('Error al enviar notificación in-app:', notificationError);
+      }
+
+      // Mostrar mensaje de éxito a pantalla completa
+      setShowSuccessMessage(true);
       setSuccess(true);
 
-      // Verificar si la fecha de cita es hoy para determinar la redirección
-      // Usamos la constante FECHA_HOY para comparar
-
-      // Normalizar la fecha de cita usando startOfDay para garantizar consistencia
-      const fechaCitaObj = startOfDay(fechaCita ? new Date(fechaCita) : new Date());
-
-
-      // Mostrar mensaje de éxito
-      setSuccess(true);
-
-      // Mensaje simple para clientes externos
-      showAlert(
-        'success', 
-        'USTED HA SIDO REGISTRADO', 
-        ''
-      );
-
-      // Para clientes externos, no redirigimos a otra página
-      // Solo limpiamos el formulario después de un tiempo
+      // Limpiar el formulario y ocultar el mensaje después de 5 segundos
       setTimeout(() => {
+        setShowSuccessMessage(false);
         limpiarFormulario();
         window.scrollTo(0, 0);
-      }, 5000); // Damos tiempo para que vean el mensaje
+      }, 5000);
 
     } catch (err) {
       console.error("Error al crear paciente:", err);
@@ -526,6 +573,7 @@ export default function CrearPacientePage() {
 
   return (
     <>
+      {showSuccessMessage && <SuccessMessage />}
       <div className="container mx-auto px-4 sm:px-6 py-6">
         <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Registro de Paciente</h1>
       
@@ -602,7 +650,6 @@ export default function CrearPacientePage() {
                       selected={fechaNacimiento}
                       captionLayout="dropdown"
                       onSelect={(date) => {
-                        setFechaNacimiento(date);
                         // Calcular edad automáticamente si se selecciona fecha
                         if (date) {
                           const hoy = new Date();
@@ -613,7 +660,7 @@ export default function CrearPacientePage() {
                           }
                           setEdad(edadCalculada.toString());
                         }
-                        setFechaNacimientoOpen(false);
+                        handleDateSelect(date, setFechaNacimiento, setFechaNacimientoOpen);
                       }}
                     />
                   </PopoverContent>
@@ -818,11 +865,12 @@ export default function CrearPacientePage() {
                           <Calendar
                             mode="single"
                             selected={ultimoExamenVisual}
-                            onSelect={setUltimoExamenVisual}
+                            onSelect={(date) => handleDateSelect(date, setUltimoExamenVisual, setUltimoExamenVisualOpen)}
                             initialFocus
                             disableNavigation={false}
                             fromDate={undefined}
                             toDate={new Date()}
+                            locale={es}
                           />
                         </PopoverContent>
                       </Popover>
