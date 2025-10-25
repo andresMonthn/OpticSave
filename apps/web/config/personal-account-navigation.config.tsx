@@ -31,6 +31,12 @@ const routes = [
         end: true,
       },
       {
+        label: 'Código QR',
+        path: pathsConfig.app.qr,
+        Icon: <ClipboardCheck className={iconClasses} />,
+        end: true,
+      },
+      {
         label: 'Inventario',
         path: pathsConfig.app.inventario,
         Icon: <Package className={iconClasses} />,

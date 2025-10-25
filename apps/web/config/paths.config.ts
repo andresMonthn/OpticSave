@@ -16,6 +16,7 @@ const PathsSchema = z.object({
     creardiagnostico: z.string().min(1),
     inventario: z.string().min(1),
     pacientes: z.string().min(1),
+    qr: z.string().min(1),
     personalAccountSettings: z.string().min(1),
     personalAccountBilling: z.string().min(1),
     personalAccountBillingReturn: z.string().min(1),
@@ -39,11 +40,13 @@ const pathsConfig = PathsSchema.parse({
   },
   app: {
     home: '/home',
+    
     creardiagnostico: '/home/dashboard/creardiagnostico',
     crearpaciente: '/home/dashboard/crearpaciente',
     agenda: '/home/dashboard/agenda',
     inventario: '/home/dashboard/inventario',
     pacientes: '/home/dashboard/view',
+    qr: '/home/dashboard/qr',
     personalAccountSettings: '/home/settings',
     personalAccountBilling: '/home/billing',
     personalAccountBillingReturn: '/home/billing/return',
