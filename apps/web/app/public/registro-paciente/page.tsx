@@ -420,7 +420,7 @@ export default function CrearPacientePage() {
         const { data: membership, error: membershipError } = await (supabase
           .from("accounts_memberships" as any)
           .select("account_id")
-          .eq("user_id", user?.id)
+          .eq("user_id", userId)
           .limit(1)
           .maybeSingle() as any);
 
@@ -429,7 +429,7 @@ export default function CrearPacientePage() {
           const { data: membership2 } = await (supabase
             .from("memberships" as any)
             .select("account_id")
-            .eq("user_id", user?.id)
+            .eq("user_id", userId)
             .limit(1)
             .maybeSingle() as any);
           accountId = (membership2 as any)?.account_id;
@@ -465,21 +465,21 @@ export default function CrearPacientePage() {
           }
 
           // Enviar notificación por email por separado
-          // const emailResponse = await fetch("/api/notifications", {
-          //   method: "POST",
-          //   headers: { "Content-Type": "application/json" },
-          //   body: JSON.stringify({
-          //     account_id: accountId,
-          //     body: `Has creado un nuevo paciente: ${nombre}`,
-          //     link: linkLocal,
-          //     type: "info",
-          //     channel: "email", // Solo enviar notificación por email
-          //   }),
-          // });
+          const emailResponse = await fetch("/api/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              account_id: accountId,
+              body: `Has creado un nuevo paciente: ${nombre}`,
+              link: linkLocal,
+              type: "info",
+              channel: "email", // Solo enviar notificación por email
+            }),
+          });
 
-          // if (!emailResponse.ok) {
-          //   throw new Error(`Error HTTP en email: ${emailResponse.status}`);
-          // }
+          if (!emailResponse.ok) {
+            throw new Error(`Error HTTP en email: ${emailResponse.status}`);
+          }
 
           console.log("Notificaciones enviadas correctamente");
         } catch (err) {
