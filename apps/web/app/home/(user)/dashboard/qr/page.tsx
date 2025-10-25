@@ -39,7 +39,7 @@ export default function QRGeneratorPage() {
         }
         
         setUserId(data.user.id);
-        const generatedUrl = `https://opticsave.vercel.app/public/registro-paciente?account_id=${data.user.id}`;
+        const generatedUrl = `https://opticsave.vercel.app/public/registro-paciente?user_id=${data.user.id}`;
         setQrUrl(generatedUrl);
       } catch (err: any) {
         setError(err.message || "Error al obtener el ID de usuario");

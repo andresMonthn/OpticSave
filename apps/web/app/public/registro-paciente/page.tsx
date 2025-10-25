@@ -107,46 +107,38 @@ export default function CrearPacientePage() {
   };
 
 
-  // Estado para el id_account
-  const [accountId, setAccountId] = useState<string | null>(null);
-  
-  // Obtener el user_id y account_id de la URL
+  // Obtener el user_id de la URL
   const supabase = getSupabaseBrowserClient();
   useEffect(() => {
     // Obtener parámetros de la URL
     const params = new URLSearchParams(window.location.search);
     const userIdFromUrl = params.get('user_id');
-    const accountIdFromUrl = params.get('account_id');
     
     // Establecer user_id si está presente en la URL
     if (userIdFromUrl) {
       setUserId(userIdFromUrl);
       console.log("ID de usuario desde URL:", userIdFromUrl);
-    }
-    
-    // Establecer account_id si está presente en la URL
-    if (accountIdFromUrl) {
-      setAccountId(accountIdFromUrl);
-      console.log("ID de cuenta desde URL:", accountIdFromUrl);
-      // Cargar citas existentes con el account_id
-      obtenerCitasExistentes(accountIdFromUrl);
+      // Cargar citas existentes con el user_id
+      obtenerCitasExistentes(userIdFromUrl);
+    } else {
+      console.warn("No se proporcionó user_id en la URL");
     }
   }, []);
 
   // Función para obtener las citas existentes
   const obtenerCitasExistentes = async (id: string) => {
     if (!id) {
-      console.warn("No se proporcionó ID para obtener citas");
+      console.warn("No se proporcionó user_id para obtener citas");
       return;
     }
 
     setCargandoCitas(true);
     try {
-      // Obtener directamente las citas usando el account_id
+      // Obtener las citas usando el user_id
       const { data, error } = await supabase
         .from('pacientes' as any)
         .select('fecha_de_cita')
-        .eq('account_id', id)
+        .eq('user_id', id)
         .not('fecha_de_cita', 'is', null);
 
       if (error) {
@@ -174,7 +166,7 @@ export default function CrearPacientePage() {
       );
 
       setCitasInfo(citasInfoArray);
-      console.log('Citas obtenidas exitosamente para account_id:', id);
+      console.log('Citas obtenidas exitosamente para user_id:', id);
     } catch (err) {
       console.error("Error al procesar citas:", err);
     } finally {
@@ -344,9 +336,9 @@ export default function CrearPacientePage() {
       return;
     }
 
-    // Verificar que tenemos un accountId
-    if (!accountId) {
-      setError("No se pudo identificar la cuenta. Verifique el enlace o escanee nuevamente el código QR.");
+    // Verificar que tenemos un user_id
+    if (!userId) {
+      setError("No se pudo identificar el usuario. Verifique el enlace o escanee nuevamente el código QR.");
       return;
     }
     
@@ -368,13 +360,6 @@ export default function CrearPacientePage() {
     setError(null);
 
     try {
-      // Usar el user_id de la URL o el account_id como respaldo
-      const finalUserId = userId || accountId;
-      if (!finalUserId) {
-        setError("No se pudo identificar el usuario. Verifique el enlace o escanee nuevamente el código QR.");
-        return;
-      }
-      
       // Preparar el domicilio según el tipo seleccionado
       let domicilioFinal = domicilio;
       if (domicilioCompleto) {
@@ -384,8 +369,7 @@ export default function CrearPacientePage() {
       // Insertar en Supabase
       const { data, error: insertError } = await (supabase.from("pacientes" as any) as any)
         .insert([{
-          user_id: finalUserId, // Usar el user_id de la URL o el account_id como respaldo
-          account_id: accountId, // Guardar el account_id explícitamente
+          user_id: userId, // Usar el user_id de la URL
           nombre,
           edad: edad ? parseInt(edad) : undefined,
           fecha_nacimiento: fechaNacimiento ? fechaNacimiento.toISOString() : undefined,
