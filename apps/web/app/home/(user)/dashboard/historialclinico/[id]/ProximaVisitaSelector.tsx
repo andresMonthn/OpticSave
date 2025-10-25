@@ -75,6 +75,7 @@ export function ProximaVisitaSelector({ pacienteId, diagnosticoId, onSuccess }: 
           
         if (searchError) throw searchError;
         
+        
         if (existingDiagnostico && existingDiagnostico.length > 0) {
           // Si existe un diagnóstico, lo actualizamos solo con proxima_visita
           const { error } = await supabase
@@ -91,7 +92,7 @@ export function ProximaVisitaSelector({ pacienteId, diagnosticoId, onSuccess }: 
       setAlert({
         show: true,
         type: 'success',
-        message: 'Fecha de próxima visita guardada correctamente'
+        message: 'Fecha de próxima visita guardada correctamente revise agenda para confirmar'
       });
       
       setIsOpen(false);
