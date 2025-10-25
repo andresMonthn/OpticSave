@@ -5,9 +5,7 @@ import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Home, Users
 import { format, isSameDay, startOfDay, addDays } from "date-fns";
 import { es, id } from "date-fns/locale";
 import { useState, useEffect, useRef } from "react";
-import { HomeLayoutPageHeader } from '../../../(user)/_components/home-page-header';
 import { Trans } from '@kit/ui/trans';
-import { PageBody } from '@kit/ui/page';
 // Constante para monitorear la fecha actual
 const FECHA_HOY = startOfDay(new Date());
 // Importaciones de componentes UI desde @kit/ui
@@ -591,13 +589,8 @@ export default function CrearPacientePage() {
 
   return (
     <>
-      <HomeLayoutPageHeader
-        title={<Trans i18nKey={'common:routes.home'} />}
-        description={<Trans i18nKey={'common:homeTabDescription'} />}
-      />
-      <PageBody>
-        <div className="container mx-auto px-4 sm:px-6 py-6">
-      <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Registro de Paciente</h1>
+      <div className="container mx-auto px-4 sm:px-6 py-6">
+        <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Registro de Paciente</h1>
       
       {/* Mensaje de bienvenida para clientes externos */}
       <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-6">
@@ -1511,7 +1504,6 @@ export default function CrearPacientePage() {
         </CardContent>
       </Card>
         </div>
-      </PageBody>
     </>
   );
 }
