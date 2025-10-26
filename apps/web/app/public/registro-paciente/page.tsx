@@ -372,6 +372,55 @@ export default function CrearPacientePage() {
     const fechaHoy = startOfDay(new Date());
     handleDateSelect(fechaHoy, setFechaCita, setFechaCitaOpen);
   };
+  
+  // Función para rellenar automáticamente todos los campos con datos de prueba
+  const rellenarFormularioTest = () => {
+    // Datos personales
+    setNombre("Paciente de Prueba");
+    setTelefono("5512345678");
+    setEdad("35");
+    setSexo("Masculino");
+    setDomicilio("Calle de Prueba 123");
+    setOcupacion("Desarrollador");
+    
+    // Fechas
+    const hoy = startOfDay(new Date());
+    const fechaNac = new Date();
+    fechaNac.setFullYear(fechaNac.getFullYear() - 35); // 35 años atrás
+    setFechaNacimiento(fechaNac);
+    setFechaCita(hoy);
+    
+    // Último examen visual (hace 1 año)
+    const ultimoExamen = new Date();
+    ultimoExamen.setFullYear(ultimoExamen.getFullYear() - 1);
+    setUltimoExamenVisual(ultimoExamen);
+    
+    // Motivo de consulta
+    setMotivoConsulta("Revisión rutinaria");
+    
+    // Síntomas visuales
+    setSintomasVisualesSeleccionados(["Visión borrosa", "Fatiga visual"]);
+    
+    // Uso de lentes
+    setUsaLentes(true);
+    setTipoLentesSeleccionados(["Monofocales"]);
+    setTiempoUsoLentes("5 años");
+    
+    // Cirugías y traumatismos
+    setCirugiasOculares(false);
+    setTraumatismosOculares(false);
+    
+    // Antecedentes
+    setAntecedentesVisualesFamiliaresSeleccionados(["Miopía"]);
+    setAntecedentesFamiliaresSaludSeleccionados(["Hipertensión"]);
+    
+    // Hábitos visuales y salud
+    setHabitosVisualesSeleccionados(["Uso de computadora"]);
+    setSaludGeneralSeleccionados(["Buena salud general"]);
+    
+    // Medicamentos
+    setMedicamentosActuales("Ninguno");
+  };
 
   // Función para manejar el envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
@@ -422,8 +471,8 @@ export default function CrearPacientePage() {
         domicilioFinal = `${domicilioFields.calle} ${domicilioFields.numero}${domicilioFields.interior ? ', Int. ' + domicilioFields.interior : ''}, Col. ${domicilioFields.colonia}`;
       }
 
-      // Insertar en Supabase - usando el esquema público en lugar de "net"
-      const { data, error: insertError } = await supabase
+      
+      const { error: insertError } = await supabase
         .from("pacientes" as any)
         .insert([{
           user_id: userId, // Usar el user_id de la URL
@@ -594,6 +643,19 @@ export default function CrearPacientePage() {
         <h2 className="font-semibold text-lg mb-2">¡Bienvenido al registro de pacientes de OpticsLab!</h2>
         <p className="mb-2">Complete el siguiente formulario para agendar su cita. Todos los campos marcados con * son obligatorios.</p>
         <p>Su información será tratada con confidencialidad y solo será utilizada para brindarle una mejor atención.</p>
+        
+        {/* Botón para rellenar automáticamente el formulario (solo visible en desarrollo) */}
+        <div className="mt-4">
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="bg-amber-100 border-amber-300 text-amber-700 hover:bg-amber-200"
+            onClick={rellenarFormularioTest}
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Rellenar formulario para pruebas
+          </Button>
+        </div>
       </div>
 
       {error && (
