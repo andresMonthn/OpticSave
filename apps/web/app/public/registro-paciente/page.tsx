@@ -110,6 +110,15 @@ export default function CrearPacientePage() {
         <div className="text-xl opacity-90">
           ¡Gracias por confiar en nosotros!
         </div>
+        <div className="text-lg mt-4 opacity-80">
+          Esta ventana se cerrará automáticamente en 5 segundos...
+        </div>
+        <Button
+          onClick={() => window.close()}
+          className="mt-6 bg-white text-primary hover:bg-white/90"
+        >
+          Cerrar ventana
+        </Button>
       </div>
     </div>
   );
@@ -413,8 +422,9 @@ export default function CrearPacientePage() {
         domicilioFinal = `${domicilioFields.calle} ${domicilioFields.numero}${domicilioFields.interior ? ', Int. ' + domicilioFields.interior : ''}, Col. ${domicilioFields.colonia}`;
       }
 
-      // Insertar en Supabase
-      const { data, error: insertError } = await (supabase.from("pacientes" as any) as any)
+      // Insertar en Supabase - usando el esquema público en lugar de "net"
+      const { data, error: insertError } = await supabase
+        .from("pacientes" as any)
         .insert([{
           user_id: userId, // Usar el user_id de la URL
           nombre,
@@ -464,24 +474,24 @@ export default function CrearPacientePage() {
       // Obtener el account_id del usuario para enviar la notificación (primera membresía encontrada)
       let accountId: string | undefined;
       try {
-        const { data: membership, error: membershipError } = await (supabase
-          .from("accounts_memberships" as any)
+        const { data: membership, error: membershipError } = await supabase
+          .from("accounts_memberships")
           .select("account_id")
           .eq("user_id", userId)
           .limit(1)
-          .maybeSingle() as any);
+          .maybeSingle();
 
         if (membershipError) {
           console.warn("No se pudo obtener accounts_memberships, intentando memberships:", membershipError);
-          const { data: membership2 } = await (supabase
+          const { data: membership2 } = await supabase
             .from("memberships" as any)
             .select("account_id")
             .eq("user_id", userId)
             .limit(1)
-            .maybeSingle() as any);
+            .maybeSingle();
           accountId = (membership2 as any)?.account_id;
         } else {
-          accountId = (membership as any)?.account_id;
+          accountId = membership?.account_id;
         }
       } catch (e) {
         console.warn("Error obteniendo account_id:", e);
@@ -555,11 +565,13 @@ export default function CrearPacientePage() {
       setShowSuccessMessage(true);
       setSuccess(true);
 
-      // Limpiar el formulario y ocultar el mensaje después de 5 segundos
+      // Limpiar el formulario, ocultar el mensaje y cerrar la ventana después de 5 segundos
       setTimeout(() => {
         setShowSuccessMessage(false);
         limpiarFormulario();
         window.scrollTo(0, 0);
+        // Cerrar la ventana después de mostrar el mensaje de éxito
+        window.close();
       }, 5000);
 
     } catch (err) {
