@@ -1,11 +1,21 @@
 "use client";
 //este componente le permite al cliente crear un paciente
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Home, Users } from "lucide-react";
+import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Home, Users, Sun, Moon } from "lucide-react";
 import { format, isSameDay, startOfDay, addDays } from "date-fns";
 import { es, id } from "date-fns/locale";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { Trans } from '@kit/ui/trans';
+
+// Contexto para el tema
+type Theme = 'light' | 'dark';
+const ThemeContext = createContext<{
+  theme: Theme;
+  toggleTheme: () => void;
+}>({
+  theme: 'light',
+  toggleTheme: () => {},
+});
 // Constante para monitorear la fecha actual
 const FECHA_HOY = startOfDay(new Date());
 // Importaciones de componentes UI desde @kit/ui
@@ -43,6 +53,349 @@ const styles = `
   .scale-in-center {
     animation: scale-in-center 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
   }
+
+  /* Estilos para el tema oscuro */
+  .dark {
+    --background: #121212;
+    --foreground: #f8f8f8;
+    --card-background: #1e1e1e;
+    --card-foreground: #f0f0f0;
+    --border: #333;
+    --input-background: #2a2a2a;
+    --input-foreground: #f0f0f0;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --muted: #666;
+    --muted-foreground: #a0a0a0;
+  }
+
+  /* Estilos para el tema claro (default) */
+  :root {
+    --background: #ffffff;
+    --foreground: #333333;
+    --card-background: #ffffff;
+    --card-foreground: #333333;
+    --border: #e2e8f0;
+    --input-background: #f9fafb;
+    --input-foreground: #333333;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    
+    /* Variables para tamaños de fuente responsivos */
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+    --font-size-5xl: 3rem;
+    
+    /* Variables para espaciado responsivo */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+    
+    /* Variables para breakpoints */
+    --breakpoint-sm: 640px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 1024px;
+    --breakpoint-xl: 1280px;
+  }
+
+  /* Aplicar variables CSS a elementos */
+  html {
+    font-size: 16px;
+  }
+  
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    transition: background-color 0.3s ease, color 0.3s ease;
+    font-size: var(--font-size-base);
+    line-height: 1.5;
+  }
+  
+  /* Mejoras para formularios responsivos */
+  form {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-md);
+  }
+
+  .card {
+    background-color: var(--card-background);
+    color: var(--card-foreground);
+    border-color: var(--border);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    width: 100%;
+    padding: var(--spacing-md);
+  }
+
+  input, textarea, select {
+    background-color: var(--input-background);
+    color: var(--input-foreground);
+    border-color: var(--border);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    font-size: var(--font-size-base);
+    padding: var(--spacing-sm) var(--spacing-md);
+    width: 100%;
+    border-radius: 0.375rem;
+  }
+  
+  /* Mejoras para elementos interactivos en dispositivos táctiles */
+  button, 
+  [role="button"],
+  .checkbox,
+  .radio,
+  .switch,
+  select,
+  
+  /* Media queries para dispositivos móviles */
+  @media (max-width: 768px) {
+    html {
+      font-size: 15px;
+    }
+    
+    .card {
+      padding: var(--spacing-sm);
+    }
+    
+    input, textarea, select, button {
+      min-height: 2.75rem;
+    }
+    
+    /* Mejoras para elementos interactivos en móviles */
+    button, 
+    [role="button"],
+    input[type="checkbox"],
+    input[type="radio"],
+    .switch {
+      min-height: 1.5rem;
+      min-width: 1.5rem;
+      padding: 0.5rem;
+      margin: 0.25rem;
+      touch-action: manipulation;
+    }
+    
+    /* Aumentar área táctil para botones */
+    button, [role="button"] {
+      padding: 0.5rem 1rem;
+    }
+    
+    /* Mejorar espaciado en formularios */
+    .space-y-8 {
+      margin-bottom: 1.5rem;
+    }
+    
+    /* Ajustar tamaño de fuente para etiquetas */
+    label {
+      font-size: 0.9rem;
+    }
+  }
+  
+  @media (max-width: 425px) {
+    html {
+      font-size: 14px;
+    }
+    
+    .container {
+      padding-left: var(--spacing-sm);
+      padding-right: var(--spacing-sm);
+    }
+    
+    .grid {
+      gap: var(--spacing-sm) !important;
+      grid-template-columns: 1fr !important;
+    }
+    
+    /* Ajustes para formularios en móviles pequeños */
+    form {
+      padding: 0.5rem;
+    }
+    
+    /* Ajustar tamaño de botones */
+    button {
+      width: 100%;
+    }
+  }
+  
+  @media (max-width: 375px) {
+    html {
+      font-size: 13px;
+    }
+    
+    /* Reducir padding en cards */
+    .card {
+      padding: 0.5rem;
+    }
+    
+    /* Ajustar espaciado vertical */
+    .space-y-4 {
+      margin-bottom: 0.75rem;
+    }
+  }
+  
+  @media (max-width: 320px) {
+    html {
+      font-size: 12px;
+    }
+    
+    /* Minimizar padding */
+    .container {
+      padding-left: 0.25rem;
+      padding-right: 0.25rem;
+    }
+    
+    /* Optimizar para pantallas muy pequeñas */
+    input, select, textarea {
+      padding: 0.375rem;
+    }
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 2.5rem;
+    min-width: 2.5rem;
+  }
+  
+  label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    margin-bottom: var(--spacing-xs);
+    display: block;
+  }
+
+  /* Botón de cambio de tema */
+  .theme-toggle-btn {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 100;
+    border-radius: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--card-background);
+    color: var(--card-foreground);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .theme-toggle-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .dark .theme-toggle-btn {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Ajustes responsivos para el botón de tema */
+  @media (max-width: 768px) {
+    .theme-toggle-btn {
+      width: 2.25rem;
+      height: 2.25rem;
+      top: 1rem;
+      right: 1rem;
+    }
+  }
+  
+  @media (max-width: 425px) {
+    .theme-toggle-btn {
+      width: 2rem;
+      height: 2rem;
+      top: 0.75rem;
+      right: 0.75rem;
+    }
+  }
+  
+  /* Media queries para diseño responsivo */
+  @media (max-width: 768px) {
+    html {
+      font-size: 14px;
+    }
+    
+    .container {
+      padding-left: var(--spacing-md);
+      padding-right: var(--spacing-md);
+    }
+    
+    .card {
+      padding: var(--spacing-md);
+    }
+    
+    .grid-cols-2,
+    .grid-cols-3,
+    .grid-cols-4 {
+      grid-template-columns: 1fr;
+    }
+    
+    .theme-toggle-btn {
+      top: 0.75rem;
+      right: 0.75rem;
+    }
+  }
+  
+  @media (max-width: 425px) {
+    html {
+      font-size: 13px;
+    }
+    
+    .container {
+      padding-left: var(--spacing-sm);
+      padding-right: var(--spacing-sm);
+    }
+    
+    h1, h2, h3 {
+      text-align: center;
+    }
+    
+    .flex-row {
+      flex-direction: column;
+    }
+    
+    .space-x-4 {
+      margin-left: 0;
+      margin-right: 0;
+      margin-bottom: var(--spacing-md);
+    }
+  }
+  
+  @media (max-width: 375px) {
+    html {
+      font-size: 12px;
+    }
+    
+    .theme-toggle-btn {
+      width: 2.25rem;
+      height: 2.25rem;
+    }
+  }
+  
+  @media (max-width: 320px) {
+    html {
+      font-size: 11px;
+    }
+    
+    .card {
+      padding: var(--spacing-sm);
+    }
+  }
 `;
 
 // Agregar los estilos al documento
@@ -50,6 +403,62 @@ if (typeof document !== 'undefined') {
   const styleSheet = document.createElement("style");
   styleSheet.textContent = styles;
   document.head.appendChild(styleSheet);
+}
+
+// Proveedor del tema
+function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<Theme>('light');
+
+  // Cargar tema desde localStorage al iniciar
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as Theme;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    }
+  }, []);
+
+  // Función para cambiar el tema
+  const toggleTheme = () => {
+    setTheme(prevTheme => {
+      const newTheme = prevTheme === 'light' ? 'dark' : 'light';
+      localStorage.setItem('theme', newTheme);
+      document.documentElement.classList.toggle('dark', newTheme === 'dark');
+      return newTheme;
+    });
+  };
+
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+// Hook para usar el tema
+function useTheme() {
+  return useContext(ThemeContext);
+}
+
+// Componente de botón de cambio de tema
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  
+  return (
+    <button 
+      className="theme-toggle-btn"
+      onClick={toggleTheme}
+      aria-label={theme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
+      aria-pressed={theme === 'dark'}
+      title={theme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
+    >
+      {theme === 'light' ? (
+        <Moon className="h-5 w-5" />
+      ) : (
+        <Sun className="h-5 w-5" />
+      )}
+    </button>
+  );
 }
 
 // Definición de la interfaz para el tipo Paciente
@@ -99,6 +508,19 @@ interface CitaInfo {
 }
 
 export default function CrearPacientePage() {
+  return (
+    <ThemeProvider>
+      <div className="relative">
+        <div className="fixed top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
+        <CrearPacienteContent />
+      </div>
+    </ThemeProvider>
+  );
+}
+
+function CrearPacienteContent() {
   // Componente de mensaje de éxito a pantalla completa
   const SuccessMessage = () => (
     <div className="fixed inset-0 bg-primary/95 flex items-center justify-center z-50 animate-in fade-in duration-300">
@@ -122,6 +544,9 @@ export default function CrearPacientePage() {
       </div>
     </div>
   );
+  
+  // Añadir el botón de cambio de tema
+  const ThemeButton = <ThemeToggle />;
 
   const router = useRouter();
   // Referencias para los inputs
@@ -635,13 +1060,13 @@ export default function CrearPacientePage() {
   return (
     <>
       {showSuccessMessage && <SuccessMessage />}
-      <div className="container mx-auto px-4 sm:px-6 py-6">
-        <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Registro de Paciente</h1>
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6">
+        <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4 md:mb-6">Registro de Paciente</h1>
       
       {/* Mensaje de bienvenida para clientes externos */}
-      <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-6">
-        <h2 className="font-semibold text-lg mb-2">¡Bienvenido al registro de pacientes de OpticsLab!</h2>
-        <p className="mb-2">Complete el siguiente formulario para agendar su cita. Todos los campos marcados con * son obligatorios.</p>
+      <div className="bg-blue-50 border border-blue-200 text-blue-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-4 sm:mb-6 text-sm sm:text-base">
+        <h2 className="font-semibold text-base sm:text-lg mb-1 sm:mb-2">¡Bienvenido al registro de pacientes de OpticsLab!</h2>
+        <p className="mb-1 sm:mb-2">Complete el siguiente formulario para agendar su cita. Todos los campos marcados con * son obligatorios.</p>
         <p>Su información será tratada con confidencialidad y solo será utilizada para brindarle una mejor atención.</p>
         
         {/* Botón para rellenar automáticamente el formulario (solo visible en desarrollo) */}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { Bell, CircleAlert, Info, TriangleAlert, XIcon } from 'lucide-react';
+import { Bell, CircleAlert, Coins, Info, TriangleAlert, XIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { Database } from '@kit/supabase/database';
@@ -11,6 +11,58 @@ import { If } from '@kit/ui/if';
 import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
 import { Separator } from '@kit/ui/separator';
 import { cn } from '@kit/ui/utils';
+
+// Estilos para las notificaciones flotantes
+const toastStyles = `
+  @keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 350px;
+  }
+  
+  .toast-notification {
+    animation: slideInRight 0.3s ease forwards, fadeOut 0.5s ease forwards 5s;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 12px 16px;
+    display: flex;
+    align-items: flex-start;
+    overflow: hidden;
+    border-left: 4px solid #3b82f6;
+  }
+  
+  .toast-notification.info { border-left-color: #3b82f6; }
+  .toast-notification.warning { border-left-color: #f59e0b; }
+  .toast-notification.error { border-left-color: #ef4444; }
+  
+  .dark .toast-notification {
+    background-color: #1f2937;
+    color: white;
+  }
+`;
+
+// Inyectar estilos en el documento
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.textContent = toastStyles;
+  document.head.appendChild(styleSheet);
+}
 
 import { useDismissNotification, useFetchNotifications } from '../hooks';
 
@@ -21,6 +73,77 @@ type PartialNotification = Pick<
   'id' | 'body' | 'dismissed' | 'type' | 'created_at' | 'link'
 >;
 
+// Componente Toast para mostrar notificaciones flotantes
+function ToastNotification({ notification, onDismiss }: { 
+  notification: PartialNotification; 
+  onDismiss: (id: number) => void;
+}) {
+  const { t } = useTranslation();
+  const [isVisible, setIsVisible] = useState(true);
+  
+  useEffect(() => {
+    // Eliminar la notificación del DOM después de la animación
+    const timer = setTimeout(() => {
+      setIsVisible(false);
+      onDismiss(notification.id);
+    }, 5500); // 5.5 segundos (5s de animación + 0.5s de margen)
+    
+    return () => clearTimeout(timer);
+  }, [notification.id, onDismiss]);
+  
+  if (!isVisible) return null;
+  
+  let body = t(notification.body, {
+    defaultValue: notification.body,
+  });
+  
+  if (body.length > 100) {
+    body = body.substring(0, 100) + '...';
+  }
+  
+  const Icon = () => {
+    switch (notification.type) {
+      case 'warning':
+        return <TriangleAlert className={'h-4 text-yellow-500'} />;
+      case 'error':
+        return <CircleAlert className={'text-destructive h-4'} />;
+      default:
+        return <Info className={'h-4 text-blue-500'} />;
+    }
+  };
+  
+  return (
+    <div className={`toast-notification ${notification.type || 'info'}`}>
+      <div className="flex items-start gap-3 w-full">
+        <div className="py-0.5">
+          <Icon />
+        </div>
+        <div className="flex-1">
+          {notification.link ? (
+            <a href={notification.link} className="text-sm hover:underline">
+              {body}
+            </a>
+          ) : (
+            <div className="text-sm">{body}</div>
+          )}
+        </div>
+        <Button
+          className="h-6 w-6 p-0"
+          size="icon"
+          variant="ghost"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsVisible(false);
+            onDismiss(notification.id);
+          }}
+        >
+          <XIcon className="h-3" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function NotificationsPopover(params: {
   realtime: boolean;
   accountIds: string[];
@@ -30,20 +153,32 @@ export function NotificationsPopover(params: {
 
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<PartialNotification[]>([]);
+  const [toastNotifications, setToastNotifications] = useState<PartialNotification[]>([]);
+
+  const dismissNotification1 = useDismissNotification();
+  
+  const handleDismissToast = useCallback((id: number) => {
+    setToastNotifications(prev => prev.filter(n => n.id !== id));
+    dismissNotification(id);
+  }, [dismissNotification1]);
 
   const onNotifications = useCallback(
     (notifications: PartialNotification[]) => {
+      // Actualizar las notificaciones del popover
       setNotifications((existing) => {
         const unique = new Set(existing.map((notification) => notification.id));
 
         const notificationsFiltered = notifications.filter(
           (notification) => !unique.has(notification.id),
         );
-
+        
+        // Mostrar las nuevas notificaciones como toasts
+        setToastNotifications(prev => [...notificationsFiltered, ...prev]);
+        
         return [...notificationsFiltered, ...existing];
       });
     },
-    [],
+    [setToastNotifications],
   );
 
   const dismissNotification = useDismissNotification();
@@ -53,6 +188,23 @@ export function NotificationsPopover(params: {
     accountIds: params.accountIds,
     realtime: params.realtime,
   });
+  
+  // Renderizar el contenedor de toasts y las notificaciones flotantes
+  const renderToasts = () => {
+    if (typeof document === 'undefined' || toastNotifications.length === 0) return null;
+    
+    return (
+      <div className="toast-container">
+        {toastNotifications.map(notification => (
+          <ToastNotification 
+            key={notification.id.toString()} 
+            notification={notification} 
+            onDismiss={handleDismissToast} 
+          />
+        ))}
+      </div>
+    );
+  };
 
   const timeAgo = (createdAt: string) => {
     const date = new Date(createdAt);
@@ -119,23 +271,25 @@ export function NotificationsPopover(params: {
   }, []);
 
   return (
-    <Popover modal open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button className={'relative h-9 w-9'} variant={'ghost'}>
-          <Bell className={'min-h-4 min-w-4'} />
+    <>
+      {renderToasts()}
+      <Popover modal open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button className={'relative h-9 w-9'} variant={'ghost'}>
+            <Bell className={'min-h-4 min-w-4'} />
 
-          <span
-            className={cn(
-              `fade-in animate-in zoom-in absolute right-1 top-1 mt-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[0.65rem] text-white`,
-              {
-                hidden: !notifications.length,
-              },
-            )}
-          >
-            {notifications.length}
-          </span>
-        </Button>
-      </PopoverTrigger>
+            <span
+              className={cn(
+                `fade-in animate-in zoom-in absolute right-1 top-1 mt-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[0.65rem] text-white`,
+                {
+                  hidden: !notifications.length,
+                },
+              )}
+            >
+              {notifications.length}
+            </span>
+          </Button>
+        </PopoverTrigger>
 
       <PopoverContent
         className={'flex w-full max-w-96 flex-col p-0 lg:min-w-64'}
@@ -147,6 +301,7 @@ export function NotificationsPopover(params: {
           {t('common:notifications')}
         </div>
 
+        <Separator />
         <Separator />
 
         <If condition={!notifications.length}>
@@ -245,5 +400,6 @@ export function NotificationsPopover(params: {
         </div>
       </PopoverContent>
     </Popover>
+    </>
   );
 }
