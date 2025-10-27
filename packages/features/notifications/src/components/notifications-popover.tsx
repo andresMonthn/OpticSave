@@ -159,23 +159,45 @@ export function NotificationsPopover(params: {
   
   const handleDismissToast = useCallback((id: number) => {
     setToastNotifications(prev => prev.filter(n => n.id !== id));
-    dismissNotification(id);
+    dismissNotification1(id);
   }, [dismissNotification1]);
 
   const onNotifications = useCallback(
     (notifications: PartialNotification[]) => {
       // Actualizar las notificaciones del popover
       setNotifications((existing) => {
-        const unique = new Set(existing.map((notification) => notification.id));
-
-        const notificationsFiltered = notifications.filter(
-          (notification) => !unique.has(notification.id),
-        );
+        // Crear un mapa de notificaciones existentes por ID para facilitar la actualización
+        const existingMap = new Map(existing.map(n => [n.id, n]));
+        
+        // Filtrar y actualizar notificaciones
+        const updatedNotifications = [...existing];
+        const newNotifications: PartialNotification[] = [];
+        
+        notifications.forEach(notification => {
+          // Si la notificación ya existe, actualizarla
+          if (existingMap.has(notification.id)) {
+            const index = updatedNotifications.findIndex(n => n.id === notification.id);
+            if (index !== -1) {
+              // Si está marcada como descartada, eliminarla
+              if (notification.dismissed) {
+                updatedNotifications.splice(index, 1);
+              } else {
+                // Actualizar la notificación existente
+                updatedNotifications[index] = notification;
+              }
+            }
+          } else if (!notification.dismissed) {
+            // Si es nueva y no está descartada, agregarla
+            newNotifications.push(notification);
+          }
+        });
         
         // Mostrar las nuevas notificaciones como toasts
-        setToastNotifications(prev => [...notificationsFiltered, ...prev]);
+        if (newNotifications.length > 0) {
+          setToastNotifications(prev => [...newNotifications, ...prev]);
+        }
         
-        return [...notificationsFiltered, ...existing];
+        return [...newNotifications, ...updatedNotifications];
       });
     },
     [setToastNotifications],

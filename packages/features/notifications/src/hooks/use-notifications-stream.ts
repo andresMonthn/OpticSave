@@ -39,6 +39,18 @@ export function useNotificationsStream(params: {
             params.onNotifications([payload.new as Notification]);
           },
         )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            filter: `account_id=in.(${params.accountIds.join(', ')})`,
+            table: 'notifications',
+          },
+          (payload) => {
+            params.onNotifications([payload.new as Notification]);
+          },
+        )
         .subscribe();
     },
   });

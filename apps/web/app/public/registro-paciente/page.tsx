@@ -157,8 +157,6 @@ const styles = `
   /* Mejoras para elementos interactivos en dispositivos táctiles */
   button, 
   [role="button"],
-  .checkbox,
-  .radio,
   .switch,
   select,
   
@@ -179,14 +177,21 @@ const styles = `
     /* Mejoras para elementos interactivos en móviles */
     button, 
     [role="button"],
-    input[type="checkbox"],
-    input[type="radio"],
     .switch {
       min-height: 1.5rem;
       min-width: 1.5rem;
       padding: 0.5rem;
       margin: 0.25rem;
       touch-action: manipulation;
+    }
+    
+    /* Restaurando estilos originales para checkbox y radio en móviles */
+    input[type="checkbox"],
+    input[type="radio"] {
+      min-height: initial;
+      min-width: initial;
+      padding: initial;
+      margin: initial;
     }
     
     /* Aumentar área táctil para botones */
@@ -263,10 +268,11 @@ const styles = `
       padding: 0.375rem;
     }
   }
+  /* Restaurando los estilos originales de checkbox y radio */
   input[type="checkbox"],
   input[type="radio"] {
-    min-height: 2.5rem;
-    min-width: 2.5rem;
+    min-height: initial;
+    min-width: initial;
   }
   
   label {
