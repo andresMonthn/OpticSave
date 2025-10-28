@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 
 import { CheckCircle2, CircleAlert, Info, TriangleAlert, XIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import Pusher from 'pusher-js';
 
 import { Database } from '@kit/supabase/database';
 import { Button } from '@kit/ui/button';
@@ -74,12 +75,18 @@ export function NotificationBubble(params: {
   accountIds: string[];
   autoCloseDelay?: number; // Tiempo en ms para cerrar automáticamente (por defecto 5000ms)
   onClick?: (notification: PartialNotification) => void;
+  pusherEnabled?: boolean; // Habilitar escucha de eventos Pusher
+  pusherChannel?: string; // Canal de Pusher a escuchar (por defecto 'pacientes-channel')
+  pusherEvent?: string; // Evento de Pusher a escuchar (por defecto 'nuevo-registro')
 }) {
   const { i18n, t } = useTranslation();
   const [activeNotifications, setActiveNotifications] = useState<PartialNotification[]>([]);
   const [notifications, setNotifications] = useState<PartialNotification[]>([]);
+  const pusherRef = useRef<Pusher | null>(null);
   
   const autoCloseDelay = params.autoCloseDelay || 5000;
+  const pusherChannel = params.pusherChannel || 'pacientes-channel';
+  const pusherEvent = params.pusherEvent || 'nuevo-registro';
 
   // Eliminada la función updateActiveNotifications para evitar ciclos infinitos
 
@@ -191,6 +198,54 @@ export function NotificationBubble(params: {
 
     return text.slice(0, 1).toUpperCase() + text.slice(1);
   };
+
+  // Configurar Pusher para escuchar eventos en tiempo real
+  useEffect(() => {
+    if (!params.pusherEnabled) return;
+
+    try {
+      // Inicializar Pusher con las credenciales
+      pusherRef.current = new Pusher(process.env.NEXT_PUBLIC_PUSHER_APP_KEY || '', {
+        cluster: process.env.NEXT_PUBLIC_PUSHER_APP_CLUSTER || 'us2',
+        forceTLS: true
+      });
+
+      // Suscribirse al canal
+      const channel = pusherRef.current.subscribe(pusherChannel);
+
+      // Escuchar el evento de nuevo registro
+      channel.bind(pusherEvent, (data: any) => {
+        console.log('Evento Pusher recibido:', data);
+        
+        // Crear una notificación a partir de los datos recibidos
+        const newNotification: PartialNotification = {
+          id: Date.now(), // Generar un ID único basado en timestamp
+          body: `Nuevo paciente registrado: ${data.paciente?.nombre || 'Sin nombre'}`,
+          type: 'info',
+          dismissed: false,
+          created_at: data.timestamp || new Date().toISOString(),
+          link: null
+        };
+        
+        // Añadir la notificación al estado
+        onNotifications([newNotification]);
+      });
+    } catch (error) {
+      console.error('Error al configurar Pusher:', error);
+    }
+
+    return () => {
+      // Limpiar suscripción al desmontar
+      if (pusherRef.current) {
+        try {
+          pusherRef.current.unsubscribe(pusherChannel);
+          pusherRef.current.disconnect();
+        } catch (error) {
+          console.error('Error al desconectar Pusher:', error);
+        }
+      }
+    };
+  }, [params.pusherEnabled, pusherChannel, pusherEvent, onNotifications]);
 
   // Actualizar las notificaciones cuando se refresque la página
   useEffect(() => {

@@ -18,6 +18,7 @@ export function UserNotifications(props: { userId: string }) {
       <NotificationBubble
         accountIds={[props.userId]}
         realtime={featuresFlagConfig.realtimeNotifications}
+        pusherEnabled={true}
       />
     </>
   );

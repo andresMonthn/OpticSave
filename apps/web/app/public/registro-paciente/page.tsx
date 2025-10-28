@@ -1,11 +1,13 @@
 "use client";
 //este componente le permite al cliente crear un paciente
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Home, Users } from "lucide-react";
+import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Home, Users, Moon, Sun } from "lucide-react";
 import { format, isSameDay, startOfDay, addDays } from "date-fns";
 import { es, id } from "date-fns/locale";
 import { useState, useEffect, useRef } from "react";
 import { Trans } from '@kit/ui/trans';
+import { useTheme } from "next-themes";
+import Pusher from 'pusher-js';
 // Constante para monitorear la fecha actual
 const FECHA_HOY = startOfDay(new Date());
 // Importaciones de componentes UI desde @kit/ui
@@ -22,11 +24,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@kit/u
 import { Badge } from "@kit/ui/badge";
 import { Checkbox } from "@kit/ui/checkbox";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
-// Importaciones para notificaciones y correos
-import { createNotificationsApi } from '@kit/notifications/api';
+import { enviarNotificacionPusher } from './pusher-service';
 
-import { getMailer } from '@kit/mailers';
-import { unknown } from "zod";
 
 // Estilos de animación personalizados
 const styles = `
@@ -47,10 +46,66 @@ const styles = `
 `;
 
 // Agregar los estilos al documento
+
+// Eliminado el componente ThemeToggle ya que implementamos la lógica directamente en el componente principal
+
+// Estilos CSS para temas claro y oscuro
+const themeStyles = `
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+`;
 if (typeof document !== 'undefined') {
+  // Agregar estilos de animación
   const styleSheet = document.createElement("style");
   styleSheet.textContent = styles;
   document.head.appendChild(styleSheet);
+  
+  // Agregar estilos de tema
+  const themeStyleSheet = document.createElement("style");
+  themeStyleSheet.textContent = themeStyles;
+  document.head.appendChild(themeStyleSheet);
 }
 
 // Definición de la interfaz para el tipo Paciente
@@ -104,6 +159,53 @@ export default function CrearPacientePage() {
   const [showNotification, setShowNotification] = useState(false);
   const [accountId, setAccountId] = useState<string | null>(null);
   
+  // Estado y lógica encapsulada para el manejo del tema
+  const [mounted, setMounted] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState('light');
+  
+  // Efecto para inicializar el tema desde localStorage
+  useEffect(() => {
+    setMounted(true);
+    const savedTheme = localStorage.getItem('registro-paciente-theme') || 'light';
+    setCurrentTheme(savedTheme);
+    document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+  }, []);
+
+  // Función para cambiar el tema
+  const toggleTheme = () => {
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    setCurrentTheme(newTheme);
+    
+    // Persistencia del tema
+    localStorage.setItem('registro-paciente-theme', newTheme);
+    
+    // Aplicar el tema al documento
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  };
+  
+  // Componente interno para el botón de tema
+  const ThemeButton = () => {
+    if (!mounted) return null;
+    
+    return (
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={toggleTheme}
+        className={`rounded-full fixed top-4 right-4 z-50 ${
+          currentTheme === 'dark' ? 'bg-gray-800 hover:bg-gray-700 border-gray-600' : 'bg-white hover:bg-gray-100'
+        }`}
+        aria-label="Cambiar tema"
+      >
+        {currentTheme === 'dark' ? (
+          <Sun className="h-5 w-5 text-yellow-500" />
+        ) : (
+          <Moon className="h-5 w-5 text-slate-700" />
+        )}
+      </Button>
+    );
+  };
+  
   // Componente de mensaje de éxito a pantalla completa
   const SuccessMessage = () => (
     <div className="fixed inset-0 bg-primary/95 flex items-center justify-center z-50 animate-in fade-in duration-300">
@@ -148,20 +250,6 @@ export default function CrearPacientePage() {
     title: '',
     message: ''
   });
-  // Función para mostrar alertas
-  const showAlert = (type: 'success' | 'error' | 'warning', title: string, message: string) => {
-    setAlertInfo({
-      show: true,
-      type,
-      title,
-      message
-    });
-    // Ocultar la alerta después de 3 segundos
-    setTimeout(() => {
-      setAlertInfo(prev => ({ ...prev, show: false }));
-    }, 3000);
-  };
-
 
   // Obtener el user_id de la URL
   const supabase = getSupabaseBrowserClient();
@@ -551,74 +639,21 @@ export default function CrearPacientePage() {
         console.warn("Error obteniendo account_id:", e);
       }
 
-      // Construir link local al historial clínico del paciente recién creado
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const linkLocal = `http://localhost:3000/home/dashboard/view`;
-
-      // Enviar notificación usando la API de Makerkit
-      if (accountId && linkLocal) {
-        try {
-          // Guardar el accountId para mostrar la notificación automática
-          setAccountId(accountId);
-          
-          // Usar la API de notificaciones de Makerkit
-          const response = await fetch("/api/notifications", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              account_id: accountId,
-              body: `Has creado un nuevo paciente: ${nombre}`,
-              link: linkLocal,
-              type: "info",
-              channel: "in_app", // Solo enviar notificación in-app
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
-          }
-          
-          // Activar la notificación automática
-          setShowNotification(true);
-
-          // Enviar notificación por email por separado
-          const emailResponse = await fetch("/api/notifications", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              account_id: accountId,
-              body: `Has creado un nuevo paciente: ${nombre}`,
-              link: linkLocal,
-              type: "info",
-              channel: "email", // Solo enviar notificación por email
-            }),
-          });
-
-          if (!emailResponse.ok) {
-            throw new Error(`Error HTTP en email: ${emailResponse.status}`);
-          }
-
-          console.log("Notificaciones enviadas correctamente");
-        } catch (err) {
-          console.error("Error al enviar notificaciones:", err);
-        }
-      } else {
-        console.warn("No se pudo determinar accountId o linkLocal para las notificaciones");
-      }
-
+      // Enviar notificación Pusher con los datos del paciente
       try {
-        // Enviar notificación in-app
-        const notificationsApi = createNotificationsApi(supabase);
-        // Use the correct method name based on the NotificationsApi interface
-        await (notificationsApi as any).createNotification({
-          title: 'Nuevo Paciente Registrado',
-          content: `Se ha registrado un nuevo paciente: ${nombre}`,
-          type: 'patient_registered',
-          user_id: userId
-        });
-        console.log('Notificación in-app enviada correctamente');
+        const pacienteData = {
+          nombre,
+          edad: edad ? parseInt(edad) : undefined,
+          telefono,
+          motivo_consulta: motivoConsulta === "Otro" ? `Otro: ${motivoConsultaOtro}` : motivoConsulta,
+          fecha_de_cita: (fechaCita ? fechaCita : startOfDay(new Date())).toISOString()
+        };
+        
+        enviarNotificacionPusher(pacienteData, accountId);
+        console.log('Notificación de nuevo paciente enviada correctamente');
       } catch (notificationError) {
-        console.error('Error al enviar notificación in-app:', notificationError);
+        console.error('Error al enviar notificación Pusher:', notificationError);
+        // No interrumpimos el flujo si falla la notificación
       }
 
       // Mostrar mensaje de éxito a pantalla completa
@@ -652,7 +687,7 @@ export default function CrearPacientePage() {
       
       {/* Mensaje de bienvenida para clientes externos */}
         <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-6">
-          <h2 className="font-semibold text-lg mb-2">¡Bienvenido al registro de pacientes de OpticsLab!</h2>
+          <h2 className="font-semibold text-lg mb-2">¡Bienvenido a OpticSave</h2>
           <p className="mb-2">Complete el siguiente formulario para agendar su cita. Todos los campos marcados con * son obligatorios.</p>
         <p>Su información será tratada con confidencialidad y solo será utilizada para brindarle una mejor atención.</p>
         
@@ -665,7 +700,7 @@ export default function CrearPacientePage() {
             onClick={rellenarFormularioTest}
           >
             <RefreshCw className="w-4 h-4 mr-2" />
-            Rellenar formulario para pruebas
+            Pruebas de desarrollo
           </Button>
         </div>
       </div>

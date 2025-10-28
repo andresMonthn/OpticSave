@@ -22,9 +22,12 @@ export const generateMetadata = async () => {
 export default withI18n(async function UserHomePage() {
   const { user } = await loadUserWorkspace();
   const nombre = user?.user_metadata?.name || user?.email || 'Usuario';
+  // Usamos la fecha del cliente para evitar problemas de zona horaria
   const fecha = new Date();
-  const fechaStr = fecha.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const horaStr = fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  // Ajustamos para la zona horaria de México (UTC-6)
+  const fechaMexico = new Date(fecha.toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+  const fechaStr = fechaMexico.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const horaStr = fechaMexico.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <>
