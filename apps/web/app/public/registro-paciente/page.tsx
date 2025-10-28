@@ -2,11 +2,9 @@
 //este componente le permite al cliente crear un paciente
 import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Home, Users, Moon, Sun } from "lucide-react";
 import { format, isSameDay, startOfDay, addDays } from "date-fns";
-import { es, id } from "date-fns/locale";
+import { es } from "date-fns/locale";
 import { useState, useEffect, useRef } from "react";
-import { Trans } from '@kit/ui/trans';
-import { useTheme } from "next-themes";
-import Pusher from 'pusher-js';
+
 // Constante para monitorear la fecha actual
 const FECHA_HOY = startOfDay(new Date());
 // Importaciones de componentes UI desde @kit/ui
@@ -44,67 +42,13 @@ const styles = `
   }
 `;
 
-// Agregar los estilos al documento
 
-// Eliminado el componente ThemeToggle ya que implementamos la lógica directamente en el componente principal
-
-// Estilos CSS para temas claro y oscuro
-const themeStyles = `
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-  }
-`;
+// Usamos los estilos globales de CSS definidos en la hoja global
 if (typeof document !== 'undefined') {
-  // Agregar estilos de animación
+  // Agregar solo los estilos de animación
   const styleSheet = document.createElement("style");
   styleSheet.textContent = styles;
   document.head.appendChild(styleSheet);
-  
-  // Agregar estilos de tema
-  const themeStyleSheet = document.createElement("style");
-  themeStyleSheet.textContent = themeStyles;
-  document.head.appendChild(themeStyleSheet);
 }
 
 // Definición de la interfaz para el tipo Paciente
@@ -155,8 +99,6 @@ interface CitaInfo {
 
 export default function CrearPacientePage() {
   // Estado para controlar la notificación
-  const [showNotification, setShowNotification] = useState(false);
-  const [accountId, setAccountId] = useState<string | null>(null);
   
   // Estado y lógica encapsulada para el manejo del tema
   const [mounted, setMounted] = useState(false);
@@ -185,7 +127,6 @@ export default function CrearPacientePage() {
   // Componente interno para el botón de tema
   const ThemeButton = () => {
     if (!mounted) return null;
-    
     return (
       <Button
         variant="outline"
@@ -207,8 +148,8 @@ export default function CrearPacientePage() {
   
   // Componente de mensaje de éxito a pantalla completa
   const SuccessMessage = () => (
-    <div className="fixed inset-0 bg-primary flex items-center justify-center z-50 animate-in fade-in duration-300" style={{ backgroundColor: "hsl(var(--primary))" }}>
-      <div className="text-white text-center p-8 scale-in-center rounded-lg shadow-xl" style={{ backgroundColor: "hsl(var(--primary))" }}>
+    <div className="fixed inset-0 bg-primary flex items-center justify-center z-50 animate-in fade-in duration-300">
+        <div className="text-white text-center p-8 scale-in-center rounded-lg shadow-xl bg-primary">
         <CheckCircle2 className="w-24 h-24 mx-auto mb-6 animate-bounce text-white" />
         <div className="text-5xl font-bold mb-4 text-white">
           SU CITA YA ESTÁ REGISTRADA
@@ -682,16 +623,10 @@ export default function CrearPacientePage() {
       <ThemeButton />
       
       <div className="container mx-auto px-4 sm:px-6 py-6">
-        <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Registro de Paciente</h1>
-      
-      {/* Mensaje de bienvenida para clientes externos */}
-        <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-6">
-          <h2 className="font-semibold text-lg mb-2">¡Bienvenido a OpticSave</h2>
-          <p className="mb-2">Complete el siguiente formulario para agendar su cita. Todos los campos marcados con * son obligatorios.</p>
-        <p>Su información será tratada con confidencialidad y solo será utilizada para brindarle una mejor atención.</p>
+        <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">OpticSave</h1>
         
         {/* Botón para rellenar automáticamente el formulario (solo visible en desarrollo) */}
-        <div className="mt-4">
+        <div className="mt-4 items-center justify-center flex">
           <Button 
             type="button" 
             variant="outline" 
@@ -702,7 +637,7 @@ export default function CrearPacientePage() {
             Pruebas de desarrollo
           </Button>
         </div>
-      </div>
+     
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-4 flex items-center text-sm sm:text-base">
@@ -1591,7 +1526,6 @@ export default function CrearPacientePage() {
                     type="submit"
                     disabled={!isFormValid || isSubmitting}
                     className="bg-primary text-white w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center font-bold py-6"
-                    style={{ backgroundColor: "hsl(var(--primary))" }}
                   >
                     {isSubmitting ? (
                       <>

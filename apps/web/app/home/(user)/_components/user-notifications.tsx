@@ -15,11 +15,11 @@ export function UserNotifications(props: { userId: string }) {
         realtime={featuresFlagConfig.realtimeNotifications}
       />
 
-      <NotificationBubble
+      {/* <NotificationBubble
         accountIds={[props.userId]}
         realtime={featuresFlagConfig.realtimeNotifications}
         pusherEnabled={true}
-      />
+      /> */}
     </>
   );
 }
