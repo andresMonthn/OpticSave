@@ -1,6 +1,5 @@
 "use client";
 //este componente le permite al cliente crear un paciente
-import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Home, Users, Moon, Sun } from "lucide-react";
 import { format, isSameDay, startOfDay, addDays } from "date-fns";
 import { es, id } from "date-fns/locale";
@@ -208,21 +207,21 @@ export default function CrearPacientePage() {
   
   // Componente de mensaje de éxito a pantalla completa
   const SuccessMessage = () => (
-    <div className="fixed inset-0 bg-primary/95 flex items-center justify-center z-50 animate-in fade-in duration-300">
-      <div className="text-white text-center p-8 scale-in-center">
-        <CheckCircle2 className="w-24 h-24 mx-auto mb-6 animate-bounce" />
-        <div className="text-5xl font-bold mb-4">
+    <div className="fixed inset-0 bg-primary flex items-center justify-center z-50 animate-in fade-in duration-300" style={{ backgroundColor: "hsl(var(--primary))" }}>
+      <div className="text-white text-center p-8 scale-in-center rounded-lg shadow-xl" style={{ backgroundColor: "hsl(var(--primary))" }}>
+        <CheckCircle2 className="w-24 h-24 mx-auto mb-6 animate-bounce text-white" />
+        <div className="text-5xl font-bold mb-4 text-white">
           SU CITA YA ESTÁ REGISTRADA
         </div>
-        <div className="text-xl opacity-90">
+        <div className="text-xl text-white">
           ¡Gracias por confiar en nosotros!
         </div>
-        <div className="text-lg mt-4 opacity-80">
+        <div className="text-lg mt-4 text-white">
           Esta ventana se cerrará automáticamente en 5 segundos...
         </div>
         <Button
           onClick={() => window.close()}
-          className="mt-6 bg-white text-primary hover:bg-white/90"
+          className="mt-6 bg-white text-primary hover:bg-white/90 font-bold"
         >
           Cerrar ventana
         </Button>
@@ -230,7 +229,6 @@ export default function CrearPacientePage() {
     </div>
   );
 
-  const router = useRouter();
   // Referencias para los inputs
   const nombreRef = useRef<HTMLInputElement>(null);
   const telefonoRef = useRef<HTMLInputElement>(null);
@@ -681,6 +679,7 @@ export default function CrearPacientePage() {
   return (
     <>
       {showSuccessMessage && <SuccessMessage />}
+      <ThemeButton />
       
       <div className="container mx-auto px-4 sm:px-6 py-6">
         <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Registro de Paciente</h1>
@@ -1590,21 +1589,22 @@ export default function CrearPacientePage() {
 
                   <Button
                     type="submit"
-                disabled={!isFormValid || isSubmitting}
-                className="bg-primary text-white w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center"
-              >
-                {isSubmitting ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Guardar paciente
-                  </>
-                )}
-              </Button>
+                    disabled={!isFormValid || isSubmitting}
+                    className="bg-primary text-white w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center font-bold py-6"
+                    style={{ backgroundColor: "hsl(var(--primary))" }}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="mr-2 h-5 w-5" />
+                        Guardar paciente
+                      </>
+                    )}
+                  </Button>
             </div>
           </form>
         </CardContent>
