@@ -23,15 +23,9 @@ import {
 } from "@kit/ui/table"
 import { Button } from "@kit/ui/button"
 import { Input } from "@kit/ui/input"
-import { useState, useRef, useEffect } from "react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@kit/ui/dropdown-menu"
+import { useState, useEffect } from "react"
 import { toast } from "@kit/ui/sonner"
-import { Copy, FileText, MoreVertical, Eye, Menu } from "lucide-react"
+import { Copy,  MoreVertical, Eye } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { 
   Dialog,
@@ -66,16 +60,13 @@ export function DataTable<TData, TValue>({
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768)
-    }
-    
+    }  
     checkIfMobile()
-    window.addEventListener('resize', checkIfMobile)
-    
+    window.addEventListener('resize', checkIfMobile)    
     return () => {
       window.removeEventListener('resize', checkIfMobile)
     }
   }, [])
-
   // Filtrar columnas para móvil (solo nombre y fecha)
   const getVisibleColumns = () => {
     if (isMobile) {

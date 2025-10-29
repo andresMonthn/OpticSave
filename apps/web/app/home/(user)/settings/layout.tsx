@@ -13,7 +13,6 @@ function UserSettingsLayout(props: React.PropsWithChildren) {
         title={<Trans i18nKey={'account:routes.settings'} />}
         description={<AppBreadcrumbs />}
       />
-
       {props.children}
     </>
   );

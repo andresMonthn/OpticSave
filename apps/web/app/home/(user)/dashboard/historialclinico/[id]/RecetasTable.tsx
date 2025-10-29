@@ -1,9 +1,8 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import { format, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@kit/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@kit/ui/table";
 import { Button } from "@kit/ui/button";
 import { PencilIcon } from "lucide-react";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
@@ -37,7 +36,6 @@ function parseDateSafe(input: unknown): Date | null {
   }
   return null;
 }
-
 
 interface RecetaRelacion {
   tipo: "uso" | "final";
@@ -83,10 +81,8 @@ interface RecetasTableProps {
   diagnosticoId?: string;
 }
 
-
-export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, handleDeleteRx, pacienteId, diagnosticoId: propDiagnosticoId }: RecetasTableProps) {
-  const supabase = getSupabaseBrowserClient();
-  
+export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: propDiagnosticoId }: RecetasTableProps) {
+  const supabase = getSupabaseBrowserClient(); 
   // Estado para los datos de la receta en el popover
   const [editRxData, setEditRxData] = useState({
     esf: null as number | null,
@@ -98,11 +94,9 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
     ejeDisabled: false,
     addDisabled: false
   });
-  
   // Estado para la fecha de la receta en el popover
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-  const [fechaCita, setFechaCita] = useState<string | null>(null);
-  
+  const [fechaCita, setFechaCita] = useState<string | null>(null); 
   // Estados para el contexto de la receta que se está editando
   const [diagnosticoId, setDiagnosticoId] = useState<string | undefined>(propDiagnosticoId);
   const [rxType, setRxType] = useState<'uso' | 'final'>('uso');
@@ -111,10 +105,8 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
   
   // Estado para controlar el popover
   const [openPopover, setOpenPopover] = useState<string | null>(null);
-  
   // Estado para controlar si está cargando
   const [isLoading, setIsLoading] = useState(false);
-
   // Estado para almacenar el valor DIP
   const [dipValue, setDipValue] = useState<number | null>(null);
   const [isDipPopoverOpen, setIsDipPopoverOpen] = useState(false);
@@ -130,7 +122,6 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
         console.log("No hay pacienteId, no se puede obtener el valor DIP");
         return;
       }
-
       try {
         // Primero intentamos obtener el diagnóstico por ID si está disponible
         if (diagnosticoId) {
@@ -155,7 +146,6 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
-
         if (error) {
           console.log("No se encontró diagnóstico para el paciente:", pacienteId);
           return;
@@ -169,7 +159,6 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
         console.error("Error al obtener valor DIP:", error);
       }
     };
-
     fetchDipValue();
   }, [diagnosticoId, pacienteId, supabase]);
 
@@ -182,15 +171,12 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
           .select("fecha_de_cita, estado")
           .eq("id", pacienteId)
           .single();
-
         if (error) throw error;
-
         if (data && typeof data === 'object') {
           // Guardar el estado del paciente
           if ('estado' in data) {
             setEstadoPaciente((data as any).estado);
           }
-
           // Procesar la fecha de cita
           if ('fecha_de_cita' in data && (data as any).fecha_de_cita) {
             setFechaCita((data as any).fecha_de_cita);
@@ -592,15 +578,12 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
     ejeDisabled?: boolean;
     addDisabled?: boolean;
   }
-
   // Este useEffect se ha movido al inicio del componente para mantener el orden consistente
-
   // Función para formatear números a dos decimales
   const formatToTwoDecimals = (value: number | null): string => {
     if (value === null) return '';
     return Number(value).toFixed(2);
   };
-  
   /**
    * Guarda o actualiza la receta en la base de datos
    */
@@ -611,8 +594,7 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
       if (!userData.user) {
         showAlert('error', 'Acceso denegado', 'Debe iniciar sesión para agregar recetas');
         return;
-      }
-      
+      }   
       // Datos de la receta a guardar
       const rxDataToSave = {
         esf: editRxData.esfDisabled ? 'N' : (editRxData.esf === null ? 'N' : editRxData.esf),
@@ -624,11 +606,9 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
         eje: editRxData.ejeDisabled ? 'N' : (editRxData.eje === null ? 'N' : editRxData.eje),
         add: editRxData.addDisabled ? 'N' : (editRxData.add === null ? 'N' : editRxData.add),
         user_id: userData.user.id
-      };
-      
+      };     
       // Asegurarnos de tener el ID de la receta a editar
-      let rxIdToUpdate = rxId;
-      
+      let rxIdToUpdate = rxId;   
       // Si no tenemos el ID pero tenemos el diagnóstico, obtener el ID correspondiente
       if (!rxIdToUpdate && diagnosticoId) {
         const { data: diagData, error: diagError } = await supabase
@@ -828,18 +808,12 @@ export function RecetasTable({ recetas, showAlert, setRxData, setRxDialogOpen, h
           )}
         </div>
       )}
-
-
-
       {/* Renderizar tablas separadas para cada tipo de receta */}
       {Object.entries(recetasPorTipo).map(([tipo, recetasDelTipo]) => (
         <div key={tipo} className="mb-4">
           <div className="bg-slate-200 dark:bg-slate-700 p-2 font-semibold text-center">
             {tipo === 'uso' ? 'Recetas de Uso' : 'Recetas Finales'}
-          </div>
-
-
-          
+          </div> 
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>

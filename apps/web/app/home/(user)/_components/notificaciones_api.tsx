@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect, useCallback, useRef, memo } from "react";
 import { Card, CardContent } from "@kit/ui/card";
 import { format, compareDesc } from "date-fns";
@@ -23,7 +22,6 @@ interface Paciente {
   created_at: string;
   updated_at: string;
 }
-
 // Componente de tarjeta de paciente optimizado con memo
 const PacienteCard = memo(({ 
   paciente, 
@@ -39,7 +37,7 @@ const PacienteCard = memo(({
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.5 }}
       layout
       className="w-full"
     >
@@ -47,16 +45,12 @@ const PacienteCard = memo(({
         <button 
           onClick={() => onClose(paciente.id)}
           className="absolute top-2 right-2 text-foreground/50 hover:text-destructive transition-colors duration-300 p-1 rounded-full hover:bg-destructive/10"
-          aria-label="Cerrar notificación"
-        >
+          aria-label="Cerrar notificación">
           <X size={16} />
         </button>
         <CardContent className="p-4">
           <div className="flex items-center mb-2">
             <span className="mr-2 font-medium">{paciente.nombre} {paciente.apellido}</span>
-            {new Date(paciente.updated_at).getTime() > Date.now() - 60000 && (
-              <span className="inline-block w-2 h-2 bg-primary rounded-full animate-pulse" />
-            )}
           </div>
           <p className="text-sm text-card-foreground/80">
             Cita: {formatearFecha(paciente.fecha_de_cita)}
@@ -66,7 +60,6 @@ const PacienteCard = memo(({
     </motion.div>
   );
 });
-
 PacienteCard.displayName = "PacienteCard";
 
 export default function NotificacionesAPI() {
@@ -113,26 +106,22 @@ export default function NotificacionesAPI() {
   const fetchPacientes = useCallback(async () => {
     try {
       setError(null);
-      
       // Verificar autenticación
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
         setError('Usuario no autenticado');
         return;
       }
-
       // Obtener todos los pacientes del usuario
       const { data: pacientesData, error: pacientesError } = await supabase
         .from('pacientes' as any)
         .select('*')
-        .eq('user_id', userData.user.id);
-
+        .eq('user_id', userData.user.id);//solo muestra los registros que ha loggeado.
       if (pacientesError) {
         console.error('Error fetching pacientes:', pacientesError);
         setError('Error al cargar las citas de pacientes');
         return;
       }
-
       const pacientesList = (pacientesData as unknown as Paciente[]) || [];
       
       // Filtrar pacientes que no están en la lista de cerrados
@@ -142,17 +131,15 @@ export default function NotificacionesAPI() {
       
       // Si hay pacientes, mostrar el card y configurar el temporizador para ocultarlo
       if (pacientesFiltrados.length > 0) {
-        setIsCardVisible(true);
-        
+        setIsCardVisible(true); 
         // Limpiar cualquier temporizador existente
         if (hideTimeoutRef.current) {
           clearTimeout(hideTimeoutRef.current);
-        }
-        
-        // Configurar nuevo temporizador para ocultar el card después de 5 segundos
+        } 
+        // Configurar nuevo temporizador para ocultar el card después de 4 segundos
         hideTimeoutRef.current = setTimeout(() => {
           setIsCardVisible(false);
-        }, 5000);
+        }, 4000);
       }
       
       setPacientes(ordenarPacientes(pacientesFiltrados));

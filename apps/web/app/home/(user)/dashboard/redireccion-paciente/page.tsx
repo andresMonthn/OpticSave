@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
-
 export default function RedireccionPaciente() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -30,11 +29,9 @@ export default function RedireccionPaciente() {
           .limit(1);
           
         if (error) throw error;
-        
         if (!pacientes || !Array.isArray(pacientes) || pacientes.length === 0) {
           throw new Error("No se encontraron pacientes recientes");
-        }
-        
+        }   
         // Asegurarse de que pacientes[0] existe y tiene una propiedad id
         const pacienteReciente = pacientes[0] as unknown as { id: string };
         const pacienteId = pacienteReciente?.id || null;

@@ -1,6 +1,4 @@
 "use client";
-/// componente creador de qr
-
 import { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 // @ts-ignore
@@ -12,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@kit/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@kit/ui/alert";
 import { Copy, Check, AlertCircle } from "lucide-react";
-import { Trans } from '@kit/ui/trans';
+
 
 export default function QRGeneratorPage() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -25,19 +23,12 @@ export default function QRGeneratorPage() {
     const fetchUserId = async () => {
       setLoading(true);
       setError(null);
-      
       try {
         const supabase = getSupabaseBrowserClient();
-        const { data, error } = await supabase.auth.getUser();
-        
+        const { data, error } = await supabase.auth.getUser();       
         if (error) {
           throw new Error("No se pudo obtener la información del usuario");
-        }
-        
-        if (!data.user) {
-          throw new Error("No hay sesión de usuario activa");
-        }
-        
+        }  
         setUserId(data.user.id);
         const generatedUrl = `https://opticsave.vercel.app/public/registro-paciente?user_id=${data.user.id}`;
         setQrUrl(generatedUrl);
@@ -47,16 +38,14 @@ export default function QRGeneratorPage() {
       } finally {
         setLoading(false);
       }
-    };
-    
+    };  
     fetchUserId();
   }, []);
 
   const handleCopy = () => {
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 3000);
   };
-
   return (
     <>
       <HomeLayoutPageHeader
@@ -90,7 +79,7 @@ export default function QRGeneratorPage() {
                       value={qrUrl}
                       size={250}
                       bgColor={"#ffffff"}
-                      fgColor={"#000000"}
+                      fgColor={"#2209c3ff"}
                       level={"H"}
                       includeMargin={true}
                     />
@@ -116,7 +105,7 @@ export default function QRGeneratorPage() {
             </CardContent>
             <CardFooter className="flex justify-center">
               <p className="text-xs text-gray-500 text-center">
-                Este código QR permite a los pacientes registrarse directamente sin necesidad de iniciar sesión
+                Este código QR permite a los pacientes registrarse directamente 
               </p>
             </CardFooter>
           </Card>

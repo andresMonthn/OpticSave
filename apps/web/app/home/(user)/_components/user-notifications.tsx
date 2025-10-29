@@ -1,6 +1,5 @@
 import { NotificationsPopover } from '@kit/notifications/components';
 import { NotificationBubble } from '@kit/notifications/components';
-
 import featuresFlagConfig from '~/config/feature-flags.config';
 
 export function UserNotifications(props: { userId: string }) {
@@ -15,6 +14,7 @@ export function UserNotifications(props: { userId: string }) {
         realtime={featuresFlagConfig.realtimeNotifications}
       />
 
+      {/*Este componente viejo con logica para las notificaciones*/}
       {/* <NotificationBubble
         accountIds={[props.userId]}
         realtime={featuresFlagConfig.realtimeNotifications}
