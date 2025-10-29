@@ -19,6 +19,8 @@ export const generateMetadata = async () => {
   };
 };
 
+
+//inportante modificacion de dependencias prueba para realizar rama
 export default withI18n(async function UserHomePage() {
   const { user } = await loadUserWorkspace();
   const nombre = user?.user_metadata?.name || user?.email || 'Usuario';
