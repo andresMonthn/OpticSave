@@ -14,7 +14,6 @@ import { DateTimeDisplay } from './_components/date-time-display';
 export const generateMetadata = async () => {
   const i18n = await createI18nServerInstance();
   const title = i18n.t('account:homePage');
-
   return {
     title,
   };
