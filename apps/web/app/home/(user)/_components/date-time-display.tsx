@@ -45,7 +45,7 @@ export const DigitalClock = () => {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: false
+    hour12: true
   });
 
   return (
@@ -88,7 +88,7 @@ export const DateTimeDisplay = () => {
   return (
     <div className="flex items-center gap-4">
       <DateDisplay />
-      <div className="bg-gray-100 px-4 py-2 rounded-md flex items-center">
+      <div className="px-4 py-2 rounded-md flex items-center">
         <Clock className="h-5 w-5 mr-2 text-gray-600" />
         <DigitalClock />
       </div>

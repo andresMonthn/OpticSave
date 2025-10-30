@@ -246,7 +246,7 @@ export default function NotificacionesAPI() {
     return (
       <div style={containerStyle} className="p-4 bg-card/90 border border-primary/10">
         <div className="flex justify-center items-center p-4">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <Loader2 className="h-6 w-4 animate-spin text-primary" />
           <span className="ml-2 text-foreground text-sm">Cargando...</span>
         </div>
       </div>
