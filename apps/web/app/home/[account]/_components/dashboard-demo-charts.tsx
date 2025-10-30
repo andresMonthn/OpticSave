@@ -278,153 +278,101 @@ export default function DashboardDemo() {
             </DropdownMenu>
           </div>
 
-          <div
-            className={
-                  'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 w-full'
-            }
-            style={{ minHeight: 'min-content' }}
-          >
-            <MagicBento
-              variant="overlay"
-              enableSpotlight
-              enableStars
-              clickEffect
-              glowColor="0, 100, 255"
-              style={{ borderRadius: '12px'}}
-            >
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className={'flex items-center gap-2.5'}>
-                    <span>Total Pacientes</span>
-                    <Trend trend={comparacionMensual > 0 ? 'up' : comparacionMensual < 0 ? 'down' : 'stale'}>
-                      {comparacionMensual > 0 ? `+${comparacionMensual}%` : `${comparacionMensual}%`}
-                    </Trend>
-                  </CardTitle>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 w-full">
+            <div className="flex flex-col space-y-6">
+              {/* Columna izquierda */}
+              <MagicBento
+                variant="overlay"
+                enableSpotlight
+                enableStars
+                clickEffect
+                glowColor="0, 100, 255"
+                style={{ borderRadius: '12px'}}
+                className="flex-1"
+              >
+                <Card className="h-full">
+                  <CardHeader className="p-4">
+                    <CardTitle className={'flex items-center gap-2.5 text-base'}>
+                      <span>Total Pacientes</span>
+                      <Trend trend={comparacionMensual > 0 ? 'up' : comparacionMensual < 0 ? 'down' : 'stale'}>
+                        {comparacionMensual > 0 ? `+${comparacionMensual}%` : `${comparacionMensual}%`}
+                      </Trend>
+                    </CardTitle>
 
-                      <CardDescription>
-                    <span>Número total de pacientes registrados</span>
-                  </CardDescription>
+                    <CardDescription className="text-xs">
+                      <span>Número total de pacientes registrados</span>
+                    </CardDescription>
 
-                  <div>
-                    <Figure>{totalPacientes}</Figure>
-                  </div>
-                </CardHeader>
+                    <div>
+                      <Figure>{totalPacientes}</Figure>
+                    </div>
+                  </CardHeader>
 
-                    <CardContent className={'space-y-4'}>
-                  <Chart data={pacientesPorMes} />
-                </CardContent>
-              </Card>
-            </MagicBento>
+                  <CardContent className={'p-4 flex justify-center'}>
+                    <Chart data={pacientesPorMes} />
+                  </CardContent>
+                </Card>
+              </MagicBento>
 
+              {chartVisibility.pacientesPorMes && (
+                <div className="w-full">
+                  <PacientesPorMesChart data={pacientesPorMes} />
+                </div>
+              )}
+            </div>
 
-            <MagicBento
-              variant="overlay"
-              enableSpotlight
-              enableStars
-              clickEffect
-              glowColor="0, 100, 255"
-              style={{ borderRadius: '12px' }}
-            >
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className={'flex items-center gap-2.5'}>
-                    <span>Pacientes Atendidos</span>
-                    <Trend trend={'up'}>{pacientesAtendidos > 0 && totalPacientes > 0 ?
-                      `${Math.round((pacientesAtendidos / totalPacientes) * 100)}%` : '0%'}
-                    </Trend>
-                  </CardTitle>
+            <div className="flex flex-col space-y-6">
+              {/* Columna derecha */}
+              <MagicBento
+                variant="overlay"
+                enableSpotlight
+                enableStars
+                clickEffect
+                glowColor="0, 100, 255"
+                style={{ borderRadius: '12px' }}
+                className="flex-1"
+              >
+                <Card className="h-full">
+                  <CardHeader className="p-4">
+                    <CardTitle className={'flex items-center gap-2.5 text-base'}>
+                      <span>Pacientes Atendidos</span>
+                      <Trend trend={'up'}>{pacientesAtendidos > 0 && totalPacientes > 0 ?
+                        `${Math.round((pacientesAtendidos / totalPacientes) * 100)}%` : '0%'}
+                      </Trend>
+                    </CardTitle>
 
-                      <CardDescription>
-                    <span>Pacientes con estado "atendido"</span>
-                  </CardDescription>
+                    <CardDescription className="text-xs">
+                      <span>Pacientes con estado "atendido"</span>
+                    </CardDescription>
 
-                  <div>
-                    <Figure>{pacientesAtendidos}</Figure>
-                  </div>
-                </CardHeader>
+                    <div>
+                      <Figure>{pacientesAtendidos}</Figure>
+                    </div>
+                  </CardHeader>
 
-                    <CardContent>
-                  <Chart data={pacientesPorMes.map(item => ({
-                    name: item.name,
-                    value: Math.round(item.value * (pacientesAtendidos / totalPacientes || 0))
-                  }))} />
-                </CardContent>
-              </Card>
-            </MagicBento>
+                  <CardContent className="p-4 flex justify-center">
+                    <Chart data={pacientesPorMes.map(item => ({
+                      name: item.name,
+                      value: Math.round(item.value * (pacientesAtendidos / totalPacientes || 0))
+                    }))} />
+                  </CardContent>
+                </Card>
+              </MagicBento>
 
-            {/* Magic Bento demo card */}
-            <MagicBento
-              variant="overlay"
-              enableSpotlight
-              enableStars      
-              clickEffect
-                  glowColor="0, 100, 255" style={{ borderRadius: '12px' }}
-            >
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className={'flex items-center gap-2.5'}>
-                    <span>Pacientes Pendientes</span>
-                    <Trend trend={pacientesPendientes > pacientesAtendidos ? 'down' : 'up'}>
-                      {pacientesPendientes > 0 && totalPacientes > 0 ?
-                        `${Math.round((pacientesPendientes / totalPacientes) * 100)}%` : '0%'}
-                    </Trend>
-                  </CardTitle>
-
-                      <CardDescription>
-                    <span>Pacientes con estado "pendiente"</span>
-                  </CardDescription>
-
-                  <div>
-                    <Figure>{pacientesPendientes}</Figure>
-                  </div>
-                </CardHeader>
-
-                    <CardContent>
-                  <Chart data={pacientesPorMes.map(item => ({
-                    name: item.name,
-                    value: Math.round(item.value * (pacientesPendientes / totalPacientes || 0))
-                  }))} />
-                </CardContent>
-              </Card>
-            </MagicBento>
-
-
-                <MagicBento variant="overlay" enableSpotlight enableStars clickEffect glowColor="0, 100, 255" style={{ borderRadius: '12px' }}>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className={'flex items-center gap-2.5'}>
-                    <span>Nuevos Pacientes</span>
-                    <Trend trend={comparacionMensual > 0 ? 'up' : 'down'}>
-                      {comparacionMensual > 0 ? `+${comparacionMensual}%` : `${comparacionMensual}%`}
-                    </Trend>
-                  </CardTitle>
-
-                      <CardDescription>
-                    <span>Pacientes registrados este mes</span>
-                  </CardDescription>
-
-                  <div>
-                    <Figure>{pacientesPorMes.length > 0 ? pacientesPorMes[pacientesPorMes.length - 1].value : 0}</Figure>
-                  </div>
-                </CardHeader>
-
-                    <CardContent>
-                  <Chart data={pacientesPorMes} />
-                </CardContent>
-              </Card>
-            </MagicBento>
+              {chartVisibility.estadoPacientes && (
+                <div className="w-full">
+                  <EstadoPacientesChart data={pacientesPorEstado} />
+                </div>
+              )}
+            </div>
           </div>
 
-          {chartVisibility.pacientesPorMes && (
-            <PacientesPorMesChart data={pacientesPorMes} />
-          )}
-
-          {chartVisibility.estadoPacientes && (
-            <EstadoPacientesChart data={pacientesPorEstado} />
-          )}
-
           {chartVisibility.pacientesActivos && (
-            <PacientesActivosChart data={activosPorMes} />
+            <div className="w-full mt-6 flex justify-center">
+              <div className="max-w-xl">
+                <PacientesActivosChart data={activosPorMes} />
+              </div>
+            </div>
           )}
 
           {chartVisibility.pacientesDestacados && (
@@ -463,12 +411,12 @@ function Chart(
   } satisfies ChartConfig;
 
   return (
-    <ChartContainer config={chartConfig} className="w-full h-full min-h-[120px]">
+    <ChartContainer config={chartConfig} className="w-full h-full" style={{ width: '300px', height: '300px' }}>
       <LineChart 
         data={props.data}
         margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-        width={undefined}
-        height={undefined}
+        width={300}
+        height={300}
       >
         <CartesianGrid vertical={false} />
         <XAxis
@@ -482,6 +430,7 @@ function Chart(
         <ChartTooltip
           cursor={false}
           content={<ChartTooltipContent hideLabel />}
+          wrapperStyle={{ zIndex: 100 }}
         />
         <Line
           dataKey="value"
@@ -506,20 +455,20 @@ function PacientesPorMesChart({ data }: { data: { name: string; value: number }[
   return (
     <MagicBento variant="overlay" enableSpotlight enableStars clickEffect glowColor="0, 100, 255" className="w-full" style={{ borderRadius: '12px' }}> 
       <Card className="w-full">
-        <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="text-lg sm:text-xl">Pacientes por Mes</CardTitle>
-          <CardDescription className="text-sm">
+        <CardHeader className="p-4">
+          <CardTitle className="text-base">Pacientes por Mes</CardTitle>
+          <CardDescription className="text-xs">
             Mostrando el número de pacientes registrados por mes
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="p-4 sm:p-6">
-          <ChartContainer className={'w-full h-[30vh] min-h-[250px] max-h-[400px]'} config={chartConfig}>
+        <CardContent className="p-4 flex justify-center">
+          <ChartContainer className="flex justify-center" style={{ width: '300px', height: '300px' }} config={chartConfig}>
             <AreaChart 
               data={data}
               margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
-              width={undefined}
-              height={undefined}
+              width={300}
+              height={300}
             >
               <defs>
                 <linearGradient id="fillPacientes" x1="0" y1="0" x2="0" y2="1">
@@ -547,6 +496,7 @@ function PacientesPorMesChart({ data }: { data: { name: string; value: number }[
               <ChartTooltip
                 cursor={false}
                 content={<ChartTooltipContent indicator="dot" />}
+                wrapperStyle={{ zIndex: 100 }}
               />
               <Area
                 dataKey="value"
@@ -591,20 +541,20 @@ function EstadoPacientesChart({ data }: { data: { name: string; value: number }[
 
   return (
     <Card className="w-full">
-      <CardHeader className="p-4 sm:p-6">
-        <CardTitle className="text-lg sm:text-xl">Estado de Pacientes</CardTitle>
-        <CardDescription className="text-sm">
+      <CardHeader className="p-4">
+        <CardTitle className="text-base">Estado de Pacientes</CardTitle>
+        <CardDescription className="text-xs">
           Distribución de pacientes por estado
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="p-4 sm:p-6">
-        <ChartContainer className={'w-full h-[30vh] min-h-[250px] max-h-[400px]'} config={chartConfig}>
+      <CardContent className="p-4 flex justify-center">
+        <ChartContainer style={{ width: '300px', height: '300px' }} config={chartConfig}>
           <BarChart 
             data={data}
             margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
-            width={undefined}
-            height={undefined}
+            width={300}
+            height={300}
           >
             <CartesianGrid vertical={false} />
             <XAxis
@@ -618,6 +568,7 @@ function EstadoPacientesChart({ data }: { data: { name: string; value: number }[
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent />}
+              wrapperStyle={{ zIndex: 100 }}
             />
             <Bar
               dataKey="value"
@@ -640,19 +591,22 @@ function PacientesActivosChart({ data }: { data: { name: string; value: number }
   } satisfies ChartConfig;
 
   return (
-    <MagicBento variant="overlay" enableSpotlight enableStars enableBorderGlow clickEffect glowColor="0, 0, 25" className="w-full">
+    <MagicBento variant="overlay" enableSpotlight enableStars clickEffect glowColor="0, 100, 255" style={{ borderRadius: '12px' }}>
       <Card className="w-full">
-        <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="text-lg sm:text-xl">Pacientes Activos por Mes</CardTitle>
-          <CardDescription className="text-sm">Conteo de pacientes con estado "activo" por mes</CardDescription>
+        <CardHeader className="p-4">
+          <CardTitle className="text-base">Pacientes Activos por Mes</CardTitle>
+          <CardDescription className="text-xs">
+            Mostrando el número de pacientes activos por mes
+          </CardDescription>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6">
-          <ChartContainer className={'w-full h-[30vh] min-h-[250px] max-h-[400px]'} config={chartConfig}>
+
+        <CardContent className="p-4 flex justify-center">
+          <ChartContainer style={{ width: '300px', height: '300px' }} config={chartConfig}>
             <AreaChart 
               data={data}
               margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
-              width={undefined}
-              height={undefined}
+              width={300}
+              height={300}
             >
               <defs>
                 <linearGradient id="fillActivos" x1="0" y1="0" x2="0" y2="1">

@@ -10,6 +10,7 @@ import { loadUserWorkspace } from './_lib/server/load-user-workspace';
 import { Card, CardHeader, CardTitle } from '@kit/ui/card';
 import { DashboardDemo } from '../[account]/_components/dashboard-demo';
 import { DateTimeDisplay } from './_components/date-time-display';
+import { Separator } from '@kit/ui/separator';
 
 export const generateMetadata = async () => {
   const i18n = await createI18nServerInstance();
@@ -40,8 +41,7 @@ export default withI18n(async function UserHomePage() {
               <DateTimeDisplay />
             </CardHeader>
           </Card>
-        </div>
-        <div style={{height: '100vh', width: '100vw'}}>
+          <Separator ></Separator>
           <DashboardDemo />
         </div>
         
