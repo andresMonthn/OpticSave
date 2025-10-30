@@ -135,7 +135,8 @@ export default function MagicBento({
 
   // Dynamic styles based on effects
   const containerStyle: React.CSSProperties = {
-    ...style,
+    ...style, // Ensure custom styles are applied first as base
+    borderRadius: style?.borderRadius || '12px', // Default border radius if not specified
     ...(enableTilt && !disableAnimations
       ? {
           transform: `perspective(800px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) scale(1.01)`,
@@ -161,7 +162,7 @@ export default function MagicBento({
     switch (variant) {
       case "card":
         return [
-          "relative overflow-hidden rounded-2xl border",
+          "relative overflow-hidden border",
           "bg-background/30 backdrop-blur-sm p-6",
           baseTransition,
           !disableAnimations ? "hover:scale-[1.01]" : "",

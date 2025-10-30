@@ -72,7 +72,6 @@ export default function DashboardDemo() {
   const [totalPacientes, setTotalPacientes] = useState<number>(0);
   const [pacientesAtendidos, setPacientesAtendidos] = useState<number>(0);
   const [pacientesPendientes, setPacientesPendientes] = useState<number>(0);
-  const [pacientesNuevos, setPacientesNuevos] = useState<number>(0);
   const [pacientesActivos, setPacientesActivos] = useState<number>(0);
   const [activosPorMes, setActivosPorMes] = useState<any[]>([]);
   const [chartVisibility, setChartVisibility] = useState({
@@ -216,29 +215,31 @@ export default function DashboardDemo() {
   return (
     <div
       className={
-        'animate-in fade-in flex flex-col space-y-4 w-full h-full min-h-[calc(100vh-10rem)] duration-500'
+        'animate-in fade-in flex flex-col space-y-4 w-full h-full min-h-[calc(100vh-8rem)] duration-500'
       }
+      style={{ maxHeight: 'calc(100vh - 8rem)', overflowY: 'auto' }}
     >
       {loading ? (
         <div className="flex justify-center items-center h-full min-h-[40vh]">
           <p>Cargando datos de pacientes...</p>
         </div>
       ) : error ? (
-        <div className="flex justify-center items-center h-full min-h-[40vh]">
+          <div className="flex justify-center items-center h-full min-h-[40vh]">
           <p className="text-red-500">Error: {error}</p>
         </div>
       ) : (
         <>
-          <div className="flex justify-end mb-2 w-full">
+              <div className="flex justify-end mb-2 w-full px-2">
             {/* Botón de configuración de gráficos */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="text-sm md:text-base">
+                    <Button variant="outline" size="sm" className="text-sm md:text-base">
                   <Menu className="h-4 w-4 mr-2" />
-                  Configurar gráficos
+                  <span className="hidden sm:inline">Configurar gráficos</span>
+                  <span className="sm:hidden">Config</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuContent align="end" className="z-50">
                 <DropdownMenuLabel>Mostrar</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuCheckboxItem
@@ -279,8 +280,9 @@ export default function DashboardDemo() {
 
           <div
             className={
-              'grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 w-full auto-rows-fr'
+                  'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 w-full'
             }
+            style={{ minHeight: 'min-content' }}
           >
             <MagicBento
               variant="overlay"
@@ -288,18 +290,18 @@ export default function DashboardDemo() {
               enableStars
               clickEffect
               glowColor="0, 100, 255"
-              className="w-full h-full"
+              style={{ borderRadius: '12px'}}
             >
-              <Card className="w-full h-full">
-                <CardHeader className="p-4 md:p-6">
-                  <CardTitle className={'flex items-center gap-2.5 text-lg md:text-xl'}>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className={'flex items-center gap-2.5'}>
                     <span>Total Pacientes</span>
                     <Trend trend={comparacionMensual > 0 ? 'up' : comparacionMensual < 0 ? 'down' : 'stale'}>
                       {comparacionMensual > 0 ? `+${comparacionMensual}%` : `${comparacionMensual}%`}
                     </Trend>
                   </CardTitle>
 
-                  <CardDescription className="text-sm">
+                      <CardDescription>
                     <span>Número total de pacientes registrados</span>
                   </CardDescription>
 
@@ -308,7 +310,7 @@ export default function DashboardDemo() {
                   </div>
                 </CardHeader>
 
-                <CardContent className={'space-y-4 p-4 md:p-6'}>
+                    <CardContent className={'space-y-4'}>
                   <Chart data={pacientesPorMes} />
                 </CardContent>
               </Card>
@@ -321,18 +323,18 @@ export default function DashboardDemo() {
               enableStars
               clickEffect
               glowColor="0, 100, 255"
-              className="w-full h-full"
+              style={{ borderRadius: '12px' }}
             >
-              <Card className="w-full h-full">
-                <CardHeader className="p-4 md:p-6">
-                  <CardTitle className={'flex items-center gap-2.5 text-lg md:text-xl'}>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className={'flex items-center gap-2.5'}>
                     <span>Pacientes Atendidos</span>
                     <Trend trend={'up'}>{pacientesAtendidos > 0 && totalPacientes > 0 ?
                       `${Math.round((pacientesAtendidos / totalPacientes) * 100)}%` : '0%'}
                     </Trend>
                   </CardTitle>
 
-                  <CardDescription className="text-sm">
+                      <CardDescription>
                     <span>Pacientes con estado "atendido"</span>
                   </CardDescription>
 
@@ -341,7 +343,7 @@ export default function DashboardDemo() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="p-4 md:p-6">
+                    <CardContent>
                   <Chart data={pacientesPorMes.map(item => ({
                     name: item.name,
                     value: Math.round(item.value * (pacientesAtendidos / totalPacientes || 0))
@@ -356,13 +358,11 @@ export default function DashboardDemo() {
               enableSpotlight
               enableStars      
               clickEffect
-              glowColor="0, 100, 255"
-              className="w-full h-full"
-              style={{borderRadius: '12px'}}
+                  glowColor="0, 100, 255" style={{ borderRadius: '12px' }}
             >
-              <Card className="w-full h-full">
-                <CardHeader className="p-4 md:p-6">
-                  <CardTitle className={'flex items-center gap-2.5 text-lg md:text-xl'}>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className={'flex items-center gap-2.5'}>
                     <span>Pacientes Pendientes</span>
                     <Trend trend={pacientesPendientes > pacientesAtendidos ? 'down' : 'up'}>
                       {pacientesPendientes > 0 && totalPacientes > 0 ?
@@ -370,7 +370,7 @@ export default function DashboardDemo() {
                     </Trend>
                   </CardTitle>
 
-                  <CardDescription className="text-sm">
+                      <CardDescription>
                     <span>Pacientes con estado "pendiente"</span>
                   </CardDescription>
 
@@ -379,7 +379,7 @@ export default function DashboardDemo() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="p-4 md:p-6">
+                    <CardContent>
                   <Chart data={pacientesPorMes.map(item => ({
                     name: item.name,
                     value: Math.round(item.value * (pacientesPendientes / totalPacientes || 0))
@@ -389,24 +389,17 @@ export default function DashboardDemo() {
             </MagicBento>
 
 
-            <MagicBento 
-              variant="overlay" 
-              enableSpotlight 
-              enableStars 
-              clickEffect 
-              glowColor="0, 100, 255"
-              className="w-full h-full"
-            >
-              <Card className="w-full h-full">
-                <CardHeader className="p-4 md:p-6">
-                  <CardTitle className={'flex items-center gap-2.5 text-lg md:text-xl'}>
+                <MagicBento variant="overlay" enableSpotlight enableStars clickEffect glowColor="0, 100, 255" style={{ borderRadius: '12px' }}>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className={'flex items-center gap-2.5'}>
                     <span>Nuevos Pacientes</span>
                     <Trend trend={comparacionMensual > 0 ? 'up' : 'down'}>
                       {comparacionMensual > 0 ? `+${comparacionMensual}%` : `${comparacionMensual}%`}
                     </Trend>
                   </CardTitle>
 
-                  <CardDescription className="text-sm">
+                      <CardDescription>
                     <span>Pacientes registrados este mes</span>
                   </CardDescription>
 
@@ -415,7 +408,7 @@ export default function DashboardDemo() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="p-4 md:p-6">
+                    <CardContent>
                   <Chart data={pacientesPorMes} />
                 </CardContent>
               </Card>
@@ -435,14 +428,14 @@ export default function DashboardDemo() {
           )}
 
           {chartVisibility.pacientesDestacados && (
-            <div className="w-full">
-              <Card className="w-full">
-                <CardHeader className="p-4 md:p-6">
-                  <CardTitle className="text-lg md:text-xl">Pacientes Destacados</CardTitle>
-                  <CardDescription className="text-sm">Mostrando los pacientes más recientes</CardDescription>
+                <div className="w-full">
+                  <Card className="w-full">
+                    <CardHeader className="p-4 sm:p-6">
+                      <CardTitle className="text-lg sm:text-xl">Pacientes Destacados</CardTitle>
+                      <CardDescription className="text-sm">Mostrando los pacientes más recientes</CardDescription>
                 </CardHeader>
 
-                <CardContent className="p-4 md:p-6 overflow-x-auto">
+                    <CardContent className="p-4 sm:p-6 overflow-x-auto">
                   <PacientesTable pacientes={pacientes.slice(0, 10)} />
                 </CardContent>
               </Card>
@@ -470,15 +463,20 @@ function Chart(
   } satisfies ChartConfig;
 
   return (
-    <ChartContainer config={chartConfig} className="w-full h-full min-h-[10vh]">
-      <LineChart data={props.data} width={undefined} height={undefined}>
+    <ChartContainer config={chartConfig} className="w-full h-full min-h-[120px]">
+      <LineChart 
+        data={props.data}
+        margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+        width={undefined}
+        height={undefined}
+      >
         <CartesianGrid vertical={false} />
         <XAxis
           dataKey="name"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          tick={{ fontSize: '0.7rem' }}
+          tick={{ fontSize: '0.75rem' }}
           height={30}
         />
         <ChartTooltip
@@ -506,72 +504,80 @@ function PacientesPorMesChart({ data }: { data: { name: string; value: number }[
   } satisfies ChartConfig;
 
   return (
-    <MagicBento variant="overlay" enableSpotlight enableStars clickEffect glowColor="0, 100, 255"> <Card>
-      <CardHeader>
-        <CardTitle>Pacientes por Mes</CardTitle>
-        <CardDescription>
-          Mostrando el número de pacientes registrados por mes
-        </CardDescription>
-      </CardHeader>
+    <MagicBento variant="overlay" enableSpotlight enableStars clickEffect glowColor="0, 100, 255" className="w-full" style={{ borderRadius: '12px' }}> 
+      <Card className="w-full">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-lg sm:text-xl">Pacientes por Mes</CardTitle>
+          <CardDescription className="text-sm">
+            Mostrando el número de pacientes registrados por mes
+          </CardDescription>
+        </CardHeader>
 
-      <CardContent>
-        <ChartContainer className={'h-64 w-full'} config={chartConfig}>
-          <AreaChart data={data}>
-            <defs>
-              <linearGradient id="fillPacientes" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-pacientes)"
-                  stopOpacity={0.8}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-pacientes)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="name"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent indicator="dot" />}
-            />
-            <Area
-              dataKey="value"
-              type="natural"
-              fill="url(#fillPacientes)"
-              fillOpacity={0.4}
-              stroke="var(--color-pacientes)"
-              stackId="a"
-            />
-          </AreaChart>
-        </ChartContainer>
-      </CardContent>
+        <CardContent className="p-4 sm:p-6">
+          <ChartContainer className={'w-full h-[30vh] min-h-[250px] max-h-[400px]'} config={chartConfig}>
+            <AreaChart 
+              data={data}
+              margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
+              width={undefined}
+              height={undefined}
+            >
+              <defs>
+                <linearGradient id="fillPacientes" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="5%"
+                    stopColor="var(--color-pacientes)"
+                    stopOpacity={0.8}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="var(--color-pacientes)"
+                    stopOpacity={0.1}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="name"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tick={{ fontSize: '0.7rem' }}
+                height={40}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent indicator="dot" />}
+              />
+              <Area
+                dataKey="value"
+                type="natural"
+                fill="url(#fillPacientes)"
+                fillOpacity={0.4}
+                stroke="var(--color-pacientes)"
+                stackId="a"
+              />
+            </AreaChart>
+          </ChartContainer>
+        </CardContent>
 
-      <CardFooter>
-        <div className="flex w-full items-start gap-2 text-sm">
-          <div className="grid gap-2">
-            <div className="flex items-center gap-2 leading-none font-medium">
-              {data.length >= 2 && ((data[data.length - 1]?.value || 0) > (data[data.length - 2]?.value || 0)) ? (
-                <>Tendencia al alza este mes <TrendingUp className="h-4 w-4" /></>
-              ) : (
-                <>Tendencia a la baja este mes <ArrowDown className="h-4 w-4" /></>
-              )}
-            </div>
-            <div className="text-muted-foreground flex items-center gap-2 leading-none">
-              Últimos 8 meses
+        <CardFooter className="p-4 sm:p-6">
+          <div className="flex w-full items-start gap-2 text-xs sm:text-sm">
+            <div className="grid gap-2">
+              <div className="flex items-center gap-2 leading-none font-medium">
+                {data.length >= 2 && ((data[data.length - 1]?.value || 0) > (data[data.length - 2]?.value || 0)) ? (
+                  <>Tendencia al alza este mes <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" /></>
+                ) : (
+                  <>Tendencia a la baja este mes <ArrowDown className="h-3 w-3 sm:h-4 sm:w-4" /></>
+                )}
+              </div>
+              <div className="text-muted-foreground flex items-center gap-2 leading-none">
+                Últimos 8 meses
+              </div>
             </div>
           </div>
-        </div>
-      </CardFooter>
-    </Card></MagicBento>
-
+        </CardFooter>
+      </Card>
+    </MagicBento>
   );
 }
 
@@ -584,39 +590,44 @@ function EstadoPacientesChart({ data }: { data: { name: string; value: number }[
   } satisfies ChartConfig;
 
   return (
-    <MagicBento variant="overlay" enableSpotlight enableStars clickEffect glowColor="0, 100, 255">
-      <Card>
-        <CardHeader>
-          <CardTitle>Estado de Pacientes</CardTitle>
-          <CardDescription>
-            Distribución de pacientes por estado
-          </CardDescription>
-        </CardHeader>
+    <Card className="w-full">
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-lg sm:text-xl">Estado de Pacientes</CardTitle>
+        <CardDescription className="text-sm">
+          Distribución de pacientes por estado
+        </CardDescription>
+      </CardHeader>
 
-        <CardContent>
-          <ChartContainer className={'h-64 w-full'} config={chartConfig}>
-            <BarChart data={data}>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="name"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-              />
-              <ChartTooltip
-                cursor={false}
-                content={<ChartTooltipContent />}
-              />
-              <Bar
-                dataKey="value"
-                fill="var(--color-estados)"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ChartContainer>
-        </CardContent>
-      </Card>
-    </MagicBento>
+      <CardContent className="p-4 sm:p-6">
+        <ChartContainer className={'w-full h-[30vh] min-h-[250px] max-h-[400px]'} config={chartConfig}>
+          <BarChart 
+            data={data}
+            margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
+            width={undefined}
+            height={undefined}
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="name"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              tick={{ fontSize: '0.7rem' }}
+              height={40}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent />}
+            />
+            <Bar
+              dataKey="value"
+              fill="var(--color-estados)"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        </ChartContainer>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -629,15 +640,20 @@ function PacientesActivosChart({ data }: { data: { name: string; value: number }
   } satisfies ChartConfig;
 
   return (
-    <MagicBento variant="overlay" enableSpotlight enableStars enableBorderGlow clickEffect glowColor="0, 0, 25">
-      <Card>
-        <CardHeader>
-          <CardTitle>Pacientes Activos por Mes</CardTitle>
-          <CardDescription>Conteo de pacientes con estado "activo" por mes</CardDescription>
+    <MagicBento variant="overlay" enableSpotlight enableStars enableBorderGlow clickEffect glowColor="0, 0, 25" className="w-full">
+      <Card className="w-full">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-lg sm:text-xl">Pacientes Activos por Mes</CardTitle>
+          <CardDescription className="text-sm">Conteo de pacientes con estado "activo" por mes</CardDescription>
         </CardHeader>
-        <CardContent>
-          <ChartContainer className={'h-64 w-full'} config={chartConfig}>
-            <AreaChart data={data}>
+        <CardContent className="p-4 sm:p-6">
+          <ChartContainer className={'w-full h-[30vh] min-h-[250px] max-h-[400px]'} config={chartConfig}>
+            <AreaChart 
+              data={data}
+              margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
+              width={undefined}
+              height={undefined}
+            >
               <defs>
                 <linearGradient id="fillActivos" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="var(--color-activos)" stopOpacity={0.8} />
@@ -656,39 +672,30 @@ function PacientesActivosChart({ data }: { data: { name: string; value: number }
   );
 }
 
-// Estilos responsivos con media queries
-const responsiveStyles = {
-  tableContainer: 'w-full overflow-x-auto',
-  table: 'min-w-full',
-  tableHeader: 'text-xs md:text-sm',
-  tableCell: 'text-xs md:text-sm py-2 md:py-3',
-  badge: 'text-xs whitespace-nowrap',
-};
-
 function PacientesTable({ pacientes }: { pacientes: Paciente[] }) {
   return (
-    <div className={responsiveStyles.tableContainer}>
-      <Table className={responsiveStyles.table}>
+    <div className="w-full overflow-x-auto">
+      <Table className="w-full min-w-[600px]">
         <TableHeader>
           <TableRow>
-            <TableHead className={responsiveStyles.tableHeader}>Paciente</TableHead>
-            <TableHead className={responsiveStyles.tableHeader}>Edad</TableHead>
-            <TableHead className={responsiveStyles.tableHeader}>Fecha de Cita</TableHead>
-            <TableHead className={responsiveStyles.tableHeader}>Estado</TableHead>
+            <TableHead className="whitespace-nowrap text-xs sm:text-sm">Paciente</TableHead>
+            <TableHead className="whitespace-nowrap text-xs sm:text-sm">Edad</TableHead>
+            <TableHead className="whitespace-nowrap text-xs sm:text-sm">Fecha de Cita</TableHead>
+            <TableHead className="whitespace-nowrap text-xs sm:text-sm">Estado</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {pacientes.map((paciente) => (
             <TableRow key={paciente.id}>
-              <TableCell className={`flex flex-col ${responsiveStyles.tableCell}`}>
-                <span>{`${paciente.nombre} ${paciente.apellido}`}</span>
-                <span className={'text-muted-foreground text-xs md:text-sm'}>
+              <TableCell className={'flex flex-col text-xs sm:text-sm'}>
+                <span className="font-medium whitespace-nowrap">{`${paciente.nombre} ${paciente.apellido}`}</span>
+                <span className={'text-muted-foreground text-xs'}>
                   {paciente.telefono}
                 </span>
               </TableCell>
-              <TableCell className={responsiveStyles.tableCell}>{paciente.edad}</TableCell>
-              <TableCell className={responsiveStyles.tableCell}>{new Date(paciente.fecha_de_cita).toLocaleDateString('es-ES')}</TableCell>
-              <TableCell className={responsiveStyles.tableCell}>
+              <TableCell className="text-xs sm:text-sm">{paciente.edad}</TableCell>
+              <TableCell className="text-xs sm:text-sm whitespace-nowrap text-xs whitespace-nowrap">{new Date(paciente.fecha_de_cita).toLocaleDateString('es-ES')}</TableCell>
+              <TableCell>
                 <BadgeWithTrend
                   trend={
                     paciente.estado === 'atendido'
@@ -697,7 +704,6 @@ function PacientesTable({ pacientes }: { pacientes: Paciente[] }) {
                         ? 'stale'
                         : 'down'
                   }
-                  className={responsiveStyles.badge}
                 >
                   {paciente.estado ? paciente.estado.charAt(0).toUpperCase() + paciente.estado.slice(1) : 'Sin estado'}
                 </BadgeWithTrend>
@@ -710,8 +716,8 @@ function PacientesTable({ pacientes }: { pacientes: Paciente[] }) {
   );
 }
 
-function BadgeWithTrend(props: React.PropsWithChildren<{ trend: string, className?: string }>) {
-  const colorClassName = useMemo(() => {
+function BadgeWithTrend(props: React.PropsWithChildren<{ trend: string }>) {
+  const className = useMemo(() => {
     switch (props.trend) {
       case 'up':
         return 'text-green-500';
@@ -722,16 +728,12 @@ function BadgeWithTrend(props: React.PropsWithChildren<{ trend: string, classNam
     }
   }, [props.trend]);
 
-  // Mejora de accesibilidad: añadir aria-label para lectores de pantalla
-  const trendLabel = props.trend === 'up' ? 'positivo' : props.trend === 'down' ? 'negativo' : 'estable';
-  
   return (
     <Badge
       variant={'outline'}
-      className={`border-transparent px-1.5 font-normal ${props.className || ''}`}
-      aria-label={`Estado ${trendLabel}`}
+      className={'border-transparent px-1.5 font-normal'}
     >
-      <span className={colorClassName}>{props.children}</span>
+      <span className={className}>{props.children}</span>
     </Badge>
   );
 }
