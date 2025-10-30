@@ -41,7 +41,10 @@ export default withI18n(async function UserHomePage() {
             </CardHeader>
           </Card>
         </div>
-        <DashboardDemo />
+        <div style={{height: '100vh', width: '100vw'}}>
+          <DashboardDemo />
+        </div>
+        
       </PageBody>
     </>
   );
