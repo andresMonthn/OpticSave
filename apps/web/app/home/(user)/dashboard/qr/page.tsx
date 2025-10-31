@@ -18,6 +18,7 @@ export default function QRGeneratorPage() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [qrGenerated, setQrGenerated] = useState(false);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -25,20 +26,23 @@ export default function QRGeneratorPage() {
       setError(null);
       try {
         const supabase = getSupabaseBrowserClient();
-        const { data, error } = await supabase.auth.getUser();       
+        const { data, error } = await supabase.auth.getUser();
         if (error) {
           throw new Error("No se pudo obtener la información del usuario");
-        }  
+        }
         setUserId(data.user.id);
-        const generatedUrl = `https://opticsave.vercel.app/public/registro-paciente?user_id=${data.user.id}`;
+        // Aseguramos que la URL incluya el protocolo https y parámetros adicionales para mejorar la experiencia
+        // Añadimos parámetros para redirección automática y origen del escaneo
+        const generatedUrl = `https://opticsave.vercel.app/public/registro-paciente?user_id=${data.user.id}&direct=true&source=qr&auto_open=true`;
         setQrUrl(generatedUrl);
+        setQrGenerated(true);
       } catch (err: any) {
         setError(err.message || "Error al obtener el ID de usuario");
         console.error("Error:", err);
       } finally {
         setLoading(false);
       }
-    };  
+    };
     fetchUserId();
   }, []);
 
@@ -82,20 +86,18 @@ export default function QRGeneratorPage() {
                       fgColor={"#2209c3ff"}
                       level={"H"}
                       includeMargin={true}
+
                     />
                   </div>
                   <div className="w-full">
                     <div className="text-sm text-gray-500 mb-2">URL para compartir:</div>
-                    <div className="flex items-center gap-2">
-                      <div className="bg-gray-100 p-2 rounded text-sm flex-1 overflow-x-auto whitespace-nowrap">
-                        {qrUrl}
-                      </div>
-                      <CopyToClipboard text={qrUrl} onCopy={handleCopy}>
-                        <Button variant="outline" size="icon" className="flex-shrink-0">
-                          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        </Button>
-                      </CopyToClipboard>
-                    </div>
+                    {qrUrl}
+                    <CopyToClipboard text={qrUrl} onCopy={handleCopy}>
+                      <Button variant="outline" size="icon" className="flex-shrink-0">
+                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </CopyToClipboard>
+
                     {copied && (
                       <p className="text-xs text-green-600 mt-1">¡URL copiada al portapapeles!</p>
                     )}
@@ -105,7 +107,7 @@ export default function QRGeneratorPage() {
             </CardContent>
             <CardFooter className="flex justify-center">
               <p className="text-xs text-gray-500 text-center">
-                Este código QR permite a los pacientes registrarse directamente 
+                Este código QR permite a los pacientes registrarse directamente en el sistema. Al escanear, se abrirá automáticamente el formulario de registro.
               </p>
             </CardFooter>
           </Card>

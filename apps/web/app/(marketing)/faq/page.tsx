@@ -20,33 +20,47 @@ export const generateMetadata = async () => {
 async function FAQPage() {
   const { t } = await createI18nServerInstance();
 
-  // replace this content with translations
+  // Preguntas frecuentes relacionadas con OpticSave
   const faqItems = [
     {
-      // or: t('marketing:faq.question1')
-      question: `Do you offer a free trial?`,
-      // or: t('marketing:faq.answer1')
-      answer: `Yes, we offer a 14-day free trial. You can cancel at any time during the trial period and you won't be charged.`,
+      question: t('marketing:faq.general.trial', '¿Ofrecen una prueba gratuita de OpticSave?'),
+      answer: t('marketing:faq.general.trialAnswer', 'Sí, ofrecemos una prueba gratuita de 14 días de OpticSave. Puedes cancelar en cualquier momento durante el período de prueba y no se te cobrará.'),
     },
     {
-      question: `Can I cancel my subscription?`,
-      answer: `You can cancel your subscription at any time. You can do this from your account settings.`,
+      question: t('marketing:faq.general.cancel', '¿Puedo cancelar mi suscripción a OpticSave?'),
+      answer: t('marketing:faq.general.cancelAnswer', 'Puedes cancelar tu suscripción en cualquier momento. Puedes hacerlo desde la configuración de tu cuenta en https://opticsave.vercel.app/account/billing.'),
     },
     {
-      question: `Where can I find my invoices?`,
-      answer: `You can find your invoices in your account settings.`,
+      question: t('marketing:faq.general.invoices', '¿Dónde puedo encontrar mis facturas de OpticSave?'),
+      answer: t('marketing:faq.general.invoicesAnswer', 'Puedes encontrar tus facturas en la configuración de tu cuenta en https://opticsave.vercel.app/account/billing/invoices.'),
     },
     {
-      question: `What payment methods do you accept?`,
-      answer: `We accept all major credit cards and PayPal.`,
+      question: t('marketing:faq.general.payment', '¿Qué métodos de pago acepta OpticSave?'),
+      answer: t('marketing:faq.general.paymentAnswer', 'Aceptamos todas las tarjetas de crédito principales y PayPal. Puedes gestionar tus métodos de pago en https://opticsave.vercel.app/account/billing/payment-methods.'),
     },
     {
-      question: `Can I upgrade or downgrade my plan?`,
-      answer: `Yes, you can upgrade or downgrade your plan at any time. You can do this from your account settings.`,
+      question: t('marketing:faq.general.upgrade', '¿Puedo actualizar o degradar mi plan de OpticSave?'),
+      answer: t('marketing:faq.general.upgradeAnswer', 'Sí, puedes actualizar o degradar tu plan en cualquier momento. Puedes hacerlo desde la configuración de tu cuenta en https://opticsave.vercel.app/account/billing.'),
     },
     {
-      question: `Do you offer discounts for non-profits?`,
-      answer: `Yes, we offer a 50% discount for non-profits. Please contact us to learn more.`,
+      question: t('marketing:faq.general.nonprofit', '¿OpticSave ofrece descuentos para clínicas oftalmológicas sin fines de lucro?'),
+      answer: t('marketing:faq.general.nonprofitAnswer', 'Sí, ofrecemos un descuento del 50% para organizaciones sin fines de lucro. Por favor, contáctanos para obtener más información en https://opticsave.vercel.app/contact.'),
+    },
+    {
+      question: t('marketing:faq.technical.dataExport', '¿Cómo puedo exportar los datos de mis pacientes en OpticSave?'),
+      answer: t('marketing:faq.technical.dataExportAnswer', 'Puedes exportar los datos de tus pacientes desde el panel de control en https://opticsave.vercel.app/home/dashboard/export. Ofrecemos formatos CSV y PDF para la exportación de datos.'),
+    },
+    {
+      question: t('marketing:faq.technical.security', '¿Cómo protege OpticSave los datos de mis pacientes?'),
+      answer: t('marketing:faq.technical.securityAnswer', 'OpticSave utiliza cifrado de extremo a extremo y sigue las mejores prácticas de seguridad para proteger los datos de tus pacientes. Cumplimos con todas las regulaciones de protección de datos aplicables. Puedes leer más sobre nuestra política de seguridad en https://opticsave.vercel.app/security.'),
+    },
+    {
+      question: t('marketing:faq.features.appointments', '¿Cómo gestiono las citas de mis pacientes en OpticSave?'),
+      answer: t('marketing:faq.features.appointmentsAnswer', 'OpticSave te permite gestionar fácilmente las citas de tus pacientes. Puedes crear, editar y cancelar citas desde el calendario en https://opticsave.vercel.app/home/appointments. También puedes configurar recordatorios automáticos para tus pacientes.'),
+    },
+    {
+      question: t('marketing:faq.features.prescriptions', '¿Puedo generar recetas y prescripciones en OpticSave?'),
+      answer: t('marketing:faq.features.prescriptionsAnswer', 'Sí, OpticSave te permite generar recetas y prescripciones digitales para tus pacientes. Puedes crear, editar y enviar prescripciones desde https://opticsave.vercel.app/home/prescriptions.'),
     },
   ];
 

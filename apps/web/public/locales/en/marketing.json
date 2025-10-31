@@ -1,12 +1,15 @@
 {
   "heroTitle": "Gestor de Ópticas",
   "heroSubtitle": "La web es una plataforma integral para la gestión de ópticas, diseñada para optimizar la administración de clientes, citas, inventario y ventas. Su objetivo es facilitar el trabajo diario del personal de la óptica y mejorar la experiencia de los pacientes.",
+  "about": "Sobre Nosotros",
   "blog": "Blog",
+  "contact": "Contacto",
   "documentacion": "Documentación",
   "precios": "Precios",
   "faq": "FAQ",
+  "faqSubtitle": "Preguntas Frecuentes",
   "contacto": "Contacto",
-  "contact": "Contacto",
+  "contactFaq": "Contacto para FAQ",
   "contactDescription": "Ponte en contacto con nosotros",
   "contactHeading": "Envíanos un mensaje",
   "contactSubheading": "Completa el formulario y te responderemos lo antes posible",
@@ -18,6 +21,8 @@
   "contactSuccessDescription": "Gracias por contactarnos. Te responderemos lo antes posible.",
   "contactError": "Error al enviar el mensaje",
   "contactErrorDescription": "Lo sentimos, ha ocurrido un error al enviar tu mensaje. Por favor, inténtalo de nuevo más tarde.",
+  "cookiePolicy": "Política de Cookies",
+  "cookiePolicyDescription": "Descubre cómo utilizamos las cookies en nuestro sitio web para mejorar tu experiencia.",
   "home": {
     "pageTitle": "Inicio"
   },
@@ -61,6 +66,7 @@
   "createTeamLoading": "Creando equipo...",
   "settingsPageLabel": "General",
   "createTeamDropdownLabel": "Nuevo equipo",
+  "privacyPolicyDescription": "Descubre cómo protegemos tu información personal y tu privacidad.",
   "changeRole": "Cambiar Rol",
   "removeMember": "Eliminar de la Cuenta",
   "inviteMembersSuccess": "¡Miembros invitados exitosamente!",
@@ -186,7 +192,6 @@
   "product": "OptiSave",
   "termsOfService": "Términos de Servicio",
   "privacyPolicy": "Política de Privacidad",
-  "cookiePolicy": "Política de Cookies",
   "documentation": "Documentación",
   "termsOfServiceDescription": "Estos términos y condiciones rigen el uso de OptiSave por parte de los usuarios. Al utilizar OptiSave, aceptas cumplir con estos términos y condiciones.",
  "legal": "legal"

@@ -6,7 +6,7 @@ import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
 import { useParams, useRouter } from "next/navigation";
 import { format, addDays, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
-import { ArrowLeft, Briefcase, Calendar as CalendarIcon, CalendarCheck, Eye, Phone, MapPin, FileText, Plus, Pencil, Trash2, CheckCircle2Icon, AlertCircleIcon, XCircleIcon, Edit, X, PencilIcon } from "lucide-react";
+import { ArrowLeft, Briefcase, Calendar as CalendarIcon, CalendarCheck, Eye, Phone, MapPin, FileText, Pencil, Trash2, CheckCircle2Icon, AlertCircleIcon, XCircleIcon, Edit, X, PencilIcon } from "lucide-react";
     import {
     Dialog,
     DialogContent,

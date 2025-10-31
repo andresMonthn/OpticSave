@@ -31,9 +31,7 @@ function TeamAccountHomePage({ params }: TeamAccountHomePageProps) {
       <TeamAccountLayoutPageHeader
         account={account}
         title={<Trans i18nKey={'common:routes.dashboard'} />}
-        description={<AppBreadcrumbs />}
-      />
-      <p>hola</p>
+        description={<AppBreadcrumbs />}/>
       <PageBody>
         <DashboardDemo />
       </PageBody>

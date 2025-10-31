@@ -1,7 +1,5 @@
 import { cache } from 'react';
-
 import type { Metadata } from 'next';
-
 import { createCmsClient } from '@kit/cms';
 import { getLogger } from '@kit/shared/logger';
 import { If } from '@kit/ui/if';
@@ -82,7 +80,10 @@ async function BlogPage(props: BlogPageProps) {
 
   return (
     <>
-      <SitePageHeader
+      <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+        {t('marketing:blog')}
+      </h1>
+      {/* <SitePageHeader
         title={t('marketing:blog')}
         subtitle={t('marketing:blogSubtitle')}
       />
@@ -106,7 +107,7 @@ async function BlogPage(props: BlogPageProps) {
             />
           </div>
         </If>
-      </div>
+      </div> */}
     </>
   );
 }

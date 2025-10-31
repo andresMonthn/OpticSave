@@ -1,13 +1,8 @@
 import { cache } from 'react';
-
 import type { Metadata } from 'next';
-
 import { notFound } from 'next/navigation';
-
 import { createCmsClient } from '@kit/cms';
-
 import { withI18n } from '~/lib/i18n/with-i18n';
-
 import { Post } from '../../blog/_components/post';
 
 interface BlogPageProps {
@@ -15,10 +10,8 @@ interface BlogPageProps {
 }
 
 const getPostBySlug = cache(postLoader);
-
 async function postLoader(slug: string) {
   const client = await createCmsClient();
-
   return client.getContentItemBySlug({ slug, collection: 'posts' });
 }
 
