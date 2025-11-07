@@ -83,7 +83,7 @@ async function BlogPage(props: BlogPageProps) {
       <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
         {t('marketing:blog')}
       </h1>
-      {/* <SitePageHeader
+      <SitePageHeader
         title={t('marketing:blog')}
         subtitle={t('marketing:blogSubtitle')}
       />
@@ -107,7 +107,7 @@ async function BlogPage(props: BlogPageProps) {
             />
           </div>
         </If>
-      </div> */}
+      </div>
     </>
   );
 }
