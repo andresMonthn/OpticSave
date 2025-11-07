@@ -185,9 +185,16 @@ export default function PrismaticBurst({
 
     const mesh = new Mesh(gl, { geometry, program });
 
+    // Animación basada en tiempo real para evitar pausas durante el scroll
     let raf: number;
+    let lastTime = performance.now();
     const render = () => {
-      program.uniforms.u_time.value += 0.01;
+      const now = performance.now();
+      const dt = (now - lastTime) / 1000; // segundos
+      lastTime = now;
+
+      // Avanza el tiempo uniformemente independientemente de los FPS
+      program.uniforms.u_time.value += dt;
       program.uniforms.u_resolution.value = [gl.canvas.width, gl.canvas.height];
       renderer!.render({ scene: mesh });
       raf = requestAnimationFrame(render);

@@ -1,5 +1,4 @@
 'use client';
-
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
@@ -9,6 +8,7 @@ import { JWTUserData } from '@kit/supabase/types';
 import { Button } from '@kit/ui/button';
 import { If } from '@kit/ui/if';
 import { Trans } from '@kit/ui/trans';
+import { LogIn, UserPlus } from 'lucide-react';
 
 import featuresFlagConfig from '~/config/feature-flags.config';
 import pathsConfig from '~/config/paths.config';
@@ -59,29 +59,55 @@ export function SiteHeaderAccountSection({
 
 function AuthButtons() {
   return (
-    <div className={'animate-in fade-in flex gap-x-2.5 duration-500'}>
-      <div className={'hidden md:flex'}>
+    <div className={'animate-in fade-in flex flex-wrap items-center gap-x-2 duration-500'}>
+      <div className={'hidden lg:flex'}>
         <If condition={features.enableThemeToggle}>
           <ModeToggle />
         </If>
       </div>
 
-      <div className={'md:hidden'}>
+      <div className={'lg:hidden'}>
         <If condition={features.enableThemeToggle}>
           <MobileModeToggle />
         </If>
       </div>
 
-      <div className={'flex gap-x-2.5'}>
-        <Button className={'hidden md:block'} asChild variant={'ghost'}>
+      <div className={'flex items-center gap-x-2'}>
+        {/* Desktop: botones con texto */}
+        <Button className={'hidden lg:block'} asChild variant={'ghost'}>
           <Link href={pathsConfig.auth.signIn}>
             <Trans i18nKey={'auth:signIn'} />
           </Link>
         </Button>
 
-        <Button asChild className="text-xs md:text-sm" variant={'default'}>
+        <Button className={'hidden lg:block'} asChild variant={'default'}>
           <Link href={pathsConfig.auth.signUp}>
             <Trans i18nKey={'auth:signUp'} />
+          </Link>
+        </Button>
+
+        {/* Móvil y tablets (< lg): iconos */}
+        <Button
+          className={'lg:hidden'}
+          asChild
+          variant={'ghost'}
+          size={'icon'}
+          aria-label={'Iniciar sesión'}
+        >
+          <Link href={pathsConfig.auth.signIn}>
+            <LogIn className={'h-5 w-5'} />
+          </Link>
+        </Button>
+
+        <Button
+          className={'lg:hidden'}
+          asChild
+          variant={'default'}
+          size={'icon'}
+          aria-label={'Registrarse'}
+        >
+          <Link href={pathsConfig.auth.signUp}>
+            <UserPlus className={'h-5 w-5'} />
           </Link>
         </Button>
       </div>

@@ -1,5 +1,4 @@
 'use client';
-
 import PrismaticBurst from './componentes_animados/PrismaticBurst';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -57,6 +56,7 @@ export function MyMarketing() {
   const heroRef = useRef<HTMLDivElement>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isCenterSlow, setIsCenterSlow] = useState(false);
 
   // Total de imágenes en el carrusel
   const totalSlides = 7;
@@ -87,12 +87,26 @@ export function MyMarketing() {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           setScrollPosition(window.scrollY);
+
+          // Calcular si el hero está cerca del centro de la ventana para desacelerar
+          if (heroRef.current) {
+            const rect = heroRef.current.getBoundingClientRect();
+            const viewportCenter = window.innerHeight / 2;
+            const heroCenter = rect.top + rect.height / 2;
+            const distance = Math.abs(heroCenter - viewportCenter);
+            const threshold = Math.max(100, window.innerHeight * 0.15);
+            setIsCenterSlow(distance < threshold);
+          }
+
           ticking = false;
         });
 
         ticking = true;
       }
     };
+
+    // Inicializar estado una vez al montar
+    handleScroll();
 
     // Agregar event listener
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -105,18 +119,25 @@ export function MyMarketing() {
 
   return (
     <>
+      {/* Animaciones locales para el texto inferior */}
+      <style jsx>{`
+        @keyframes slideOpposite {
+          0% { transform: translateX(-40px); }
+          100% { transform: translateX(0); }
+        }
+      `}</style>
       <div className="flex flex-col relative z-10 bg-transparent">
         <PrismaticBurst
-          intensity={23}
-          speed={2}
-          distort={2}
-          rayCount={0}
+          intensity={1}
+          speed={5}
+          distort={0}
+          rayCount={1}
           animationType={'rotate3d'}
-          hoverDampness={2}
+          hoverDampness={5}
           offset={{ x: 0, y: 0 }}
           fullScreen={true}
           zIndex={0}
-          opacity={0.19}
+          opacity={.1}
           mixBlendMode={'none'}
         />
 
@@ -125,7 +146,7 @@ export function MyMarketing() {
         <div className="w-full flex items-center justify-center">
           <div
             ref={logoRef}
-            className="cursor-pointer"
+            className="cursor-pointer group"
           >
             <Image
               src="/images/Marketing/OpticSave.png"
@@ -133,7 +154,7 @@ export function MyMarketing() {
               width={200}
               height={200}
               priority
-              className="w-auto h-auto"
+              className="w-auto h-auto filter transition duration-200 dark:invert dark:brightness-0 dark:contrast-200 group-hover:invert group-hover:brightness-0 group-hover:contrast-200"
             />
           </div>
         </div>
@@ -144,31 +165,31 @@ export function MyMarketing() {
         <div className={'mt-4 flex flex-col space-y-24 py-14'}>
 
           <div className={'container mx-auto'} ref={heroRef}>
-            <Hero
-              pill={
-                <Pill label={'New'}>
-                  <ShinyText text="Registrate para comenzar" speed={5} />
-                  <PillActionButton asChild>
-                    <Link href={'/auth/sign-up'}>
-                      <ArrowRightIcon className={'h-4 w-4'} />
-                    </Link>
-                  </PillActionButton>
-                </Pill>
-              }
-              title={
-                <>
-                  <ShinyText text="OpticSave" speed={5} />
-                  <Trans i18nKey="marketing:heroTitle">
-                    <ShinyText text="marketing:heroTitle" speed={5} />
+          <Hero
+            pill={
+              <Pill label={'New'}>
+                <ShinyText text="Registrate para comenzar" speed={5} />
+                <PillActionButton asChild>
+                  <Link href={'/auth/sign-up'}>
+                    <ArrowRightIcon className={'h-4 w-4'} />
+                  </Link>
+                </PillActionButton>
+              </Pill>
+            }
+            title={
+              <span className="inline-block animate-in fade-in slide-in-from-left-12 duration-700 ease-out will-change-transform">
+                <ShinyText text="OpticSave" speed={5} />
+                <Trans i18nKey="marketing:heroTitle">
+                  <ShinyText text="marketing:heroTitle" speed={5} />
+                </Trans>
+              </span>
+            }
+            subtitle={
+              <div className="relative">
+                <div className="">
+                  <Trans i18nKey="marketing:heroSubtitle">
+                    <ShinyText text="marketing:heroSubtitle" speed={5} />
                   </Trans>
-                </>
-              }
-              subtitle={
-                <div className="relative">
-                  <div className="">
-                    <Trans i18nKey="marketing:heroSubtitle">
-                      <ShinyText text="marketing:heroSubtitle" speed={5} />
-                    </Trans>
                   </div>
                   {/* Espacio reservado para la imagen que se posicionará junto al texto */}
                   <div className="absolute left-0 top-0 w-12 md:w-20 opacity-0" style={{
@@ -193,10 +214,17 @@ export function MyMarketing() {
                     ].map((src, index) => (
                       <div
                         key={index}
-                        className="absolute inset-0 transition-opacity duration-500 ease-in-out"
+                        className="absolute inset-0 will-change-transform"
                         style={{
                           opacity: index === currentSlide ? 1 : 0,
-                          zIndex: index === currentSlide ? 10 : 0
+                          zIndex: index === currentSlide ? 10 : 0,
+                          transform:
+                            index === currentSlide
+                              ? 'translateX(0)'
+                              : 'translateX(40px)',
+                          transition:
+                            `transform ${isCenterSlow ? 900 : 350}ms cubic-bezier(0.2, 0.9, 0.3, 1), ` +
+                            `opacity ${isCenterSlow ? 900 : 350}ms ease-out`
                         }}
                       >
                         <Image
@@ -209,6 +237,18 @@ export function MyMarketing() {
                         />
                       </div>
                     ))}
+
+                    {/* Texto en la parte inferior con movimiento opuesto */}
+                    <div className="absolute bottom-3 left-0 right-0 z-20 flex justify-center">
+                      <span
+                        className="text-xs md:text-sm px-3 py-1 rounded-md bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm text-gray-900 dark:text-white shadow-sm"
+                        style={{
+                          animation: `slideOpposite ${isCenterSlow ? 900 : 350}ms cubic-bezier(0.2, 0.9, 0.3, 1)`,
+                        }}
+                      >
+                        imagenes de muestra
+                      </span>
+                    </div>
                   </div>
 
                   {/* Controles del carrusel */}

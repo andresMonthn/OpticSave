@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import Link from 'next/link';
 
@@ -81,8 +82,23 @@ export function PersonalAccountDropdown({
     return hasAdminRole && isAal2;
   }, [user]);
 
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [menuOpen]);
+
   return (
-    <DropdownMenu>
+    <>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
       <DropdownMenuTrigger
         aria-label="Open your profile menu"
         data-test={'account-dropdown-trigger'}
@@ -134,7 +150,7 @@ export function PersonalAccountDropdown({
         </If>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className={'xl:min-w-[15rem]!'}>
+      <DropdownMenuContent className={'xl:min-w-[15rem]! z-50'}>
         <DropdownMenuItem className={'h-10! rounded-none'}>
           <div
             className={'flex flex-col justify-start truncate text-left text-xs'}
@@ -219,6 +235,21 @@ export function PersonalAccountDropdown({
           </span>
         </DropdownMenuItem>
       </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenu>
+
+      {menuOpen
+        ? createPortal(
+            <button
+              type="button"
+              aria-label={'Cerrar menú de perfil'}
+              onClick={() => setMenuOpen(false)}
+              className={
+                'fixed inset-0 z-40 cursor-default bg-black/30 dark:bg-black/50 backdrop-blur-sm sm:backdrop-blur-md transition-opacity duration-200'
+              }
+            />,
+            document.body,
+          )
+        : null}
+    </>
   );
 }

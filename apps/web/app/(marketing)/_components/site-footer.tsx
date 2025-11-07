@@ -1,13 +1,15 @@
 import { Footer } from '@kit/ui/marketing';
 import { Trans } from '@kit/ui/trans';
-
 import { AppLogo } from '~/components/app-logo';
 import appConfig from '~/config/app.config';
 
 export function SiteFooter() {
   return (
     <Footer
-      logo={<AppLogo className="w-[85px] md:w-[95px]" />}
+      className={
+        'backdrop-blur-sm bg-white/40 dark:bg-gray-900/40 border-t border-white/20 dark:border-gray-800/30 dark:[&_svg]:text-white dark:[&_svg]:fill-white'
+      }
+      logo={<AppLogo className="w-[85px] md:w-[95px] dark:invert dark:brightness-0 dark:contrast-200" />}
       description={<Trans i18nKey="marketing:footerDescription" />}
       copyright={
         <Trans
