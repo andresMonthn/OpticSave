@@ -4,6 +4,7 @@ import { Toaster } from '@kit/ui/sonner';
 
 import { RootProviders } from '~/components/root-providers';
 import { getFontsClassName } from '~/lib/fonts';
+import ChatBotOverlayGuard from "~/components/chat-bot/chatbot-overlay-guard";
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { generateRootMetadata } from '~/lib/root-metdata';
 import { getRootTheme } from '~/lib/root-theme';
@@ -32,6 +33,8 @@ export default async function RootLayout({
         </RootProviders>
 
         <Toaster richColors={true} theme={theme} position="top-center" />
+        {/* Overlay del ChatBot visible solo en rutas bajo /home */}
+        <ChatBotOverlayGuard />
       </body>
     </html>
   );

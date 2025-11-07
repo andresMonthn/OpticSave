@@ -19,6 +19,7 @@ import { Label } from "@kit/ui/label";
 import { Textarea } from "@kit/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@kit/ui/select";
 import { RadioGroup, RadioGroupItem } from "@kit/ui/radio-group";
+import { Separator } from "@kit/ui/separator";
 
 // Interfaces para los tipos de datos
 interface Paciente {
@@ -69,7 +70,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [printData, setPrintData] = useState({
     laboratorio: "VALCAST",
-    observaciones: "",
+    observaciones: "MONTURA PROPIA DE PASTA ARO COMPLETO H 54 V 38 P",
     folio: "",
     material: "CR-39",
     materialOtro: "",
@@ -79,7 +80,6 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
     tipoLenteOtro: "",
     tipoMontura: "Completa",
     tipoMonturaOtro: "",
-    observacionesAdicionales: "MONTURA PROPIA DE PASTA ARO COMPLETO H 54 V 38 P"
   });
   const [diagnosticoReciente, setDiagnosticoReciente] = useState<Diagnostico | null>(null);
   const [paciente, setPaciente] = useState<Paciente | null>(null);
@@ -144,7 +144,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
       setPrintData(prev => ({
         ...prev,
         folio: diagnosticoObj.id,
-        observaciones: diagnosticoObj.observaciones || ""
+        observaciones: diagnosticoObj.observaciones || "MONTURA PROPIA DE PASTA ARO COMPLETO H 54 V 38 P"
       }));
 
       // Obtener recetas asociadas al diagnóstico
@@ -446,9 +446,12 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
               </div>
               
               <div class="info-row">
-                <div class="info-cell">
+                <div class="info-cell" style="flex: 2;">
                   <span class="label">Laboratorio:</span> ${printData.laboratorio}
                 </div>
+              </div>
+              
+              <div class="info-row">
                 <div class="info-cell">
                   <span class="label">Observación:</span> ${printData.observaciones}
                 </div>
@@ -519,7 +522,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
               </div>
               
               <div class="observations">
-                <strong>Observaciones:</strong> ${printData.observacionesAdicionales}
+                <strong>Observaciones:</strong> ${printData.observaciones}
               </div>
               
               <div class="footer">
@@ -573,234 +576,212 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
 
       {/* Diálogo para introducir datos antes de imprimir */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Datos para la Orden de RX</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="folio" className="text-right">
-                Folio
-              </Label>
-              <Input
-                id="folio"
-                value={printData.folio}
-                onChange={(e) => setPrintData({ ...printData, folio: e.target.value })}
-                className="col-span-3"
-                placeholder="Número de folio"
-              />
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-2xl font-bold">Datos para la Orden de RX</DialogTitle>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Folio</p>
+                <p className="text-sm font-mono">{printData.folio}</p>
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="laboratorio" className="text-right">
-                Laboratorio
-              </Label>
-              <Select 
-                value={printData.laboratorio} 
-                onValueChange={(value) => setPrintData({ ...printData, laboratorio: value })}
+          </DialogHeader>
+          <div className="space-y-6 py-4 px-6">
+            <div className="mx-auto max-w-xs pt-4">
+              <Label htmlFor="laboratorio" className="mb-2 block text-center">Laboratorio</Label>
+              <Select
+                value={printData.laboratorio}
+                onValueChange={(value) => {
+                  if (value === "OTRO") {
+                    const customLaboratorio = prompt("Por favor, especifique el laboratorio:");
+                    if (customLaboratorio) {
+                      if (!laboratorios.includes(customLaboratorio.toUpperCase())) {
+                        laboratorios.push(customLaboratorio.toUpperCase());
+                      }
+                      setPrintData({ ...printData, laboratorio: customLaboratorio.toUpperCase() });
+                    }
+                  } else {
+                    setPrintData({ ...printData, laboratorio: value });
+                  }
+                }}
               >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Seleccione un laboratorio" />
+                <SelectTrigger id="laboratorio">
+                  <SelectValue placeholder="Seleccione laboratorio" />
                 </SelectTrigger>
                 <SelectContent>
-                  {laboratorios.map((lab) => (
-                    <SelectItem key={lab} value={lab}>
-                      {lab}
-                    </SelectItem>
+                  {laboratorios.map(lab => (
+                    <SelectItem key={lab} value={lab}>{lab}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            
-            {/* Material */}
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label className="text-right pt-2">
-                Material
-              </Label>
-              <div className="col-span-3 space-y-2">
-                <RadioGroup 
-                  value={printData.material} 
-                  onValueChange={(value) => setPrintData({ ...printData, material: value })}
-                  className="flex flex-col space-y-1"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="CR-39" id="material-cr39" />
-                    <Label htmlFor="material-cr39">CR-39</Label>
+
+            <div className="rounded-md border p-4">
+              <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                <div className="space-y-6">
+                  <div>
+                    <Label className="mb-2 block">Material</Label>
+                    <RadioGroup
+                      value={printData.material}
+                      onValueChange={(value) => setPrintData({ ...printData, material: value })}
+                      className="grid grid-cols-3 gap-x-4 gap-y-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="CR-39" id="mat-cr39" />
+                        <Label htmlFor="mat-cr39" className="font-normal">CR-39</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Policarbonato" id="mat-poli" />
+                        <Label htmlFor="mat-poli" className="font-normal">Policarbonato</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Trivex" id="mat-trivex" />
+                        <Label htmlFor="mat-trivex" className="font-normal">Trivex</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Alto Indice 1.61" id="mat-161" />
+                        <Label htmlFor="mat-161" className="font-normal">Alto Índice 1.61</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Alto Indice 1.67" id="mat-167" />
+                        <Label htmlFor="mat-167" className="font-normal">Alto Índice 1.67</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Otro" id="mat-otro" />
+                        <Label htmlFor="mat-otro" className="font-normal">Otro</Label>
+                      </div>
+                    </RadioGroup>
+                    {printData.material === "Otro" && (
+                      <div className="mt-2">
+                        <Input
+                          placeholder="Especificar material"
+                          value={printData.materialOtro}
+                          onChange={(e) => setPrintData({ ...printData, materialOtro: e.target.value })}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Policarbonato" id="material-policarbonato" />
-                    <Label htmlFor="material-policarbonato">Policarbonato</Label>
+                  <div>
+                    <Label className="mb-2 block">Tipo de Lente</Label>
+                    <RadioGroup
+                      value={printData.tipoLente}
+                      onValueChange={(value) => setPrintData({ ...printData, tipoLente: value })}
+                      className="grid grid-cols-3 gap-x-4 gap-y-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Monofocal" id="lente-mono" />
+                        <Label htmlFor="lente-mono" className="font-normal">Monofocal</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Bifocal" id="lente-bifo" />
+                        <Label htmlFor="lente-bifo" className="font-normal">Bifocal</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Progresivo" id="lente-prog" />
+                        <Label htmlFor="lente-prog" className="font-normal">Progresivo</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Otro" id="lente-otro" />
+                        <Label htmlFor="lente-otro" className="font-normal">Otro</Label>
+                      </div>
+                    </RadioGroup>
+                    {printData.tipoLente === "Otro" && (
+                      <div className="mt-2">
+                        <Input
+                          placeholder="Especificar tipo de lente"
+                          value={printData.tipoLenteOtro}
+                          onChange={(e) => setPrintData({ ...printData, tipoLenteOtro: e.target.value })}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Trivex" id="material-trivex" />
-                    <Label htmlFor="material-trivex">Trivex</Label>
+                </div>
+                <div className="space-y-6">
+                  <div>
+                    <Label className="mb-2 block">Tratamiento</Label>
+                    <RadioGroup
+                      value={printData.tratamiento}
+                      onValueChange={(value) => setPrintData({ ...printData, tratamiento: value })}
+                      className="grid grid-cols-2 gap-x-4 gap-y-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Antirreflejante" id="trat-anti" />
+                        <Label htmlFor="trat-anti" className="font-normal">Antirreflejante</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Fotocromático" id="trat-foto" />
+                        <Label htmlFor="trat-foto" className="font-normal">Fotocromático</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Polarizado" id="trat-pola" />
+                        <Label htmlFor="trat-pola" className="font-normal">Polarizado</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Blue Light" id="trat-blue" />
+                        <Label htmlFor="trat-blue" className="font-normal">Blue Light</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Otro" id="trat-otro" />
+                        <Label htmlFor="trat-otro" className="font-normal">Otro</Label>
+                      </div>
+                    </RadioGroup>
+                    {printData.tratamiento === "Otro" && (
+                      <div className="mt-2">
+                        <Input
+                          placeholder="Especificar tratamiento"
+                          value={printData.tratamientoOtro}
+                          onChange={(e) => setPrintData({ ...printData, tratamientoOtro: e.target.value })}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Alto Índice 1.61" id="material-indice161" />
-                    <Label htmlFor="material-indice161">Alto Índice 1.61</Label>
+                  <div>
+                    <Label className="mb-2 block">Tipo de Montura</Label>
+                    <RadioGroup
+                      value={printData.tipoMontura}
+                      onValueChange={(value) => setPrintData({ ...printData, tipoMontura: value })}
+                      className="grid grid-cols-3 gap-x-4 gap-y-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Completa" id="mont-comp" />
+                        <Label htmlFor="mont-comp" className="font-normal">Completa</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Semi-Rim" id="mont-semi" />
+                        <Label htmlFor="mont-semi" className="font-normal">Semi-Rim</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Al Aire" id="mont-aire" />
+                        <Label htmlFor="mont-aire" className="font-normal">Al Aire</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Otro" id="mont-otro" />
+                        <Label htmlFor="mont-otro" className="font-normal">Otro</Label>
+                      </div>
+                    </RadioGroup>
+                    {printData.tipoMontura === "Otro" && (
+                      <div className="mt-2">
+                        <Input
+                          placeholder="Especificar tipo de montura"
+                          value={printData.tipoMonturaOtro}
+                          onChange={(e) => setPrintData({ ...printData, tipoMonturaOtro: e.target.value })}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Alto Índice 1.67" id="material-indice167" />
-                    <Label htmlFor="material-indice167">Alto Índice 1.67</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Otro" id="material-otro" />
-                    <Label htmlFor="material-otro">Otro</Label>
-                  </div>
-                </RadioGroup>
-                {printData.material === "Otro" && (
-                  <Input
-                    value={printData.materialOtro}
-                    onChange={(e) => setPrintData({ ...printData, materialOtro: e.target.value })}
-                    placeholder="Especifique el material"
-                    className="mt-2"
-                  />
-                )}
+                </div>
               </div>
             </div>
-            
-            {/* Tratamiento */}
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label className="text-right pt-2">
-                Tratamiento
-              </Label>
-              <div className="col-span-3 space-y-2">
-                <RadioGroup 
-                  value={printData.tratamiento} 
-                  onValueChange={(value) => setPrintData({ ...printData, tratamiento: value })}
-                  className="flex flex-col space-y-1"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Antirreflejante" id="tratamiento-antirreflejante" />
-                    <Label htmlFor="tratamiento-antirreflejante">Antirreflejante</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Fotocromático" id="tratamiento-fotocromático" />
-                    <Label htmlFor="tratamiento-fotocromático">Fotocromático</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Polarizado" id="tratamiento-polarizado" />
-                    <Label htmlFor="tratamiento-polarizado">Polarizado</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Blue Light" id="tratamiento-bluelight" />
-                    <Label htmlFor="tratamiento-bluelight">Blue Light</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Otro" id="tratamiento-otro" />
-                    <Label htmlFor="tratamiento-otro">Otro</Label>
-                  </div>
-                </RadioGroup>
-                {printData.tratamiento === "Otro" && (
-                  <Input
-                    value={printData.tratamientoOtro}
-                    onChange={(e) => setPrintData({ ...printData, tratamientoOtro: e.target.value })}
-                    placeholder="Especifique el tratamiento"
-                    className="mt-2"
-                  />
-                )}
-              </div>
-            </div>
-            
-            {/* Tipo de Lente */}
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label className="text-right pt-2">
-                Tipo de Lente
-              </Label>
-              <div className="col-span-3 space-y-2">
-                <RadioGroup 
-                  value={printData.tipoLente} 
-                  onValueChange={(value) => setPrintData({ ...printData, tipoLente: value })}
-                  className="flex flex-col space-y-1"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Monofocal" id="lente-monofocal" />
-                    <Label htmlFor="lente-monofocal">Monofocal</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Bifocal" id="lente-bifocal" />
-                    <Label htmlFor="lente-bifocal">Bifocal</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Progresivo" id="lente-progresivo" />
-                    <Label htmlFor="lente-progresivo">Progresivo</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Otro" id="lente-otro" />
-                    <Label htmlFor="lente-otro">Otro</Label>
-                  </div>
-                </RadioGroup>
-                {printData.tipoLente === "Otro" && (
-                  <Input
-                    value={printData.tipoLenteOtro}
-                    onChange={(e) => setPrintData({ ...printData, tipoLenteOtro: e.target.value })}
-                    placeholder="Especifique el tipo de lente"
-                    className="mt-2"
-                  />
-                )}
-              </div>
-            </div>
-            
-            {/* Tipo de Montura */}
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label className="text-right pt-2">
-                Tipo de Montura
-              </Label>
-              <div className="col-span-3 space-y-2">
-                <RadioGroup 
-                  value={printData.tipoMontura} 
-                  onValueChange={(value) => setPrintData({ ...printData, tipoMontura: value })}
-                  className="flex flex-col space-y-1"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Completa" id="montura-completa" />
-                    <Label htmlFor="montura-completa">Completa</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Semi-Rim" id="montura-semirim" />
-                    <Label htmlFor="montura-semirim">Semi-Rim</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Al Aire" id="montura-alaire" />
-                    <Label htmlFor="montura-alaire">Al Aire</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Otro" id="montura-otro" />
-                    <Label htmlFor="montura-otro">Otro</Label>
-                  </div>
-                </RadioGroup>
-                {printData.tipoMontura === "Otro" && (
-                  <Input
-                    value={printData.tipoMonturaOtro}
-                    onChange={(e) => setPrintData({ ...printData, tipoMonturaOtro: e.target.value })}
-                    placeholder="Especifique el tipo de montura"
-                    className="mt-2"
-                  />
-                )}
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="observaciones" className="text-right">
-                Observaciones
-              </Label>
+
+            <div className="space-y-2">
+              <Label htmlFor="observaciones">Observaciones</Label>
               <Textarea
                 id="observaciones"
+                placeholder="Observaciones del diagnóstico"
                 value={printData.observaciones}
                 onChange={(e) => setPrintData({ ...printData, observaciones: e.target.value })}
-                className="col-span-3"
-                placeholder="Observaciones del diagnóstico"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="observacionesAdicionales" className="text-right">
-                Observaciones Adicionales
-              </Label>
-              <Textarea
-                id="observacionesAdicionales"
-                value={printData.observacionesAdicionales}
-                onChange={(e) => setPrintData({ ...printData, observacionesAdicionales: e.target.value })}
-                className="col-span-3"
-                placeholder="Observaciones adicionales"
+                rows={3}
+                className="w-full"
               />
             </div>
           </div>
@@ -808,9 +789,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handlePrintRxWithData}>
-              Imprimir
-            </Button>
+            <Button onClick={handlePrintRxWithData}>Imprimir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

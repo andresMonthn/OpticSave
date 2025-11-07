@@ -4,7 +4,7 @@ import { format, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@kit/ui/table";
 import { Button } from "@kit/ui/button";
-import { PencilIcon } from "lucide-react";
+import { PencilIcon, ChevronDown } from "lucide-react";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
 import {
   Popover,
@@ -901,365 +901,233 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
                               <PencilIcon className="h-4 w-4" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-80 bg-[#0f172a] text-white border-gray-700 -translate-x-[50px] animate-in slide-in-from-top-5 zoom-in-95 duration-300">
+                          <PopoverContent className="w-[360px] bg-white text-gray-900 border border-gray-200 shadow-xl rounded-2xl p-6 -translate-x-[50px] animate-in slide-in-from-top-5 zoom-in-95 duration-300">
                             <div className="grid gap-4">
                               <div className="space-y-2">
-                                <h4 className="font-medium">Receta Médica</h4>
-                                <div className="flex items-center space-x-2">
+                                <h4 className="font-medium text-center text-gray-800">Recetas</h4>
+                                <div className="hidden">
                                   <label htmlFor="fecha" className="text-sm">Fecha:</label>
                                   <input
                                     type="date"
                                     id="fecha"
                                     value={fecha}
                                     onChange={(e) => setFecha(e.target.value)}
-                                    className="bg-[#1e293b] border border-gray-600 rounded px-2 py-1 text-sm"
+                                    className="border border-gray-300 rounded px-2 py-1 text-sm"
                                   />
                                 </div>
                               </div>
                               <div className="grid gap-2">
-                                <div className="grid grid-cols-3 items-center gap-2">
-                                  <label htmlFor="rx-esf" className="text-sm">Esfera</label>
-                                  <div className="col-span-2 flex">
-                                    <input
-                                      id="rx-esf"
-                                      type="number"
-                                      step="0.25"
-                                      min="-20"
-                                      max="20"
-                                      value={editRxData.esf !== null ? formatToTwoDecimals(editRxData.esf) : ''}
-                                      onChange={(e) => {
-                                        // Validar que el valor sea un múltiplo de 0.25
-                                        const value = parseFloat(e.target.value);
-                                        if (!isNaN(value)) {
-                                          // Redondear al 0.25 más cercano
-                                          const rounded = Math.round(value * 4) / 4;
-                                          // Limitar entre -20 y 20
-                                          if (rounded <= 20 && rounded >= -20) {
-                                            // Formatear para mostrar siempre 2 decimales
-                                            const formattedValue = Number(rounded).toFixed(2);
-                                            handleNumericChange(formattedValue, 'esf');
-                                          }
-                                        } else {
-                                          handleNumericChange(e.target.value, 'esf');
-                                        }
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === '.') {
-                                          e.preventDefault();
-                                          setEditRxData(prev => ({ ...prev, esf: 0.00 }));
-                                        }
-                                      }}
-                                      className="flex-1 bg-[#1e293b] border border-gray-600 rounded-l px-2 py-1 text-sm"
-                                      placeholder="Esfera"
-                                      disabled={editRxData.esfDisabled}
-                                    />
-                                    <div className="flex flex-col">
-                                      <button 
-                                        type="button" 
-                                        className="bg-[#334155] border border-gray-600 rounded-tr px-2 text-xs h-[14px]"
-                                        onClick={() => {
-                                          const currentValue = editRxData.esf !== null ? editRxData.esf : 0;
-                                          if (currentValue < 20) {
-                                            // Incrementar en 0.25 y formatear con 2 decimales
-                                            const newValue = Math.min(20, currentValue + 0.25);
-                                            setEditRxData(prev => ({ ...prev, esf: Number(newValue.toFixed(2)) }));
-                                          }
+                                {/* Esfera */}
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <label htmlFor="rx-esf" className="text-sm text-gray-700">Esfera</label>
+                                    <div className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id="disableEsf"
+                                        checked={editRxData.esfDisabled}
+                                        onCheckedChange={(checked) => {
+                                          const isChecked = checked === true;
+                                          setEditRxData(prev => ({ 
+                                            ...prev, 
+                                            esfDisabled: isChecked, 
+                                            esf: isChecked ? null : prev.esf 
+                                          }));
                                         }}
-                                        disabled={editRxData.esfDisabled}
-                                      >▲</button>
-                                      <button 
-                                        type="button" 
-                                        className="bg-[#334155] border border-gray-600 rounded-br px-2 text-xs h-[14px]"
-                                        onClick={() => {
-                                          const currentValue = editRxData.esf !== null ? editRxData.esf : 0;
-                                          if (currentValue > -20) {
-                                            // Decrementar en 0.25 y formatear con 2 decimales
-                                            const newValue = Math.max(-20, currentValue - 0.25);
-                                            setEditRxData(prev => ({ ...prev, esf: Number(newValue.toFixed(2)) }));
-                                          }
-                                        }}
-                                        disabled={editRxData.cilDisabled}
-                                      >▼</button>
+                                      />
+                                      <Label htmlFor="disableEsf" className="text-sm text-gray-600">N</Label>
                                     </div>
                                   </div>
-                                  
-                                  {/* Checkbox para inhabilitar ESF */}
-                                  <div className="flex items-center space-x-2 mt-2">
-                                    <Checkbox
-                                      id="disableEsf"
-                                      checked={editRxData.esfDisabled}
-                                      onCheckedChange={(checked) => {
-                                        const isChecked = checked === true;
-                                        setEditRxData(prev => ({ 
-                                          ...prev, 
-                                          esfDisabled: isChecked, 
-                                          esf: isChecked ? null : prev.esf 
-                                        }));
-                                      }}
-                                    />
-                                    <Label htmlFor="disableEsf" className="text-sm text-white">N</Label>
-                                  </div>
+                                  <input
+                                    id="rx-esf"
+                                    type="number"
+                                    step="0.25"
+                                    min="-20"
+                                    max="20"
+                                    value={editRxData.esf !== null ? formatToTwoDecimals(editRxData.esf) : ''}
+                                    onChange={(e) => {
+                                      const value = parseFloat(e.target.value);
+                                      if (!isNaN(value)) {
+                                        const rounded = Math.round(value * 4) / 4;
+                                        if (rounded <= 20 && rounded >= -20) {
+                                          const formattedValue = Number(rounded).toFixed(2);
+                                          handleNumericChange(formattedValue, 'esf');
+                                        }
+                                      } else {
+                                        handleNumericChange(e.target.value, 'esf');
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === '.') {
+                                        e.preventDefault();
+                                        setEditRxData(prev => ({ ...prev, esf: 0.00 }));
+                                      }
+                                    }}
+                                    className="w-full h-11 bg-white border border-gray-300 rounded-xl px-3 text-sm placeholder:text-gray-400"
+                                    placeholder="Esfera"
+                                    disabled={editRxData.esfDisabled}
+                                  />
                                 </div>
-                                <div className="grid grid-cols-3 items-center gap-2">
-                                  <label htmlFor="rx-cil" className="text-sm">Cilindro</label>
-                                  <div className="col-span-2 flex">
-                                    <input
-                                      id="rx-cil"
-                                      type="number"
-                                      step="0.25"
-                                      max="0"
-                                      min="-20"
-                                      value={editRxData.cil !== null ? formatToTwoDecimals(editRxData.cil) : ''}
-                                      onChange={(e) => {
-                                        // Asegurar que el valor sea negativo y múltiplo de 0.25
-                                        let value = parseFloat(e.target.value);
-                                        if (!isNaN(value)) {
-                                          // Redondear al 0.25 más cercano
-                                          const rounded = Math.round(value * 4) / 4;
-                                          // Asegurar que sea negativo o cero
-                                          const negativeValue = Math.min(rounded, 0);
-                                          // Asegurar que no sea menor que -20
-                                          const limitedValue = Math.max(negativeValue, -20);
-                                          handleNumericChange(limitedValue.toString(), 'cil');
-                                        } else {
-                                          // Asegurar que el valor sea negativo
-                                          let textValue = e.target.value;
-                                          if (textValue && !textValue.startsWith('-') && textValue !== '-') {
-                                            textValue = '-' + textValue;
-                                          }
-                                          handleNumericChange(textValue, 'cil');
-                                        }
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === '.') {
-                                          e.preventDefault();
-                                          setEditRxData(prev => ({ ...prev, cil: -0.00 }));
-                                        }
-                                      }}
-                                      className="flex-1 bg-[#1e293b] border border-gray-600 rounded-l px-2 py-1 text-sm"
-                                      placeholder="-Cilindro"
-                                      disabled={editRxData.cilDisabled}
-                                    />
-                                    <div className="flex flex-col">
-                                      <button 
-                                        type="button" 
-                                        className="bg-[#334155] border border-gray-600 rounded-tr px-2 text-xs h-[14px]"
-                                        onClick={() => {
-                                          const currentValue = editRxData.cil !== null ? editRxData.cil : 0;
-                                          if (currentValue < 0) {
-                                            // Incrementar hacia cero en pasos de 0.25
-                                            const newValue = Math.min(currentValue + 0.25, 0);
-                                            setEditRxData(prev => ({ ...prev, cil: Number(newValue.toFixed(2)) }));
-                                          }
+                                {/* Cilindro */}
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <label htmlFor="rx-cil" className="text-sm text-gray-700">Cilindro</label>
+                                    <div className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id="disableCil"
+                                        checked={editRxData.cilDisabled}
+                                        onCheckedChange={(checked) => {
+                                          const isChecked = checked === true;
+                                          setEditRxData(prev => ({ 
+                                            ...prev, 
+                                            cilDisabled: isChecked, 
+                                            cil: isChecked ? null : prev.cil 
+                                          }));
                                         }}
-                                        disabled={editRxData.cilDisabled}
-                                      >▲</button>
-                                      <button 
-                                        type="button" 
-                                        className="bg-[#334155] border border-gray-600 rounded-br px-2 text-xs h-[14px]"
-                                        onClick={() => {
-                                          const currentValue = editRxData.cil !== null ? editRxData.cil : 0;
-                                          if (currentValue > -20) {
-                                            // Decrementar en pasos de 0.25 hasta -20
-                                            const newValue = Math.max(currentValue - 0.25, -20);
-                                            setEditRxData(prev => ({ ...prev, cil: Number(newValue.toFixed(2)) }));
-                                          }
-                                        }}
-                                        disabled={editRxData.esfDisabled}
-                                      >▼</button>
+                                      />
+                                      <Label htmlFor="disableCil" className="text-sm text-gray-600">N</Label>
                                     </div>
                                   </div>
-                                  
-                                  {/* Checkbox para inhabilitar CIL */}
-                                  <div className="flex items-center space-x-2 mt-2">
-                                    <Checkbox
-                                      id="disableCil"
-                                      checked={editRxData.cilDisabled}
-                                      onCheckedChange={(checked) => {
-                                        const isChecked = checked === true;
-                                        setEditRxData(prev => ({ 
-                                          ...prev, 
-                                          cilDisabled: isChecked, 
-                                          cil: isChecked ? null : prev.cil 
-                                        }));
-                                      }}
-                                    />
-                                    <Label htmlFor="disableCil" className="text-sm text-white">N</Label>
-                                  </div>
+                                  <input
+                                    id="rx-cil"
+                                    type="number"
+                                    step="0.25"
+                                    max="0"
+                                    min="-20"
+                                    value={editRxData.cil !== null ? formatToTwoDecimals(editRxData.cil) : ''}
+                                    onChange={(e) => {
+                                      let value = parseFloat(e.target.value);
+                                      if (!isNaN(value)) {
+                                        const rounded = Math.round(value * 4) / 4;
+                                        const negativeValue = Math.min(rounded, 0);
+                                        const limitedValue = Math.max(negativeValue, -20);
+                                        handleNumericChange(limitedValue.toString(), 'cil');
+                                      } else {
+                                        let textValue = e.target.value;
+                                        if (textValue && !textValue.startsWith('-') && textValue !== '-') {
+                                          textValue = '-' + textValue;
+                                        }
+                                        handleNumericChange(textValue, 'cil');
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === '.') {
+                                        e.preventDefault();
+                                        setEditRxData(prev => ({ ...prev, cil: -0.00 }));
+                                      }
+                                    }}
+                                    className="w-full h-11 bg-white border border-gray-300 rounded-xl px-3 text-sm placeholder:text-gray-400"
+                                    placeholder="-Cilindro"
+                                    disabled={editRxData.cilDisabled}
+                                  />
                                 </div>
-                                <div className="grid grid-cols-3 items-center gap-2">
-                                  <label htmlFor="rx-eje" className="text-sm">Eje</label>
-                                  <div className="col-span-2 flex">
-                                    <input
-                                      id="rx-eje"
-                                      type="number"
-                                      step="0.25"
-                                      min="0"
-                                      max="20"
-                                      value={editRxData.eje !== null ? formatToTwoDecimals(editRxData.eje) : ''}
-                                      onChange={(e) => {
-                                        // Validar que el valor sea un múltiplo de 0.25
-                                        const value = parseFloat(e.target.value);
-                                        if (!isNaN(value)) {
-                                          // Redondear al 0.25 más cercano
-                                          const rounded = Math.round(value * 4) / 4;
-                                          // Limitar entre 0 y 20
-                                          if (rounded <= 20 && rounded >= 0) {
-                                            // Formatear para mostrar siempre 2 decimales
-                                            const formattedValue = Number(rounded).toFixed(2);
-                                            handleNumericChange(formattedValue, 'eje');
-                                          }
-                                        } else {
-                                          handleNumericChange(e.target.value, 'eje');
-                                        }
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === '.') {
-                                          e.preventDefault();
-                                          setEditRxData(prev => ({ ...prev, eje: 0.00 }));
-                                        }
-                                      }}
-                                      className="flex-1 bg-[#1e293b] border border-gray-600 rounded-l px-2 py-1 text-sm"
-                                      placeholder="Eje"
-                                      disabled={editRxData.ejeDisabled}
-                                    />
-                                    <div className="flex flex-col">
-                                      <button 
-                                        type="button" 
-                                        className="bg-[#334155] border border-gray-600 rounded-tr px-2 text-xs h-[14px]"
-                                        onClick={() => {
-                                          const currentValue = editRxData.eje !== null ? editRxData.eje : 0;
-                                          if (currentValue < 20) {
-                                            // Incrementar en 0.25 y formatear con 2 decimales
-                                            const newValue = Math.min(20, currentValue + 0.25);
-                                            setEditRxData(prev => ({ ...prev, eje: Number(newValue.toFixed(2)) }));
-                                          }
+                                {/* Eje */}
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <label htmlFor="rx-eje" className="text-sm text-gray-700">Eje</label>
+                                    <div className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id="disableEje"
+                                        checked={editRxData.ejeDisabled}
+                                        onCheckedChange={(checked) => {
+                                          const isChecked = checked === true;
+                                          setEditRxData(prev => ({ 
+                                            ...prev, 
+                                            ejeDisabled: isChecked, 
+                                            eje: isChecked ? null : prev.eje 
+                                          }));
                                         }}
-                                        disabled={editRxData.ejeDisabled}
-                                      >▲</button>
-                                      <button 
-                                        type="button" 
-                                        className="bg-[#334155] border border-gray-600 rounded-br px-2 text-xs h-[14px]"
-                                        onClick={() => {
-                                          const currentValue = editRxData.eje !== null ? editRxData.eje : 0;
-                                          if (currentValue > 0) {
-                                            // Decrementar en 0.25 y formatear con 2 decimales
-                                            const newValue = Math.max(0, currentValue - 0.25);
-                                            setEditRxData(prev => ({ ...prev, eje: Number(newValue.toFixed(2)) }));
-                                          }
-                                        }}
-                                        disabled={editRxData.ejeDisabled}
-                                      >▼</button>
+                                      />
+                                      <Label htmlFor="disableEje" className="text-sm text-gray-600">N</Label>
                                     </div>
                                   </div>
-                                  
-                                  {/* Checkbox para inhabilitar EJE */}
-                                  <div className="flex items-center space-x-2 mt-2">
-                                    <Checkbox
-                                      id="disableEje"
-                                      checked={editRxData.ejeDisabled}
-                                      onCheckedChange={(checked) => {
-                                        const isChecked = checked === true;
-                                        setEditRxData(prev => ({ 
-                                          ...prev, 
-                                          ejeDisabled: isChecked, 
-                                          eje: isChecked ? null : prev.eje 
-                                        }));
-                                      }}
-                                    />
-                                    <Label htmlFor="disableEje" className="text-sm text-white">N</Label>
-                                  </div>
+                                  <input
+                                    id="rx-eje"
+                                    type="number"
+                                    step="0.25"
+                                    min="0"
+                                    max="20"
+                                    value={editRxData.eje !== null ? formatToTwoDecimals(editRxData.eje) : ''}
+                                    onChange={(e) => {
+                                      const value = parseFloat(e.target.value);
+                                      if (!isNaN(value)) {
+                                        const rounded = Math.round(value * 4) / 4;
+                                        if (rounded <= 20 && rounded >= 0) {
+                                          const formattedValue = Number(rounded).toFixed(2);
+                                          handleNumericChange(formattedValue, 'eje');
+                                        }
+                                      } else {
+                                        handleNumericChange(e.target.value, 'eje');
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === '.') {
+                                        e.preventDefault();
+                                        setEditRxData(prev => ({ ...prev, eje: 0.00 }));
+                                      }
+                                    }}
+                                    className="w-full h-11 bg-white border border-gray-300 rounded-xl px-3 text-sm placeholder:text-gray-400"
+                                    placeholder="Eje"
+                                    disabled={editRxData.ejeDisabled}
+                                  />
                                 </div>
-                                <div className="grid grid-cols-3 items-center gap-2">
-                                  <label htmlFor="rx-add" className="text-sm">Adición</label>
-                                  <div className="col-span-2 flex">
-                                    <input
-                                      id="rx-add"
-                                      type="number"
-                                      step="0.25"
-                                      min="0"
-                                      max="20"
-                                      value={editRxData.add !== null ? formatToTwoDecimals(editRxData.add) : ''}
-                                      onChange={(e) => {
-                                        // Validar que el valor sea un múltiplo de 0.25
-                                        const value = parseFloat(e.target.value);
-                                        if (!isNaN(value)) {
-                                          // Redondear al 0.25 más cercano
-                                          const rounded = Math.round(value * 4) / 4;
-                                          // Limitar entre 0 y 20
-                                          if (rounded <= 20 && rounded >= 0) {
-                                            // Formatear para mostrar siempre 2 decimales
-                                            const formattedValue = Number(rounded).toFixed(2);
-                                            handleNumericChange(formattedValue, 'add');
-                                          }
-                                        } else {
-                                          handleNumericChange(e.target.value, 'add');
-                                        }
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === '.') {
-                                          e.preventDefault();
-                                          setEditRxData(prev => ({ ...prev, add: 0.00 }));
-                                        }
-                                      }}
-                                      className="flex-1 bg-[#1e293b] border border-gray-600 rounded-l px-2 py-1 text-sm"
-                                      placeholder="Adición"
-                                      disabled={editRxData.addDisabled}
-                                    />
-                                    <div className="flex flex-col">
-                                      <button 
-                                        type="button" 
-                                        className="bg-[#334155] border border-gray-600 rounded-tr px-2 text-xs h-[14px]"
-                                        onClick={() => {
-                                          const currentValue = editRxData.add !== null ? editRxData.add : 0;
-                                          if (currentValue < 20) {
-                                            // Incrementar en 0.25 y formatear con 2 decimales
-                                            const newValue = Math.min(20, currentValue + 0.25);
-                                            setEditRxData(prev => ({ ...prev, add: Number(newValue.toFixed(2)) }));
-                                          }
+                                {/* Adición */}
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <label htmlFor="rx-add" className="text-sm text-gray-700">Adición</label>
+                                    <div className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id="disableAdd"
+                                        checked={editRxData.addDisabled}
+                                        onCheckedChange={(checked) => {
+                                          const isChecked = checked === true;
+                                          setEditRxData(prev => ({ 
+                                            ...prev, 
+                                            addDisabled: isChecked, 
+                                            add: isChecked ? null : prev.add 
+                                          }));
                                         }}
-                                        disabled={editRxData.addDisabled}
-                                      >▲</button>
-                                      <button 
-                                        type="button" 
-                                        className="bg-[#334155] border border-gray-600 rounded-br px-2 text-xs h-[14px]"
-                                        onClick={() => {
-                                          const currentValue = editRxData.add !== null ? editRxData.add : 0;
-                                          if (currentValue > 0) {
-                                            // Decrementar en 0.25 y formatear con 2 decimales
-                                            const newValue = Math.max(0, currentValue - 0.25);
-                                            setEditRxData(prev => ({ ...prev, add: Number(newValue.toFixed(2)) }));
-                                          }
-                                        }}
-                                        disabled={editRxData.addDisabled}
-                                      >▼</button>
+                                      />
+                                      <Label htmlFor="disableAdd" className="text-sm text-gray-600">N</Label>
                                     </div>
                                   </div>
-                                  
-                                  {/* Checkbox para inhabilitar ADD */}
-                                  <div className="flex items-center space-x-2 mt-2">
-                                    <Checkbox
-                                      id="disableAdd"
-                                      checked={editRxData.addDisabled}
-                                      onCheckedChange={(checked) => {
-                                        const isChecked = checked === true;
-                                        setEditRxData(prev => ({ 
-                                          ...prev, 
-                                          addDisabled: isChecked, 
-                                          add: isChecked ? null : prev.add 
-                                        }));
-                                      }}
-                                    />
-                                    <Label htmlFor="disableAdd" className="text-sm text-white">N</Label>
-                                  </div>
+                                  <input
+                                    id="rx-add"
+                                    type="number"
+                                    step="0.25"
+                                    min="0"
+                                    max="20"
+                                    value={editRxData.add !== null ? formatToTwoDecimals(editRxData.add) : ''}
+                                    onChange={(e) => {
+                                      const value = parseFloat(e.target.value);
+                                      if (!isNaN(value)) {
+                                        const rounded = Math.round(value * 4) / 4;
+                                        if (rounded <= 20 && rounded >= 0) {
+                                          const formattedValue = Number(rounded).toFixed(2);
+                                          handleNumericChange(formattedValue, 'add');
+                                        }
+                                      } else {
+                                        handleNumericChange(e.target.value, 'add');
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === '.') {
+                                        e.preventDefault();
+                                        setEditRxData(prev => ({ ...prev, add: 0.00 }));
+                                      }
+                                    }}
+                                    className="w-full h-11 bg-white border border-gray-300 rounded-xl px-3 text-sm placeholder:text-gray-400"
+                                    placeholder="Adición"
+                                    disabled={editRxData.addDisabled}
+                                  />
                                 </div>
                               </div>
                               <Button
                                 type="button"
                                 onClick={handleSaveRx}
-                                className="bg-blue-600 text-white hover:bg-blue-700"
+                                variant="outline"
+                                className="mx-auto rounded-full w-12 h-12 p-0 border-2 border-gray-800 hover:bg-gray-100"
                               >
-                                Guardar
+                                <ChevronDown className="h-6 w-6 text-gray-900" />
                               </Button>
                             </div>
                           </PopoverContent>

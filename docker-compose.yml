@@ -1,0 +1,22 @@
+version: "3.9"
+services:
+  web:
+    build: ./apps/web/Dockerfile
+    container_name: optisave_web
+    ports:
+      - "3000:3000"
+    depends_on:
+      - ollama
+    environment:
+      - NEXT_PUBLIC_OLLAMA_URL=http://ollama:11434
+      - NODE_ENV=production
+    restart: always
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama_data:/root/.ollama
+    restart: always

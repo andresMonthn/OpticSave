@@ -5,6 +5,7 @@ import { UserWorkspaceContextProvider } from '@kit/accounts/components';
 import { Page, PageMobileNavigation, PageNavigation } from '@kit/ui/page';
 import { SidebarProvider } from '@kit/ui/shadcn-sidebar';
 import { AppLogo } from '~/components/app-logo';
+// ChatBotOverlay ahora se monta globalmente en app/layout.tsx
 import { personalAccountNavigationConfig } from '~/config/personal-account-navigation.config';
 import { withI18n } from '~/lib/i18n/with-i18n';
 
@@ -44,6 +45,7 @@ function SidebarLayout({ children }: React.PropsWithChildren) {
 
           {children}
         </Page>
+        {/* ChatBot overlay removido aquí para evitar duplicados */}
       </SidebarProvider>
     </UserWorkspaceContextProvider>
   );
@@ -65,6 +67,7 @@ function HeaderLayout({ children }: React.PropsWithChildren) {
 
         {children}
       </Page>
+      {/* ChatBot overlay removido aquí para evitar duplicados */}
     </UserWorkspaceContextProvider>
   );
 }

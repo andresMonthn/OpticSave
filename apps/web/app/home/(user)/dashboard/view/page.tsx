@@ -9,7 +9,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Checkbox } from "@kit/ui/checkbox";
 import { Label } from "@kit/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@kit/ui/popover";
-import { Settings } from "lucide-react";
+import { Settings, Sheet } from "lucide-react";
 import { Trans } from '@kit/ui/trans';
 import { HomeLayoutPageHeader } from '../../../(user)/_components/home-page-header';
 import { PageBody } from '@kit/ui/page';
@@ -142,6 +142,35 @@ export default function View() {
     router.push(`/home/dashboard/historialclinico/${pacienteId}`);
   };
 
+  const handleExportCSV = () => {
+    const visibleColumnKeys = Object.entries(visibleColumns)
+      .filter(([, isVisible]) => isVisible)
+      .map(([key]) => key);
+
+    const header = visibleColumnKeys.join(',') + '\n';
+
+    const rows = sortedPacientes.map(paciente => {
+      return visibleColumnKeys.map(key => {
+        const value = paciente[key as keyof Paciente];
+        // Formatear y escapar valores para CSV
+        if (value === null || value === undefined) return '';
+        const stringValue = String(value).replace(/"/g, '""');
+        return `"${stringValue}"`;
+      }).join(',');
+    }).join('\n');
+
+    const csvContent = header + rows;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    const today = new Date().toISOString().slice(0, 10);
+    link.setAttribute('download', `pacientes_${today}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <>
       <HomeLayoutPageHeader
@@ -200,6 +229,15 @@ export default function View() {
             className="text-xs sm:text-sm"
           >
             Actualizar
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs sm:text-sm flex items-center gap-2"
+            onClick={handleExportCSV}
+          >
+            <Sheet className="h-3 w-3 sm:h-4 sm:w-4" />
+            Exportar CSV
           </Button>
           
           {/* Selector de campos */}

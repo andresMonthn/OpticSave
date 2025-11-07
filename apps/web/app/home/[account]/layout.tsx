@@ -11,6 +11,7 @@ import { SidebarProvider } from '@kit/ui/shadcn-sidebar';
 import { AppLogo } from '~/components/app-logo';
 import { getTeamAccountSidebarConfig } from '~/config/team-account-navigation.config';
 import { withI18n } from '~/lib/i18n/with-i18n';
+import ChatBotOverlay from './_components/chatbot-overlay';
 
 // local imports
 import { TeamAccountLayoutMobileNavigation } from './_components/team-account-layout-mobile-navigation';
@@ -75,6 +76,8 @@ function SidebarLayout({
 
           {children}
         </Page>
+        {/* ChatBot overlay visible across all team account pages */}
+        <ChatBotOverlay />
       </SidebarProvider>
     </TeamAccountWorkspaceContextProvider>
   );
@@ -115,6 +118,8 @@ function HeaderLayout({
 
         {children}
       </Page>
+      {/* ChatBot overlay visible across all team account pages */}
+      <ChatBotOverlay />
     </TeamAccountWorkspaceContextProvider>
   );
 }

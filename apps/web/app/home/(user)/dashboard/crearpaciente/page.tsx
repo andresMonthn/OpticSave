@@ -222,6 +222,77 @@ export default function CrearPacientePage() {
     colonia: ""
   });
 
+  // Prefill automático desde el chat (localStorage)
+  useEffect(() => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("optisave.prefillPaciente") : null;
+      if (!raw) return;
+      const prefill = JSON.parse(raw || "{}");
+      // Limpiar storage tras leer
+      localStorage.removeItem("optisave.prefillPaciente");
+
+      // Asignar campos básicos
+      if (prefill.nombre) setNombre(String(prefill.nombre));
+      if (prefill.telefono) setTelefono(String(prefill.telefono).replace(/\D/g, ""));
+      if (prefill.edad !== undefined && prefill.edad !== null) setEdad(String(prefill.edad));
+      if (prefill.sexo) setSexo(String(prefill.sexo));
+      if (prefill.domicilio) setDomicilio(String(prefill.domicilio));
+      if (prefill.motivo_consulta) setMotivoConsulta(String(prefill.motivo_consulta));
+      if (prefill.ocupacion) setOcupacion(String(prefill.ocupacion));
+      if (prefill.sintomas_visuales) setSintomasVisuales(String(prefill.sintomas_visuales));
+      if (prefill.tipos_de_lentes) {
+        const tipos = Array.isArray(prefill.tipos_de_lentes)
+          ? prefill.tipos_de_lentes
+          : String(prefill.tipos_de_lentes).split(",").map((s: string) => s.trim()).filter(Boolean);
+        setTipoLentesSeleccionados(tipos);
+      }
+      if (prefill.tiempo_de_uso_lentes) setTiempoUsoLentes(String(prefill.tiempo_de_uso_lentes));
+      if (prefill.cirujias !== undefined) setCirugiasOculares(Boolean(parseTruthy(prefill.cirujias)));
+      if (prefill.traumatismos_oculares !== undefined) setTraumatismosOculares(Boolean(parseTruthy(prefill.traumatismos_oculares)));
+      if (prefill.nombre_traumatismos_oculares) setTraumatismosDetalle(String(prefill.nombre_traumatismos_oculares));
+      if (prefill.antecedentes_visuales_familiares) setAntecedentesVisualesFamiliares(String(prefill.antecedentes_visuales_familiares));
+      if (prefill.antecedente_familiar_salud) setAntecedentesFamiliaresSalud(String(prefill.antecedente_familiar_salud));
+      if (prefill.habitos_visuales) setHabitosVisuales(String(prefill.habitos_visuales));
+      if (prefill.salud_general) setSaludGeneral(String(prefill.salud_general));
+      if (prefill.medicamento_actual) setMedicamentosActuales(String(prefill.medicamento_actual));
+      if (prefill.uso_lentes !== undefined) setUsaLentes(Boolean(parseTruthy(prefill.uso_lentes)));
+
+      // Fechas (nacimiento y cita)
+      if (prefill.fecha_nacimiento) {
+        const fn = parseDate(prefill.fecha_nacimiento);
+        if (fn) setFechaNacimiento(fn);
+      }
+      if (prefill.fecha_de_cita) {
+        const fcRaw = String(prefill.fecha_de_cita).toLowerCase();
+        if (fcRaw === "hoy" || fcRaw === "today" || fcRaw === "ahora") {
+          setFechaCita(startOfDay(new Date()));
+        } else {
+          const fc = parseDate(prefill.fecha_de_cita);
+          if (fc) setFechaCita(startOfDay(fc));
+        }
+      }
+    } catch (e) {
+      console.warn("No se pudo aplicar prefill del chat:", e);
+    }
+  }, []);
+
+  function parseTruthy(val: any): boolean {
+    if (typeof val === "boolean") return val;
+    const s = String(val).trim().toLowerCase();
+    return s === "true" || s === "1" || s === "si" || s === "sí" || s === "yes";
+  }
+
+  function parseDate(val: any): Date | null {
+    try {
+      if (val instanceof Date) return val;
+      const s = String(val).trim();
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d;
+    } catch {
+      return null;
+    }
+  }
+
   // Marcar campo como tocado
   const handleBlur = (field: string) => {
     setTouched({ ...touched, [field]: true });
