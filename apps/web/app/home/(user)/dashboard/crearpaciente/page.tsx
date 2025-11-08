@@ -183,7 +183,7 @@ export default function CrearPacientePage() {
   const [sintomasVisuales, setSintomasVisuales] = useState("");
   const [sintomasVisualesSeleccionados, setSintomasVisualesSeleccionados] = useState<string[]>([]);
   const [sintomasVisualesOtro, setSintomasVisualesOtro] = useState("");
-  const [ultimoExamenVisual, setUltimoExamenVisual] = useState<Date | undefined>(undefined);
+  const [ultimoExamenVisual, setUltimoExamenVisual] = useState<string>("");
   const [usaLentes, setUsaLentes] = useState(false);
   const [tipoLentesSeleccionados, setTipoLentesSeleccionados] = useState<string[]>([]);
   const [tiempoUsoLentes, setTiempoUsoLentes] = useState("");
@@ -354,7 +354,7 @@ export default function CrearPacientePage() {
     setFechaNacimientoOpen(false);
     setOcupacion("");
     setSintomasVisuales("");
-    setUltimoExamenVisual(undefined);
+    setUltimoExamenVisual("");
     setUsaLentes(false);
     setTipoLentesSeleccionados([]);
     setTiempoUsoLentes("");
@@ -435,7 +435,9 @@ export default function CrearPacientePage() {
           antecedentes_visuales_familiares: antecedentesVisualesFamiliaresSeleccionados.length > 0
             ? antecedentesVisualesFamiliaresSeleccionados.map(a => a === "Otros" ? `Otros: ${antecedentesVisualesFamiliaresOtros}` : a).join(", ")
             : antecedentesVisualesFamiliares,
-          ultimo_examen_visual: ultimoExamenVisual ? format(ultimoExamenVisual, "yyyy-MM-dd") : "",
+          ultimo_examen_visual: ultimoExamenVisual
+            ? `${parseInt(ultimoExamenVisual, 10)} ${parseInt(ultimoExamenVisual, 10) === 1 ? 'año' : 'años'}`
+            : "",
           uso_lentes: usaLentes,
           tipos_de_lentes: tipoLentesSeleccionados.length > 0 ? tipoLentesSeleccionados.join(", ") : "",
           tiempo_de_uso_lentes: tiempoUsoLentes,
@@ -497,24 +499,7 @@ export default function CrearPacientePage() {
       if (accountId && linkLocal) {
         try {
           // Usar la API de notificaciones de Makerkit
-          const response = await fetch("/api/notifications", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              account_id: accountId,
-              body: `Has creado un nuevo paciente: ${nombre}`,
-              link: linkLocal,
-              type: "info",
-              channel: "in_app", // Solo enviar notificación in-app
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
-          }
-
-          // Enviar notificación por email por separado
-          // const emailResponse = await fetch("/api/notifications", {
+          // const response = await fetch("/api/notifications", {
           //   method: "POST",
           //   headers: { "Content-Type": "application/json" },
           //   body: JSON.stringify({
@@ -522,13 +507,30 @@ export default function CrearPacientePage() {
           //     body: `Has creado un nuevo paciente: ${nombre}`,
           //     link: linkLocal,
           //     type: "info",
-          //     channel: "email", // Solo enviar notificación por email
+          //     channel: "in_app", // Solo enviar notificación in-app
           //   }),
           // });
 
-          // if (!emailResponse.ok) {
-          //   throw new Error(`Error HTTP en email: ${emailResponse.status}`);
+          // if (!response.ok) {
+          //   throw new Error(`Error HTTP: ${response.status}`);
           // }
+
+          // Enviar notificación por email por separado
+          const emailResponse = await fetch("/api/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              account_id: accountId || user.id,
+              body: `Has creado un nuevo paciente: ${nombre}`,
+              link: linkLocal,
+              type: "info",
+              channel: "email", // Solo enviar notificación por email
+            }),
+          });
+
+          if (!emailResponse.ok) {
+            throw new Error(`Error HTTP en email: ${emailResponse.status}`);
+          }
 
           console.log("Notificaciones enviadas correctamente");
         } catch (err) {
@@ -840,37 +842,26 @@ export default function CrearPacientePage() {
                     />
                   </div>
 
-                  {/* Último Examen Visual */}
+                  {/* Último Examen Visual (años aproximados) */}
                   <div className="space-y-2">
                     <Label htmlFor="ultimoExamenVisual">Último Examen Visual</Label>
-                    <div>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={`w-full justify-start text-left font-normal ${!ultimoExamenVisual ? "text-muted-foreground" : ""
-                              }`}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {ultimoExamenVisual ? (
-                              format(ultimoExamenVisual, "PPP", { locale: es })
-                            ) : (
-                              <span>Seleccione una fecha</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={ultimoExamenVisual}
-                            onSelect={setUltimoExamenVisual}
-                            initialFocus
-                            disableNavigation={false}
-                            fromDate={undefined}
-                            toDate={new Date()}
-                          />
-                        </PopoverContent>
-                      </Popover>
+                    <Input
+                      id="ultimoExamenVisual"
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={ultimoExamenVisual}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "");
+                        setUltimoExamenVisual(v);
+                      }}
+                      placeholder="¿Cuántos años aproximadamente?"
+                      autoComplete="off"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      {ultimoExamenVisual
+                        ? `${parseInt(ultimoExamenVisual, 10)} ${parseInt(ultimoExamenVisual, 10) === 1 ? 'año' : 'años'}`
+                        : 'Indique un número entero, por ejemplo: 1, 2, 3'}
                     </div>
                   </div>
                 </div>

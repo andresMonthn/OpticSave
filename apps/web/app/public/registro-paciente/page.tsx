@@ -273,8 +273,7 @@ export default function CrearPacientePage() {
   const [sintomasVisuales, setSintomasVisuales] = useState("");
   const [sintomasVisualesSeleccionados, setSintomasVisualesSeleccionados] = useState<string[]>([]);
   const [sintomasVisualesOtro, setSintomasVisualesOtro] = useState("");
-  const [ultimoExamenVisual, setUltimoExamenVisual] = useState<Date | undefined>(undefined);
-  const [ultimoExamenVisualOpen, setUltimoExamenVisualOpen] = useState(false);
+  const [ultimoExamenVisual, setUltimoExamenVisual] = useState<string>("");
   const [usaLentes, setUsaLentes] = useState(false);
   const [tipoLentesSeleccionados, setTipoLentesSeleccionados] = useState<string[]>([]);
   const [tiempoUsoLentes, setTiempoUsoLentes] = useState("");
@@ -374,7 +373,7 @@ export default function CrearPacientePage() {
     setFechaNacimientoOpen(false);
     setOcupacion("");
     setSintomasVisuales("");
-    setUltimoExamenVisual(undefined);
+    setUltimoExamenVisual("");
     setUsaLentes(false);
     setTipoLentesSeleccionados([]);
     setTiempoUsoLentes("");
@@ -422,10 +421,8 @@ export default function CrearPacientePage() {
     setFechaNacimiento(fechaNac);
     setFechaCita(hoy);
     
-    // Último examen visual (hace 1 año)
-    const ultimoExamen = new Date();
-    ultimoExamen.setFullYear(ultimoExamen.getFullYear() - 1);
-    setUltimoExamenVisual(ultimoExamen);
+    // Último examen visual (hace 1 año aproximado)
+    setUltimoExamenVisual("1");
     
     // Motivo de consulta
     setMotivoConsulta("Revisión rutinaria");
@@ -524,7 +521,9 @@ export default function CrearPacientePage() {
           antecedentes_visuales_familiares: antecedentesVisualesFamiliaresSeleccionados.length > 0
             ? antecedentesVisualesFamiliaresSeleccionados.map(a => a === "Otros" ? `Otros: ${antecedentesVisualesFamiliaresOtros}` : a).join(", ")
             : antecedentesVisualesFamiliares,
-          ultimo_examen_visual: ultimoExamenVisual ? format(ultimoExamenVisual, "yyyy-MM-dd") : "",
+          ultimo_examen_visual: ultimoExamenVisual
+            ? `${parseInt(ultimoExamenVisual, 10)} ${parseInt(ultimoExamenVisual, 10) === 1 ? 'año' : 'años'}`
+            : "",
           uso_lentes: usaLentes,
           tipos_de_lentes: tipoLentesSeleccionados.length > 0 ? tipoLentesSeleccionados.join(", ") : "",
           tiempo_de_uso_lentes: tiempoUsoLentes,
@@ -897,38 +896,26 @@ export default function CrearPacientePage() {
                     />
                   </div>
 
-                  {/* Último Examen Visual */}
+                  {/* Último Examen Visual (años aproximados) */}
                   <div className="space-y-2">
                     <Label htmlFor="ultimoExamenVisual">Último Examen Visual</Label>
-                    <div>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={`w-full justify-start text-left font-normal ${!ultimoExamenVisual ? "text-muted-foreground" : ""
-                              }`}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {ultimoExamenVisual ? (
-                              format(ultimoExamenVisual, "PPP", { locale: es })
-                            ) : (
-                              <span>Seleccione una fecha</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={ultimoExamenVisual}
-                            onSelect={(date) => handleDateSelect(date, setUltimoExamenVisual, setUltimoExamenVisualOpen)}
-                            initialFocus
-                            disableNavigation={false}
-                            fromDate={undefined}
-                            toDate={new Date()}
-                            locale={es}
-                          />
-                        </PopoverContent>
-                      </Popover>
+                    <Input
+                      id="ultimoExamenVisual"
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={ultimoExamenVisual}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "");
+                        setUltimoExamenVisual(v);
+                      }}
+                      placeholder="¿Cuántos años aproximadamente?"
+                      autoComplete="off"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      {ultimoExamenVisual
+                        ? `${parseInt(ultimoExamenVisual, 10)} ${parseInt(ultimoExamenVisual, 10) === 1 ? 'año' : 'años'}`
+                        : 'Indique un número entero, por ejemplo: 1, 2, 3'}
                     </div>
                   </div>
                 </div>
