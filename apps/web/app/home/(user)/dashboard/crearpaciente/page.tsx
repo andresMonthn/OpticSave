@@ -466,7 +466,7 @@ export default function CrearPacientePage() {
       // Solo se mantiene la creación del paciente
 
       // Obtener el account_id del usuario para enviar la notificación (primera membresía encontrada)
-      let accountId: string | undefined;
+      let accountId: string = user.id;
       try {
         const { data: membership, error: membershipError } = await (supabase
           .from("accounts_memberships" as any)
@@ -496,8 +496,8 @@ export default function CrearPacientePage() {
       const linkLocal = `http://localhost:3000/home/dashboard/view`;
 
       // Enviar notificación usando la API de Makerkit
-      if (accountId && linkLocal) {
-        try {
+      // if (accountId && linkLocal) {
+      //   try {
           // Usar la API de notificaciones de Makerkit
           // const response = await fetch("/api/notifications", {
           //   method: "POST",
@@ -516,31 +516,31 @@ export default function CrearPacientePage() {
           // }
 
           // Enviar notificación por email por separado
-          const emailResponse = await fetch("/api/notifications", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              account_id: accountId || user.id,
-              body: `Has creado un nuevo paciente: ${nombre}`,
-              link: linkLocal,
-              type: "info",
-              channel: "email", // Solo enviar notificación por email
-            }),
-          });
+          // const emailResponse = await fetch("/api/notifications", {
+          //   method: "POST",
+          //   headers: { "Content-Type": "application/json" },
+          //   body: JSON.stringify({
+          //     account_id: accountId || user.id,
+          //     body: `Has creado un nuevo paciente: ${nombre}`,
+          //     link: linkLocal,
+          //     type: "info",
+          //     channel: "email", // Solo enviar notificación por email
+          //   }),
+          // });
 
-          if (!emailResponse.ok) {
-            throw new Error(`Error HTTP en email: ${emailResponse.status}`);
-          }
+          // if (!emailResponse.ok) {
+          //   throw new Error(`Error HTTP en email: ${emailResponse.status}`);
+          // }
 
-          console.log("Notificaciones enviadas correctamente");
-        } catch (err) {
-          console.error("Error al enviar notificaciones:", err);
-        }
-      } else {
-        console.warn("No se pudo determinar accountId o linkLocal para las notificaciones");
-      }
+          // console.log("Notificaciones enviadas correctamente");
+      //   } catch (err) {
+      //     console.error("Error al enviar notificaciones:", err);
+      //   }
+      // } else {
+      //   console.warn("No se pudo determinar accountId o linkLocal para las notificaciones");
+      // }
 
-      setSuccess(true);
+      // setSuccess(true);
 
       // Verificar si la fecha de cita es hoy para determinar la redirección
       // Usamos la constante FECHA_HOY para comparar
@@ -572,6 +572,52 @@ export default function CrearPacientePage() {
     }
   };
 
+   const rellenarFormularioTest = () => {
+      // Datos personales
+      setNombre("Paciente de Prueba");
+      setTelefono("5512345678");
+      setEdad("35");
+      setSexo("Masculino");
+      setDomicilio("Calle de Prueba 123");
+      setOcupacion("Desarrollador");
+      
+      // Fechas
+      const hoy = startOfDay(new Date());
+      const fechaNac = new Date();
+      fechaNac.setFullYear(fechaNac.getFullYear() - 35); // 35 años atrás
+      setFechaNacimiento(fechaNac);
+      setFechaCita(hoy);
+      
+      // Último examen visual (hace 1 año aproximado)
+      setUltimoExamenVisual("1");
+      
+      // Motivo de consulta
+      setMotivoConsulta("Revisión rutinaria");
+      
+      // Síntomas visuales
+      setSintomasVisualesSeleccionados(["Visión borrosa", "Fatiga visual"]);
+      
+      // Uso de lentes
+      setUsaLentes(true);
+      setTipoLentesSeleccionados(["Monofocales"]);
+      setTiempoUsoLentes("5 años");
+      
+      // Cirugías y traumatismos
+      setCirugiasOculares(false);
+      setTraumatismosOculares(false);
+      
+      // Antecedentes
+      setAntecedentesVisualesFamiliaresSeleccionados(["Miopía"]);
+      setAntecedentesFamiliaresSaludSeleccionados(["Hipertensión"]);
+      
+      // Hábitos visuales y salud
+      setHabitosVisualesSeleccionados(["Uso de computadora"]);
+      setSaludGeneralSeleccionados(["Buena salud general"]);
+      
+      // Medicamentos
+      setMedicamentosActuales("Ninguno");
+    };
+  
 
   return (
     <>
@@ -597,7 +643,10 @@ export default function CrearPacientePage() {
                 ? "La cita es para hoy. Redirigiendo al historial clínico..."
             : "La cita no es para hoy. Redirigiendo a la página principal..."}</span>
         </div>
-      )}
+          )}
+          <Button onClick={rellenarFormularioTest}>
+            Rellenar Formulario de Prueba
+          </Button>
 
       <Card className="shadow-md">
         <CardHeader className="px-4 sm:px-6 py-4 sm:py-5">
