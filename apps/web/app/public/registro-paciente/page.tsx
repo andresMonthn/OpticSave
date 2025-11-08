@@ -626,7 +626,7 @@ export default function CrearPacientePage() {
         
         {/* Botón para rellenar automáticamente el formulario (solo visible en desarrollo) */}
         <div className="mt-4 items-center justify-center flex">
-          {/* <Button 
+          <Button 
             type="button" 
             variant="outline" 
             className="bg-amber-100 border-amber-300 text-amber-700 hover:bg-amber-200"
@@ -634,7 +634,7 @@ export default function CrearPacientePage() {
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Pruebas de desarrollo
-          </Button> */}
+          </Button>
         </div>
      
 

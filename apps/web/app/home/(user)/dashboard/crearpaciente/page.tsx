@@ -24,8 +24,7 @@ import { Badge } from "@kit/ui/badge";
 import { Checkbox } from "@kit/ui/checkbox";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
 // Importaciones para notificaciones y correos
-import { createNotificationsApi } from '@kit/notifications/api';
-import { getMailer } from '@kit/mailers';
+import { enviarNotificacionPusher } from '../../../../public/registro-paciente/pusher-service';
 
 // Definición de la interfaz para el tipo Paciente
 interface Paciente {
@@ -491,54 +490,22 @@ export default function CrearPacientePage() {
         console.warn("Error obteniendo account_id:", e);
       }
 
-      // Construir link local al historial clínico del paciente recién creado
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const linkLocal = `http://localhost:3000/home/dashboard/view`;
+      // Enviar notificación Pusher con los datos del paciente (igual que en registro público)
+      try {
+        const pacienteData = {
+          nombre,
+          edad: edad ? parseInt(edad) : undefined,
+          telefono,
+          motivo_consulta: motivoConsulta === "Otro" ? `Otro: ${motivoConsultaOtro}` : motivoConsulta,
+          fecha_de_cita: (fechaCita ? fechaCita : startOfDay(new Date())).toISOString()
+        };
 
-      // Enviar notificación usando la API de Makerkit
-      // if (accountId && linkLocal) {
-      //   try {
-          // Usar la API de notificaciones de Makerkit
-          // const response = await fetch("/api/notifications", {
-          //   method: "POST",
-          //   headers: { "Content-Type": "application/json" },
-          //   body: JSON.stringify({
-          //     account_id: accountId,
-          //     body: `Has creado un nuevo paciente: ${nombre}`,
-          //     link: linkLocal,
-          //     type: "info",
-          //     channel: "in_app", // Solo enviar notificación in-app
-          //   }),
-          // });
-
-          // if (!response.ok) {
-          //   throw new Error(`Error HTTP: ${response.status}`);
-          // }
-
-          // Enviar notificación por email por separado
-          // const emailResponse = await fetch("/api/notifications", {
-          //   method: "POST",
-          //   headers: { "Content-Type": "application/json" },
-          //   body: JSON.stringify({
-          //     account_id: accountId || user.id,
-          //     body: `Has creado un nuevo paciente: ${nombre}`,
-          //     link: linkLocal,
-          //     type: "info",
-          //     channel: "email", // Solo enviar notificación por email
-          //   }),
-          // });
-
-          // if (!emailResponse.ok) {
-          //   throw new Error(`Error HTTP en email: ${emailResponse.status}`);
-          // }
-
-          // console.log("Notificaciones enviadas correctamente");
-      //   } catch (err) {
-      //     console.error("Error al enviar notificaciones:", err);
-      //   }
-      // } else {
-      //   console.warn("No se pudo determinar accountId o linkLocal para las notificaciones");
-      // }
+        enviarNotificacionPusher(pacienteData, accountId);
+        console.log('Notificación de nuevo paciente enviada correctamente');
+      } catch (notificationError) {
+        console.error('Error al enviar notificación Pusher:', notificationError);
+        // No interrumpimos el flujo si falla la notificación
+      }
 
       // setSuccess(true);
 
