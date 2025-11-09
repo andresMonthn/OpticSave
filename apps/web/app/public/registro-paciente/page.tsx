@@ -1,6 +1,6 @@
 "use client";
 //este componente le permite al cliente crear un paciente
-import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Home, Users, Moon, Sun } from "lucide-react";
+import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Home, Users, Moon, Sun, Camera } from "lucide-react";
 import { format, isSameDay, startOfDay, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState, useEffect, useRef } from "react";
@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@kit/ui/card";
 import { RadioGroup, RadioGroupItem } from "@kit/ui/radio-group";
 import { Calendar } from "@kit/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@kit/ui/popover";
+// Eliminado: diálogo de OCR, ahora flujo inline sin modal
 import { Switch } from "@kit/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@kit/ui/tooltip";
 import { Badge } from "@kit/ui/badge";
@@ -173,6 +174,8 @@ export default function CrearPacientePage() {
   // Referencias para los inputs
   const nombreRef = useRef<HTMLInputElement>(null);
   const telefonoRef = useRef<HTMLInputElement>(null);
+  // OCR: input de captura de cámara
+  const ocrInputRef = useRef<HTMLInputElement>(null);
   // Estado para el usuario actual
   const [userId, setUserId] = useState<string | null>(null);
   // Estado para las alertas
@@ -299,6 +302,22 @@ export default function CrearPacientePage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [telefonoError, setTelefonoError] = useState<string | null>(null);
 
+  // OCR: estados y referencias
+  const [ocrDialogOpen, setOcrDialogOpen] = useState(false);
+  const [ocrFile, setOcrFile] = useState<File | null>(null);
+  const [ocrImageUrl, setOcrImageUrl] = useState<string | null>(null);
+  const [ocrStatus, setOcrStatus] = useState<string>("");
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [ocrRunning, setOcrRunning] = useState<boolean>(false);
+  const [ocrText, setOcrText] = useState<string>("");
+
+  // Datos extraídos se aplican directamente al formulario (sin revisión manual)
+
+  // Calidad de imagen
+  const [imgResolution, setImgResolution] = useState<{ width: number; height: number } | null>(null);
+  const [imgSizeKB, setImgSizeKB] = useState<number | null>(null);
+  const [ocrConfidence, setOcrConfidence] = useState<number | null>(null);
+
   // Estado para las citas existentes
   const [citasInfo, setCitasInfo] = useState<CitaInfo[]>([]);
   const [cargandoCitas, setCargandoCitas] = useState(false);
@@ -340,6 +359,262 @@ export default function CrearPacientePage() {
       [field]: value
     });
   };
+
+  // ====== OCR: helpers ======
+  // Abre la cámara del dispositivo inmediatamente para capturar imagen
+  function openCameraForOCR() {
+    setError(null);
+    clearOcrData();
+    // En móviles, el input con capture abre la cámara. En escritorio, usamos getUserMedia.
+    if (isMobileDevice()) {
+      ocrInputRef.current?.click();
+    } else {
+      captureViaMediaDevices();
+    }
+  }
+
+  function isMobileDevice() {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+    const isMobileUA = /android|iphone|ipad|ipod|iemobile|opera mini/i.test(ua);
+    const hasCoarsePointer = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false;
+    return isMobileUA || hasCoarsePointer;
+  }
+
+  async function captureViaMediaDevices() {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      // Fallback a input de archivo si no hay soporte
+      ocrInputRef.current?.click();
+      return;
+    }
+    setOcrStatus('Solicitando acceso a la cámara...');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+      const track = stream.getVideoTracks()[0];
+      // Intentar usar ImageCapture si está disponible
+      const ImageCaptureCtor: any = (window as any).ImageCapture;
+      if (ImageCaptureCtor && typeof ImageCaptureCtor === 'function') {
+        const imageCapture = new ImageCaptureCtor(track);
+        const blob: Blob = await imageCapture.takePhoto();
+        await handleCapturedBlob(blob);
+      } else {
+        // Capturar un frame del stream con un canvas offscreen
+        const video = document.createElement('video');
+        video.srcObject = stream as any;
+        await video.play();
+        // Esperar un pequeño tiempo para que tenga frame
+        await new Promise((res) => setTimeout(res, 300));
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 1280;
+        canvas.height = video.videoHeight || 720;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('No se pudo inicializar el contexto de canvas');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const blob: Blob | null = await new Promise((res) => canvas.toBlob((b) => res(b), 'image/jpeg', 0.95));
+        if (!blob) throw new Error('No se pudo capturar la imagen');
+        await handleCapturedBlob(blob);
+      }
+      // Detener stream
+      track.stop();
+      stream.getTracks().forEach(t => t.stop());
+    } catch (err: any) {
+      console.error(err);
+      setOcrError(err?.message || 'No fue posible abrir la cámara');
+      // Fallback a input si falla
+      ocrInputRef.current?.click();
+    } finally {
+      setOcrStatus('');
+    }
+  }
+
+  async function handleCapturedBlob(blob: Blob) {
+    const file = new File([blob], `captura-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+    setOcrFile(file);
+    setImgSizeKB(Math.round(file.size / 1024));
+    const url = URL.createObjectURL(file);
+    setOcrImageUrl(url);
+    const img = new Image();
+    img.onload = () => {
+      setImgResolution({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.src = url;
+    setTimeout(() => { runOCR(); }, 0);
+  }
+  function clearOcrData() {
+    setOcrFile(null);
+    if (ocrImageUrl) URL.revokeObjectURL(ocrImageUrl);
+    setOcrImageUrl(null);
+    setOcrStatus("");
+    setOcrError(null);
+    setOcrRunning(false);
+    setOcrText("");
+    setImgResolution(null);
+    setImgSizeKB(null);
+    setOcrConfidence(null);
+  }
+
+  function handleOcrFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] || null;
+    setOcrError(null);
+    setOcrStatus("");
+    setOcrText("");
+    setOcrConfidence(null);
+    if (file) {
+      setOcrFile(file);
+      setImgSizeKB(Math.round(file.size / 1024));
+      const url = URL.createObjectURL(file);
+      setOcrImageUrl(url);
+      const img = new Image();
+      img.onload = () => {
+        setImgResolution({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.src = url;
+      // Ejecutar OCR automáticamente después de la captura
+      setTimeout(() => { runOCR(); }, 0);
+    } else {
+      clearOcrData();
+    }
+  }
+
+  function isImageQualityAcceptable() {
+    if (!imgResolution || imgSizeKB === null) return false;
+    const { width, height } = imgResolution;
+    const resolutionOk = width >= 800 && height >= 600;
+    const sizeOk = imgSizeKB >= 100;
+    return resolutionOk && sizeOk;
+  }
+
+  async function runOCR() {
+    if (!ocrFile || !ocrImageUrl) return;
+    setOcrError(null);
+    setOcrRunning(true);
+    setOcrStatus("Inicializando OCR...");
+    try {
+      // @ts-expect-error: Tipado del módulo opcional; se resuelve en tiempo de ejecución si está instalado
+      const mod: any = await import('tesseract.js').catch(() => null);
+      const Tesseract: any = mod?.default || mod;
+      if (!Tesseract) {
+        throw new Error('La librería tesseract.js no está instalada. Ejecute `pnpm add tesseract.js`.');
+      }
+      const result: any = await Tesseract.recognize(
+        ocrImageUrl,
+        'spa',
+        {
+          logger: (m: any) => {
+            if (m?.status) {
+              const pct = m?.progress ? ` ${Math.round(m.progress * 100)}%` : '';
+              setOcrStatus(`${m.status}${pct}`);
+            }
+          }
+        }
+      );
+      const text: string = result?.data?.text || '';
+      setOcrText(text);
+      let conf: number | null = null;
+      const blocks = result?.data?.blocks || [];
+      if (Array.isArray(blocks) && blocks.length) {
+        const arr = blocks.map((b: any) => b.confidence).filter((c: any) => typeof c === 'number');
+        if (arr.length) conf = Math.round(arr.reduce((a: number, b: number) => a + b, 0) / arr.length);
+      }
+      setOcrConfidence(conf);
+      const parsed = parseOcrText(text);
+      // Aplicar directamente al formulario
+      if (parsed.nombre) {
+        setNombre(parsed.nombre.trim());
+      }
+      if (parsed.fechaNacimiento && isValidDateStr(parsed.fechaNacimiento)) {
+        const parts = parsed.fechaNacimiento.replace(/-/g, '/').split('/');
+        if (parts.length === 3) {
+          const d = parseInt(parts[0]!, 10);
+          const m = parseInt(parts[1]!, 10);
+          const y = parseInt(parts[2]!, 10);
+          if (!Number.isNaN(d) && !Number.isNaN(m) && !Number.isNaN(y)) {
+            const fecha = new Date(y, m - 1, d);
+            setFechaNacimiento(fecha);
+            // Calcular edad automáticamente
+            const hoy = new Date();
+            let edadCalculada = hoy.getFullYear() - fecha.getFullYear();
+            const mes = hoy.getMonth() - fecha.getMonth();
+            if (mes < 0 || (mes === 0 && hoy.getDate() < fecha.getDate())) {
+              edadCalculada--;
+            }
+            setEdad(edadCalculada.toString());
+          }
+        }
+      }
+      if (parsed.domicilio) {
+        setDomicilio(parsed.domicilio.trim());
+      }
+      setOcrStatus('OCR completado');
+    } catch (err: any) {
+      console.error(err);
+      setOcrError(err?.message || 'Error al procesar la imagen con OCR');
+    } finally {
+      setOcrRunning(false);
+    }
+  }
+
+  function parseOcrText(text: string): { nombre?: string; fechaNacimiento?: string; domicilio?: string } {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    let nombre: string | undefined;
+    let fechaNacimiento: string | undefined;
+    let domicilio: string | undefined;
+
+    const namePatterns = [
+      /NOMBRE\s*:?\s*(.+)/i,
+      /NOMBRES?\s*:?\s*(.+)/i,
+      /NAME\s*:?\s*(.+)/i
+    ];
+    const dobPatterns = [
+      /FECHA\s*DE\s*NAC(IMIENTO)?\s*:?\s*([0-3]?\d[\/-][01]?\d[\/-][12]\d{3})/i,
+      /DOB\s*:?\s*([0-3]?\d[\/-][01]?\d[\/-][12]\d{3})/i,
+    ];
+    const addrPatterns = [
+      /DOMICILIO\s*:?\s*(.+)/i,
+      /DIRECCION|DIRECCIÓN\s*:?\s*(.+)/i,
+      /ADDRESS\s*:?\s*(.+)/i
+    ];
+
+    for (const l of lines) {
+      if (!nombre) {
+        for (const re of namePatterns) {
+          const m = l.match(re);
+          if (m && m[1]) { nombre = sanitizeLine(m[1]); break; }
+        }
+      }
+      if (!fechaNacimiento) {
+        for (const re of dobPatterns) {
+          const m = l.match(re);
+          if (m && m[2]) { fechaNacimiento = m[2]; break; }
+          if (m && m[1]) { fechaNacimiento = m[1]; break; }
+        }
+      }
+      if (!domicilio) {
+        for (const re of addrPatterns) {
+          const m = l.match(re);
+          if (m && m[1]) { domicilio = sanitizeLine(m[1]); break; }
+        }
+      }
+      if (nombre && fechaNacimiento && domicilio) break;
+    }
+
+    if (!nombre) {
+      const candidate = lines.find(l => /^[A-ZÁÉÍÓÚÑ ]{5,}$/.test(l) && l.split(' ').length >= 2);
+      if (candidate) nombre = sanitizeLine(candidate);
+    }
+
+    return { nombre, fechaNacimiento, domicilio };
+  }
+
+  function sanitizeLine(s: string) {
+    return s.replace(/[^A-Za-zÀ-ÿ0-9 #.,\-\/]/g, '').trim();
+  }
+
+  function isValidDateStr(s: string) {
+    return /^(0?[1-9]|[12][0-9]|3[01])[\/-](0?[1-9]|1[0-2])[\/-]([12]\d{3})$/.test(s);
+  }
+
+  // Eliminado: applyReviewedToForm. Los datos se aplican automáticamente tras el OCR.
 
   // Validación de formulario
   const isFormValid =
@@ -620,6 +895,7 @@ export default function CrearPacientePage() {
     <>
       {showSuccessMessage && <SuccessMessage />}
       <ThemeButton />
+      {/* Eliminado botón flotante móvil para mantener un único control */}
       
       <div className="container mx-auto px-4 sm:px-6 py-6">
         <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">OpticSave</h1>
@@ -656,9 +932,37 @@ export default function CrearPacientePage() {
 
       <Card className="shadow-md">
         <CardHeader className="px-4 sm:px-6 py-4 sm:py-5">
-          <CardTitle className="text-lg sm:text-xl">Información del Paciente</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-lg sm:text-xl">Información del Paciente</CardTitle>
+            <Button
+              type="button"
+              onClick={openCameraForOCR}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              aria-label="Capturar imagen para OCR"
+              title="Capturar imagen para OCR"
+            >
+              <Camera className="h-4 w-4 mr-2" />
+              Capturar imagen
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
+              {/* OCR: input oculto que abre la cámara del dispositivo al pulsar el botón principal */}
+
+              {/* Flujo inline sin diálogo: cámara y revisión */}
+              {/* Input oculto para abrir la cámara del dispositivo */}
+              <input
+                ref={ocrInputRef}
+                id="ocr-file-inline"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleOcrFileChange}
+                autoComplete="off"
+                className="hidden"
+              />
+
+              {/* UI de revisión eliminada: la cámara se abre y el OCR aplica los datos automáticamente */}
               <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6" autoComplete="off">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Nombre - Campo requerido */}

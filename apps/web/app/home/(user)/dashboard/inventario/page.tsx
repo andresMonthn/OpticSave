@@ -7,7 +7,7 @@ import { Input } from "@kit/ui/input";
 import { Label } from "@kit/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@kit/ui/select";
 import { Textarea } from "@kit/ui/textarea";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { HomeLayoutPageHeader } from '../../_components/home-page-header';
@@ -18,10 +18,18 @@ import { columns, InventarioItem } from "./columns";
 
 
 export default function InventarioPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = getSupabaseBrowserClient();
+  const categoriasOptica = [
+    "Lentes oftálmicos",
+    "Lentes de contacto",
+    "Armazones",
+    "Accesorios",
+    "Soluciones y líquidos",
+    "Medicamentos",
+    "Equipos e instrumental",
+    "Servicios y reparaciones",
+    "Otros",
+  ];
   const [inventarioItems, setInventarioItems] = useState<InventarioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,22 +39,30 @@ export default function InventarioPage() {
     categoria: '',
     marca: '',
     modelo: '',
-    cantidad: 0,
-    precio: 0,
+    cantidad: '',
+    precio: '',
     descripcion: ''
   });
 
   const fetchInventario = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from("inventarios").select("*");
+      const { data: auth, error: userError } = await supabase.auth.getUser();
+      if (userError || !auth?.user) {
+        throw new Error("Debes iniciar sesión para ver el inventario");
+      }
+
+      const { data, error } = await supabase
+        .from("inventarios" as any)
+        .select("*")
+        .eq("user_id", auth.user.id);
       console.log(data);
       
       if (error) {
         throw error;
       }
 
-      setInventarioItems(data || []);
+      setInventarioItems(data as any);
     } catch (err: any) {
       console.error("Error fetching inventario:", err);
       setError(err.message || "Error al cargar el inventario");
@@ -65,21 +81,45 @@ export default function InventarioPage() {
 
   // Función para añadir nuevo producto
   const handleAddProduct = async () => {
-    if (!newProduct.nombre_producto || !newProduct.categoria || newProduct.cantidad < 0 || newProduct.precio < 0) {
-      setError('Por favor, completa todos los campos requeridos correctamente');
+    if (!newProduct.nombre_producto || !newProduct.categoria) {
+      setError('Por favor, completa los campos de nombre y categoría');
+      return;
+    }
+
+    const cantidadNum = Number(newProduct.cantidad);
+    const precioNum = Number(newProduct.precio);
+
+    if (
+      Number.isNaN(cantidadNum) || cantidadNum < 0 ||
+      Number.isNaN(precioNum) || precioNum < 0
+    ) {
+      setError('Cantidad y precio deben ser numéricos y mayores o iguales a 0');
+      return;
+    }
+
+    // Validar que la categoría pertenezca al negocio de óptica
+    if (!categoriasOptica.includes(newProduct.categoria)) {
+      setError('Selecciona una categoría válida de óptica');
       return;
     }
 
     try {
+      const { data: auth, error: userError } = await supabase.auth.getUser();
+      if (userError || !auth?.user) {
+        setError("Debes iniciar sesión para agregar productos");
+        return;
+      }
+
       const { data, error } = await supabase
-        .from("inventarios")
-        .insert([{
+        .from("inventarios" as any)
+        .insert([{ 
+          user_id: auth.user.id,
           nombre_producto: newProduct.nombre_producto,
           categoria: newProduct.categoria,
           marca: newProduct.marca,
           modelo: newProduct.modelo,
-          cantidad: newProduct.cantidad,
-          precio: newProduct.precio,
+          cantidad: cantidadNum,
+          precio: precioNum,
           descripcion: newProduct.descripcion
         }])
         .select();
@@ -90,13 +130,13 @@ export default function InventarioPage() {
         const insertedItem = data[0] as any;
         const newItem: InventarioItem = {
           id: insertedItem?.id || '',
-          user_id: insertedItem?.user_id || '',
+          user_id: insertedItem?.user_id || auth.user.id,
           nombre_producto: insertedItem?.nombre_producto || newProduct.nombre_producto,
           categoria: insertedItem?.categoria || newProduct.categoria,
           marca: insertedItem?.marca || newProduct.marca,
           modelo: insertedItem?.modelo || newProduct.modelo,
-          cantidad: insertedItem?.cantidad || newProduct.cantidad,
-          precio: insertedItem?.precio || newProduct.precio,
+          cantidad: insertedItem?.cantidad ?? cantidadNum,
+          precio: insertedItem?.precio ?? precioNum,
           descripcion: insertedItem?.descripcion || newProduct.descripcion,
           created_at: insertedItem?.created_at || new Date().toISOString(),
           updated_at: insertedItem?.updated_at || new Date().toISOString()
@@ -112,8 +152,8 @@ export default function InventarioPage() {
         categoria: '',
         marca: '',
         modelo: '',
-        cantidad: 0,
-        precio: 0,
+        cantidad: '',
+        precio: '',
         descripcion: ''
       });
       setError(null);
@@ -130,6 +170,9 @@ export default function InventarioPage() {
         description={<Trans i18nKey={'common:homeTabDescription'} />}
       />
       <PageBody>
+        {isDialogOpen && (
+          <div className="fixed inset-0 bg-black/30 dark:bg-black/40 backdrop-blur-md z-40" />
+        )}
         <div className="container mx-auto py-10">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -160,6 +203,7 @@ export default function InventarioPage() {
                       value={newProduct.nombre_producto}
                       onChange={(e) => setNewProduct(prev => ({ ...prev, nombre_producto: e.target.value }))}
                       className="col-span-3"
+                      autoComplete="off"
                       placeholder="Nombre del producto"
                     />
                   </div>
@@ -169,15 +213,12 @@ export default function InventarioPage() {
                     </Label>
                     <Select value={newProduct.categoria} onValueChange={(value) => setNewProduct(prev => ({ ...prev, categoria: value }))}>
                       <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Selecciona una categoría" />
+                        <SelectValue placeholder="Selecciona una categoría de óptica" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="electronica">Electrónica</SelectItem>
-                        <SelectItem value="ropa">Ropa</SelectItem>
-                        <SelectItem value="hogar">Hogar</SelectItem>
-                        <SelectItem value="deportes">Deportes</SelectItem>
-                        <SelectItem value="libros">Libros</SelectItem>
-                        <SelectItem value="otros">Otros</SelectItem>
+                        {categoriasOptica.map((cat) => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -190,6 +231,7 @@ export default function InventarioPage() {
                       value={newProduct.marca}
                       onChange={(e) => setNewProduct(prev => ({ ...prev, marca: e.target.value }))}
                       className="col-span-3"
+                      autoComplete="off"
                       placeholder="Marca del producto (opcional)"
                     />
                   </div>
@@ -202,6 +244,7 @@ export default function InventarioPage() {
                       value={newProduct.modelo}
                       onChange={(e) => setNewProduct(prev => ({ ...prev, modelo: e.target.value }))}
                       className="col-span-3"
+                      autoComplete="off"
                       placeholder="Modelo del producto (opcional)"
                     />
                   </div>
@@ -213,8 +256,9 @@ export default function InventarioPage() {
                       id="cantidad"
                       type="number"
                       value={newProduct.cantidad}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, cantidad: parseInt(e.target.value) || 0 }))}
+                      onChange={(e) => setNewProduct(prev => ({ ...prev, cantidad: e.target.value }))}
                       className="col-span-3"
+                      autoComplete="off"
                       placeholder="0"
                     />
                   </div>
@@ -227,8 +271,9 @@ export default function InventarioPage() {
                       type="number"
                       step="0.01"
                       value={newProduct.precio}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, precio: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e) => setNewProduct(prev => ({ ...prev, precio: e.target.value }))}
                       className="col-span-3"
+                      autoComplete="off"
                       placeholder="0.00"
                     />
                   </div>
@@ -241,6 +286,7 @@ export default function InventarioPage() {
                       value={newProduct.descripcion}
                       onChange={(e) => setNewProduct(prev => ({ ...prev, descripcion: e.target.value }))}
                       className="col-span-3"
+                      autoComplete="off"
                       placeholder="Descripción del producto (opcional)"
                     />
                   </div>

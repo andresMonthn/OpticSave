@@ -198,7 +198,7 @@ export function ChatBot() {
       {!isOpen && (
         <Button style={{ zIndex: 2147483647 }}
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-4 right-4 rounded-full w-12 h-12 p-0 shadow-lg"
+          className="fixed bottom-20 sm:bottom-4 right-4 rounded-full w-12 h-12 p-0 shadow-lg"
         >
           <MessageCircle />
         </Button>
@@ -206,7 +206,7 @@ export function ChatBot() {
 
       {/* Ventana de chat */}
       {isOpen && (
-        <Card className="fixed bottom-4 right-4 shadow-lg flex flex-col border border-border w-96 h-[32rem]"
+        <Card className="fixed bottom-20 sm:bottom-4 right-4 shadow-lg flex flex-col border border-border w-96 h-[32rem]"
           style={{ zIndex: 2147483647 }}>
           <CardHeader className="p-3 border-b flex justify-between items-center shadow-lg">
             <h3 className="font-medium">Asistente OptisaveAI</h3>

@@ -23,6 +23,7 @@ import { personalAccountNavigationConfig } from '~/config/personal-account-navig
 // home imports
 import { HomeAccountSelector } from '../_components/home-account-selector';
 import type { UserWorkspace } from '../_lib/server/load-user-workspace';
+import { UserNotifications } from './user-notifications';
 
 export function HomeMobileNavigation(props: { workspace: UserWorkspace }) {
   const signOut = useSignOut();
@@ -47,35 +48,43 @@ export function HomeMobileNavigation(props: { workspace: UserWorkspace }) {
   });
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Menu className={'h-9'} />
-      </DropdownMenuTrigger>
+    <>
+      {/* Mostrar notificaciones en el header móvil, igual que en desktop */}
+      <UserNotifications userId={props.workspace.user.id} />
 
-      <DropdownMenuContent sideOffset={10} className={'w-screen rounded-none'}>
-        <If condition={featuresFlagConfig.enableTeamAccounts}>
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>
-              <Trans i18nKey={'common:yourAccounts'} />
-            </DropdownMenuLabel>
+      {/* Botón de hamburguesa y menú móvil comentados para futuras actualizaciones */}
+      {/*
+      <DropdownMenu>
+        <DropdownMenuTrigger>
+          <Menu className={'h-9'} />
+        </DropdownMenuTrigger>
 
-            <HomeAccountSelector
-              userId={props.workspace.user.id}
-              accounts={props.workspace.accounts}
-              collisionPadding={0}
-            />
-          </DropdownMenuGroup>
+        <DropdownMenuContent sideOffset={10} className={'w-screen rounded-none'}>
+          <If condition={featuresFlagConfig.enableTeamAccounts}>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>
+                <Trans i18nKey={'common:yourAccounts'} />
+              </DropdownMenuLabel>
+
+              <HomeAccountSelector
+                userId={props.workspace.user.id}
+                accounts={props.workspace.accounts}
+                collisionPadding={0}
+              />
+            </DropdownMenuGroup>
+
+            <DropdownMenuSeparator />
+          </If>
+
+          <DropdownMenuGroup>{Links}</DropdownMenuGroup>
 
           <DropdownMenuSeparator />
-        </If>
 
-        <DropdownMenuGroup>{Links}</DropdownMenuGroup>
-
-        <DropdownMenuSeparator />
-
-        <SignOutDropdownItem onSignOut={() => signOut.mutateAsync()} />
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <SignOutDropdownItem onSignOut={() => signOut.mutateAsync()} />
+        </DropdownMenuContent>
+      </DropdownMenu>
+      */}
+    </>
   );
 }
 

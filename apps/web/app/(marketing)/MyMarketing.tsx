@@ -153,6 +153,7 @@ export function MyMarketing() {
               alt="OptiSave Logo"
               width={200}
               height={200}
+              sizes="(max-width: 640px) 160px, 200px"
               priority
               className="w-auto h-auto filter transition duration-200 dark:invert dark:brightness-0 dark:contrast-200 group-hover:invert group-hover:brightness-0 group-hover:contrast-200"
             />
@@ -162,7 +163,7 @@ export function MyMarketing() {
 
 
         {/* Resto del contenido original */}
-        <div className={'mt-4 flex flex-col space-y-24 py-14'}>
+        <div className={'mt-4 flex flex-col space-y-12 md:space-y-24 py-10 md:py-14'}>
 
           <div className={'container mx-auto'} ref={heroRef}>
           <Hero
@@ -202,7 +203,7 @@ export function MyMarketing() {
               image={
                 <div className="relative w-full overflow-hidden rounded-xl border border-gray-200 dark:border-primary/10">
                   {/* Carrusel de imágenes */}
-                  <div className="relative w-full h-[500px]">
+                  <div className="relative w-full h-[300px] sm:h-[380px] md:h-[500px]">
                     {[
                       "/images/Marketing/Captura de pantalla 2025-10-12 114242.png",
                       "/images/Marketing/Captura de pantalla 2025-10-12 114253.png",
@@ -254,18 +255,18 @@ export function MyMarketing() {
                   {/* Controles del carrusel */}
                   <button
                     onClick={prevSlide}
-                    className="absolute left-2 top-1/2 z-20 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 p-2 rounded-full shadow-md hover:bg-white dark:hover:bg-gray-800 transition-colors"
+                    className="absolute left-2 top-1/2 z-20 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 p-1.5 sm:p-2 rounded-full shadow-md hover:bg-white dark:hover:bg-gray-800 transition-colors"
                     aria-label="Imagen anterior"
                   >
-                    <ChevronLeft className="h-6 w-6 text-gray-800 dark:text-white" />
+                    <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6 text-gray-800 dark:text-white" />
                   </button>
 
                   <button
                     onClick={nextSlide}
-                    className="absolute right-2 top-1/2 z-20 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 p-2 rounded-full shadow-md hover:bg-white dark:hover:bg-gray-800 transition-colors"
+                    className="absolute right-2 top-1/2 z-20 -translate-y-1/2 bg-white/80 dark:bg-gray-800/80 p-1.5 sm:p-2 rounded-full shadow-md hover:bg-white dark:hover:bg-gray-800 transition-colors"
                     aria-label="Imagen siguiente"
                   >
-                    <ChevronRight className="h-6 w-6 text-gray-800 dark:text-white" />
+                    <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-gray-800 dark:text-white" />
                   </button>
 
                   {/* Indicadores */}

@@ -16,15 +16,15 @@ export const Header: React.FC<HeaderProps> = function ({
   return (
     <div
       className={cn(
-        'site-header bg-background dark:bg-background sticky top-0 z-50 w-full py-1 shadow-sm backdrop-blur-lg dark:[&_svg]:text-white',
+        'site-header bg-background dark:bg-background sticky top-0 z-50 w-full py-1 shadow-sm backdrop-blur-lg',
         className,
       )}
       {...props}
     >
       <div className="container">
         <div className="grid h-14 grid-cols-3 items-center">
-          <div className={'mx-auto lg:mx-0'}>{logo}</div>
-          <div className="order-first lg:order-none">{navigation}</div>
+          <div className={'mx-auto md:mx-0'}>{logo}</div>
+          <div className="order-first md:order-none">{navigation}</div>
           <div className="flex items-center justify-end gap-x-2">{actions}</div>
         </div>
       </div>
