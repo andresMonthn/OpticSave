@@ -34,6 +34,7 @@ import { Input } from '@kit/ui/input';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@kit/ui/dropdown-menu';
 import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import MagicBento from './MagicBento';
 import MagicBentoDemo from './MagicBentoDemo';
 import { Separator } from '@kit/ui/separator';
@@ -154,6 +155,17 @@ function BuscarPacienteComponent() {
 
   return (
     <div className="w-full mb-6">
+      {/* Logo OpticSave sobre la sección de búsqueda de paciente */}
+      <div className="flex justify-center mb-2">
+        <Image
+          src="/images/logos/logoOpticsave-patreke.png"
+          alt="OpticSave Logo"
+          width={80}
+          height={80}
+          priority
+          className="w-30 h-20 rounded-full"
+        />
+      </div>
       <h2 className="text-2xl font-bold mb-4 text-center">BUSCAR PACIENTE</h2>
 
       <div className="relative mb-6 w-full max-w-xl mx-auto">

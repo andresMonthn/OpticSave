@@ -149,11 +149,11 @@ export function MyMarketing() {
             className="cursor-pointer group"
           >
             <Image
-              src="/images/Marketing/OpticSave.png"
+              src="/images/logos/logoOpticsave-patreke.png"
               alt="OptiSave Logo"
-              width={200}
-              height={200}
-              sizes="(max-width: 640px) 160px, 200px"
+              width={500}
+              height={500}
+              sizes="(max-width: 640px) 200px, 500px"
               priority
               className="w-auto h-auto filter transition duration-200 dark:invert dark:brightness-0 dark:contrast-200 group-hover:invert group-hover:brightness-0 group-hover:contrast-200"
             />

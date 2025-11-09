@@ -71,7 +71,7 @@ export default withI18n(async function UserHomePage() {
             <li className="flex justify-center">
               <Link href={"/home"} aria-label="Logo OptiSave">
                 <Image
-                  src="/images/Marketing/OpticSave.png"
+                  src="/images/logos/logoOpticsave-patreke.png"
                   alt="OptiSave"
                   width={40}
                   height={40}

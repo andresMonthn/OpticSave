@@ -12,7 +12,7 @@ function LogoImage({
 }) {
   return (
     <Image
-      src="/images/Marketing/OpticSave.png"
+      src="/images/logos/logoOpticsave-patreke.png"
       alt="OpticSave Logo"
       width={width}
       height={width / 3}

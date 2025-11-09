@@ -415,7 +415,7 @@ export default function CrearPacientePage() {
         await handleCapturedBlob(blob);
       }
       // Detener stream
-      track.stop();
+      track?.stop();
       stream.getTracks().forEach(t => t.stop());
     } catch (err: any) {
       console.error(err);
