@@ -76,7 +76,7 @@ export default withI18n(async function UserHomePage() {
                   width={40}
                   height={40}
                   priority
-                  className="w-10 h-10 rounded-full"
+                  className="h-10 w-auto rounded-full"
                 />
               </Link>
             </li>

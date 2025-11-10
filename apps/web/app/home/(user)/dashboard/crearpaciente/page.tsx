@@ -426,7 +426,13 @@ export default function CrearPacientePage() {
           motivo_consulta: motivoConsulta === "Otro" ? `Otro: ${motivoConsultaOtro}` : motivoConsulta,
           telefono,
           fecha_de_cita: (fechaCita ? fechaCita : startOfDay(new Date())).toISOString(),
-          estado: "pendiente",
+          estado: (() => {
+            const hoy = startOfDay(new Date());
+            const fc = startOfDay(fechaCita ? fechaCita : new Date());
+            if (fc.getTime() === hoy.getTime()) return "PENDIENTE";
+            if (fc.getTime() > hoy.getTime()) return "PROGRAMADO";
+            return "EXPIRADO";
+          })(),
           ocupacion,
           sintomas_visuales: sintomasVisualesSeleccionados.length > 0
             ? sintomasVisualesSeleccionados.map(s => s === "Otro" ? `Otro: ${sintomasVisualesOtro}` : s).join(", ")

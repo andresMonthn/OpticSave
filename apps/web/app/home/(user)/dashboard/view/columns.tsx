@@ -37,9 +37,15 @@ export const formatDate = (dateString: string | null) => {
 export const renderEstado = (estado: string | null) => {
   if (!estado) return <Badge variant="outline">Sin estado</Badge>;
   
-  switch (estado.toLowerCase()) {
+  // Normalizar valores y soportar estados en mayúsculas
+  const s = estado.trim().toLowerCase();
+  switch (s) {
     case "pendiente":
       return <Badge variant="secondary">{estado}</Badge>;
+    case "programado":
+      return <Badge>{estado}</Badge>;
+    case "expirado":
+      return <Badge variant="destructive">{estado}</Badge>;
     case "completado":
       return <Badge variant="success">{estado}</Badge>;
     case "cancelado":

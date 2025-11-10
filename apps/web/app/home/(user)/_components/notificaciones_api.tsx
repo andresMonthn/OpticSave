@@ -67,9 +67,14 @@ export default function NotificacionesAPI() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [closedNotifications, setClosedNotifications] = useState<string[]>(() => {
-    // Cargar notificaciones cerradas desde localStorage al iniciar
-    const saved = localStorage.getItem('closedNotifications');
-    return saved ? JSON.parse(saved) : [];
+    // Evitar acceso a localStorage durante SSR
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = window.localStorage.getItem('closedNotifications');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
   // Estado para controlar la visibilidad del card
   const [isCardVisible, setIsCardVisible] = useState(true);
@@ -98,7 +103,13 @@ export default function NotificacionesAPI() {
     setClosedNotifications(prev => {
       const updated = [...prev, id];
       // Guardar en localStorage para persistencia
-      localStorage.setItem('closedNotifications', JSON.stringify(updated));
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem('closedNotifications', JSON.stringify(updated));
+        } catch (e) {
+          console.warn('No se pudo guardar closedNotifications en localStorage:', e);
+        }
+      }
       return updated;
     });
   }, []);

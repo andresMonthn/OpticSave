@@ -16,7 +16,7 @@ export function DocsNavigationCollapsible(
   const prefix = props.prefix;
 
   const isChildActive = props.node.children.some((child) =>
-    isRouteActive(prefix + '/' + child.url, currentPath, false),
+    isRouteActive(prefix + '/' + (child.slug ?? child.url), currentPath, false),
   );
 
   return (

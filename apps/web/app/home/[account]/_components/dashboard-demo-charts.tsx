@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-
-import { ArrowDown, ArrowUp, Menu, TrendingUp, Users, Calendar, CheckCircle, Clock, Search, User, Phone, ArrowRight, MapPin, FileText } from 'lucide-react';
+import { ArrowDown, ArrowUp, Menu, TrendingUp, Calendar, Search, User, Phone, ArrowRight, MapPin, FileText } from 'lucide-react';
 import { ChatBot } from "../../../../components/chat-bot/chat-bot"
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, } from 'recharts';
 
@@ -163,7 +162,7 @@ function BuscarPacienteComponent() {
           width={80}
           height={80}
           priority
-          className="w-30 h-20 rounded-full"
+          className="h-20 w-auto rounded-full"
         />
       </div>
       <h2 className="text-2xl font-bold mb-4 text-center">BUSCAR PACIENTE</h2>

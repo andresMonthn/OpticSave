@@ -9,30 +9,32 @@ import { useParams, useRouter } from 'next/navigation';
 import { Checkbox } from "@kit/ui/checkbox";
 import { Label } from "@kit/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@kit/ui/popover";
-import { Settings, Sheet } from "lucide-react";
+import { Settings, Sheet, Upload, X } from "lucide-react";
 import { Trans } from '@kit/ui/trans';
 import { HomeLayoutPageHeader } from '../../../(user)/_components/home-page-header';
 import { PageBody } from '@kit/ui/page';
 import { columns, Paciente } from "./columns";
 import { DataTable } from "./data-table";
 import { renderEstado, formatDate } from "./columns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@kit/ui/dialog";
+import ImportView from "./import";
 
-// Función para determinar el estado basado en la fecha de cita
+// Función para determinar el estado basado en la fecha de cita (PROGRAMADO/PENDIENTE/EXPIRADO)
 const determinarEstado = (fechaCita: string | null): string => {
-  if (!fechaCita) return 'pendiente';
-  
+  if (!fechaCita) return 'PENDIENTE';
+
   const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0); // Resetear la hora para comparar solo fechas
-  
+  hoy.setHours(0, 0, 0, 0);
+
   const fechaCitaObj = new Date(fechaCita);
   fechaCitaObj.setHours(0, 0, 0, 0);
-  
+
   if (fechaCitaObj.getTime() === hoy.getTime()) {
-    return 'activa';
-  } else if (fechaCitaObj.getTime() < hoy.getTime()) {
-    return 'expirada';
+    return 'PENDIENTE';
+  } else if (fechaCitaObj.getTime() > hoy.getTime()) {
+    return 'PROGRAMADO';
   } else {
-    return 'pendiente';
+    return 'EXPIRADO';
   }
 };
 
@@ -54,6 +56,7 @@ export default function View() {
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     nombre: true,
     edad: true,
@@ -96,6 +99,18 @@ export default function View() {
         ...paciente,
         estado: determinarEstado(paciente.fecha_de_cita)
       })) : [];
+
+      // Actualizar en BD los estados desincronizados (validación automática en render)
+      const updates = pacientesActualizados
+        .filter((pOriginal, idx) => {
+          const original = (data as any[])[idx];
+          return original && pOriginal.estado && original.estado !== pOriginal.estado;
+        })
+        .map((p) => supabase.from('pacientes' as any).update({ estado: p.estado }).eq('id', p.id));
+
+      if (updates.length > 0) {
+        await Promise.allSettled(updates);
+      }
       
       setPacientes(pacientesActualizados);
     } catch (err: any) {
@@ -239,6 +254,15 @@ export default function View() {
             <Sheet className="h-3 w-3 sm:h-4 sm:w-4" />
             Exportar CSV
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs sm:text-sm flex items-center gap-2"
+            onClick={() => setImportOpen(true)}
+          >
+            <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
+            Importar
+          </Button>
           
           {/* Selector de campos */}
           <Popover>
@@ -330,6 +354,16 @@ export default function View() {
       )}
         </div>
       </PageBody>
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="max-w-[90vw] sm:max-w-xl p-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b">
+            <DialogTitle className="text-sm font-medium">Importar pacientes</DialogTitle>
+          </div>
+          <div className="p-4 max-h-[75vh] overflow-auto">
+            <ImportView />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
