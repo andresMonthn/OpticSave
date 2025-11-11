@@ -116,7 +116,7 @@ export function DocsNavigation({
     <>
       <Sidebar
         variant={'ghost'}
-        className={'sticky z-1 mt-4'}
+        className={'sticky z-1 mt-4 hidden lg:block'}
       >
         <SidebarGroup>
           <SidebarGroupContent>

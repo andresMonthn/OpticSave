@@ -59,7 +59,7 @@ export function SiteHeaderAccountSection({
 
 function AuthButtons() {
   return (
-    <div className={'animate-in fade-in flex flex-wrap items-center gap-x-2 duration-500'}>
+    <div className={'animate-in fade-in flex items-center gap-2 duration-500'}>
       <div className={'hidden lg:flex'}>
         <If condition={features.enableThemeToggle}>
           <ModeToggle />
@@ -72,7 +72,7 @@ function AuthButtons() {
         </If>
       </div>
 
-      <div className={'flex items-center gap-x-2'}>
+      <div className={'inline-flex items-center gap-1 sm:gap-2 flex-nowrap'}>
         {/* Desktop: botones con texto */}
         <Button className={'hidden lg:block'} asChild variant={'ghost'}>
           <Link href={pathsConfig.auth.signIn}>
@@ -88,26 +88,26 @@ function AuthButtons() {
 
         {/* Móvil y tablets (< lg): iconos */}
         <Button
-          className={'lg:hidden'}
+          className={'lg:hidden shrink-0'}
           asChild
           variant={'ghost'}
           size={'icon'}
           aria-label={'Iniciar sesión'}
         >
           <Link href={pathsConfig.auth.signIn}>
-            <LogIn className={'h-5 w-5'} />
+            <LogIn className={'h-4 w-4 sm:h-5 sm:w-5'} />
           </Link>
         </Button>
 
         <Button
-          className={'lg:hidden'}
+          className={'lg:hidden shrink-0'}
           asChild
           variant={'default'}
           size={'icon'}
           aria-label={'Registrarse'}
         >
           <Link href={pathsConfig.auth.signUp}>
-            <UserPlus className={'h-5 w-5'} />
+            <UserPlus className={'h-4 w-4 sm:h-5 sm:w-5'} />
           </Link>
         </Button>
       </div>
