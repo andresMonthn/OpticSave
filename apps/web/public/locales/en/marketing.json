@@ -132,6 +132,8 @@
   "loadingMembers": "Cargando miembros...",
   "loadMembersError": "Lo sentimos, no pudimos obtener los miembros de tu equipo.",
   "loadInvitedMembersError": "Lo sentimos, no pudimos obtener los miembros invitados de tu equipo.",
+  "pricingSubtitle": "Descubre nuestras opciones de pago y planifica tu uso de manera eficiente.",
+  "documentationSubtitle": "Consulta la documentación para obtener más información sobre nuestras funciones y características.",
   "loadingInvitedMembers": "Cargando miembros invitados...",
   "invitedBadge": "Invitado",
   "duplicateInviteEmailError": "Ya has ingresado esta dirección de correo electrónico",

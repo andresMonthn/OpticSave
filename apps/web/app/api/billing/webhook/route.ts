@@ -22,7 +22,6 @@ export const POST = enhanceRouteHandler(
     logger.info(ctx, `Received billing webhook. Processing...`);
 
     const supabaseClientProvider = () => getSupabaseServerAdminClient();
-
     const service = await getBillingEventHandlerService(
       supabaseClientProvider,
       provider,
@@ -31,9 +30,7 @@ export const POST = enhanceRouteHandler(
 
     try {
       await service.handleWebhookEvent(request);
-
       logger.info(ctx, `Successfully processed billing webhook`);
-
       return new Response('OK', { status: 200 });
     } catch (error) {
       logger.error({ ...ctx, error }, `Failed to process billing webhook`);

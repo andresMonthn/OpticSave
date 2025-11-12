@@ -226,7 +226,18 @@ export default function PrismaticBurst({
       window.removeEventListener('resize', resize);
       window.removeEventListener('mousemove', onMouseMove);
     };
-  }, [intensity, speed, distort, rayCount, animationType, hoverDampness, offset, fullScreen]);
+  }, [
+    intensity,
+    speed,
+    distort,
+    rayCount,
+    animationType,
+    hoverDampness,
+    // Evitar reinicios por identidad del objeto `offset` en cada re-render
+    typeof offset.x === 'number' ? offset.x : 0,
+    typeof offset.y === 'number' ? offset.y : 0,
+    fullScreen,
+  ]);
 
   return (
     <canvas

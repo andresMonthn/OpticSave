@@ -2,7 +2,7 @@
 import PrismaticBurst from './componentes_animados/PrismaticBurst';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRightIcon, LayoutDashboard, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRightIcon, LayoutDashboard, ChevronLeft, ChevronRight, Users, WifiOff, Bot, QrCode, Boxes, Headphones } from 'lucide-react';
 import { PricingTable } from '@kit/billing-gateway/marketing';
 import {
   CtaButton,
@@ -308,38 +308,55 @@ export function MyMarketing() {
                   </FeatureShowcaseIconContainer>
                 }
               >
-                {/* seccion de funcionalidades que contiene el app */}
+                {/* Sección de funcionalidades comerciales actualizada */}
                 <FeatureGrid className="hover:-translate-y-1 transition-transform duration-300 ease-in-out">
                   <FeatureCard
                     className={'relative col-span-1 overflow-hidden hover:scale-105 transition-transform duration-300'}
-                    label={'Interfaz de Usuario Intuitiva'}
-                    description={`Diseño moderno y accesible que facilita la navegación y el uso diario, adaptado específicamente para profesionales de ópticas.`}
+                    label={'GOpticSave'}
+                    description={`Suite integral para la gestión de ópticas: pacientes, citas y ventas en un solo lugar. Flujos de registro simples, seguros y pensados para crecer tu negocio.`}
                   >
+                    <Users className="h-6 w-6 text-primary mb-2" />
                   </FeatureCard>
 
                   <FeatureCard
-                    className={'relative col-span-1 w-full overflow-hidden hover:scale-105 transition-transform duration-300'}
-                    label={'Gestión de Agenda'}
-                    description={`Sistema completo para administrar citas, recordatorios automáticos y seguimiento de pacientes, optimizando el flujo de trabajo diario.`}
-                  ></FeatureCard>
-
-                  <FeatureCard
                     className={'relative col-span-1 overflow-hidden hover:scale-105 transition-transform duration-300'}
-                    label={'Levantamiento de Pedidos'}
-                    description={`Proceso simplificado para crear, rastrear y gestionar pedidos de productos ópticos, desde la solicitud inicial hasta la entrega final.`}
-                  />
+                    label={'Work Offline'}
+                    description={`Trabaja sin conexión a internet y continúa operando sin interrupciones. La información se sincroniza automáticamente cuando vuelves a estar en línea.`}
+                  >
+                    <WifiOff className="h-6 w-6 text-primary mb-2" />
+                  </FeatureCard>
 
                   <FeatureCard
                     className={'relative col-span-1 overflow-hidden md:col-span-2 hover:scale-105 transition-transform duration-300'}
-                    label={'Seguridad para el Usuario'}
-                    description={`Protección avanzada de datos personales y médicos, cumpliendo con normativas de privacidad y garantizando la confidencialidad de la información sensible.`}
-                  />
+                    label={'OptiAI - Chatbot'}
+                    description={`Asistente inteligente que responde cualquier duda sobre la plataforma y te guía paso a paso. Además, automatiza tareas como el registro de pacientes y el envío de recordatorios.`}
+                  >
+                    <Bot className="h-6 w-6 text-primary mb-2" />
+                  </FeatureCard>
 
                   <FeatureCard
                     className={'relative col-span-1 overflow-hidden hover:scale-105 transition-transform duration-300'}
-                    label={'Reportes y Análisis'}
-                    description={`Herramientas analíticas para visualizar tendencias de ventas, comportamiento de clientes y rendimiento del negocio.`}
-                  />
+                    label={'QR Form'}
+                    description={`Comparte un código QR para que tus pacientes completen su ficha desde el celular. Recibe una notificación al instante y los datos se integran automáticamente.`}
+                  >
+                    <QrCode className="h-6 w-6 text-primary mb-2" />
+                  </FeatureCard>
+
+                  <FeatureCard
+                    className={'relative col-span-1 overflow-hidden hover:scale-105 transition-transform duration-300'}
+                    label={'OInventario (Gestor de Inventarios)'}
+                    description={`Control de inventario en tiempo real: entradas, salidas y alertas de stock. Optimiza compras y reduce pérdidas con reportes claros y accionables.`}
+                  >
+                    <Boxes className="h-6 w-6 text-primary mb-2" />
+                  </FeatureCard>
+
+                  <FeatureCard
+                    className={'relative col-span-1 overflow-hidden hover:scale-105 transition-transform duration-300'}
+                    label={'Soporte 24/7'}
+                    description={`Acompañamiento continuo por chat y correo, con tiempos de respuesta priorizados. Estamos disponibles 24/7 para resolver incidencias sin frenar tu negocio.`}
+                  >
+                    <Headphones className="h-6 w-6 text-primary mb-2" />
+                  </FeatureCard>
                 </FeatureGrid>
               </FeatureShowcase>
             </div>

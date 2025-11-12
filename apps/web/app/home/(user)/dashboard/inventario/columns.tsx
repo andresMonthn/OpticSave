@@ -80,7 +80,8 @@ export const columns: ColumnDef<InventarioItem>[] = [
     accessorKey: "cantidad",
     header: "Cantidad",
     cell: ({ row }) => {
-      const cantidad = row.getValue("cantidad") as number;
+      const rawCantidad = row.getValue("cantidad");
+      const cantidad = typeof rawCantidad === 'number' ? rawCantidad : Number(rawCantidad as string) || 0;
       return (
         <div className="flex items-center gap-2">
           <span className="font-medium">{cantidad}</span>

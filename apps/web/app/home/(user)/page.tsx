@@ -40,7 +40,7 @@ export default withI18n(async function UserHomePage() {
       <PageBody>
         <div className="mb-6 pb-20 sm:pb-0">
           <NotificacionesAPI />
-          <Card className="shadow-sm">
+          <Card className="shadow-sm scale-50 origin-top-left w-fit">
             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 space-y-0">
               <CardTitle className="text-[0.625rem] sm:text-2xl font-bold tracking-tight">{`Bienvenido ${nombre}`}</CardTitle>
               <div className="text-[0.625rem] sm:text-base">

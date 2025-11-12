@@ -50,7 +50,7 @@ export default createBillingSchema({
           ],
         },
       ],
-      features: ['Gestion citas y pacientes', 'Programa dedicado', 'Acceso a nuestra Agenda' , 'inventarios', 'levantamiento de requisiciones', 'Soporte 24/7'],
+      features: ['GOpticSave', 'work-offline', 'OptiAI -chatbot' , 'QR form', 'OInventario', 'Soporte 24/7'],
     },
   ],
 });

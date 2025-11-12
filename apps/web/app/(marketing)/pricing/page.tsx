@@ -28,10 +28,8 @@ async function PricingPage() {
         title={t('marketing:pricing')}
         subtitle={t('marketing:pricingSubtitle')}
       />
-
       <div className={'container mx-auto pb-8 xl:pb-16'}>
-        <PricingTable paths={paths} config={billingConfig} />
-        
+        <PricingTable paths={paths} config={billingConfig} />   
       </div>
     </div>
   );

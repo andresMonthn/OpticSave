@@ -2,7 +2,6 @@
 
 import { Button } from "@kit/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@kit/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@kit/ui/dialog";
 import { Input } from "@kit/ui/input";
 import { Label } from "@kit/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@kit/ui/select";
@@ -15,6 +14,9 @@ import { Trans } from '@kit/ui/trans';
 import { PageBody } from '@kit/ui/page';
 import { DataTable } from "./data-table";
 import { columns, InventarioItem } from "./columns";
+import { AddProductDialog } from "./components/AddProductDialog";
+import { EditProductDialog } from "./components/EditProductDialog";
+import { InventoryTotalCard } from "./components/InventoryTotalCard";
 
 
 export default function InventarioPage() {
@@ -33,16 +35,10 @@ export default function InventarioPage() {
   const [inventarioItems, setInventarioItems] = useState<InventarioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newProduct, setNewProduct] = useState({
-    nombre_producto: '',
-    categoria: '',
-    marca: '',
-    modelo: '',
-    cantidad: '',
-    precio: '',
-    descripcion: ''
-  });
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventarioItem | null>(null);
+  // Validaciones y operaciones se harán al recibir datos del diálogo
 
   const fetchInventario = async () => {
     setLoading(true);
@@ -61,8 +57,13 @@ export default function InventarioPage() {
       if (error) {
         throw error;
       }
-
-      setInventarioItems(data as any);
+      // Normalizar tipos (cantidad y precio vienen como texto en la BD)
+      const normalized = (data as any[]).map((item) => ({
+        ...item,
+        cantidad: typeof item.cantidad === 'number' ? item.cantidad : Number(item.cantidad) || 0,
+        precio: typeof item.precio === 'number' ? item.precio : Number(item.precio) || 0,
+      }));
+      setInventarioItems(normalized as any);
     } catch (err: any) {
       console.error("Error fetching inventario:", err);
       setError(err.message || "Error al cargar el inventario");
@@ -79,8 +80,10 @@ export default function InventarioPage() {
 
 
 
-  // Función para añadir nuevo producto
-  const handleAddProduct = async () => {
+  // Añadir nuevo producto (desde diálogo)
+  const handleAddSubmit = async (newProduct: {
+    nombre_producto: string; categoria: string; marca: string; modelo: string; cantidad: string; precio: string; descripcion: string;
+  }) => {
     if (!newProduct.nombre_producto || !newProduct.categoria) {
       setError('Por favor, completa los campos de nombre y categoría');
       return;
@@ -89,15 +92,11 @@ export default function InventarioPage() {
     const cantidadNum = Number(newProduct.cantidad);
     const precioNum = Number(newProduct.precio);
 
-    if (
-      Number.isNaN(cantidadNum) || cantidadNum < 0 ||
-      Number.isNaN(precioNum) || precioNum < 0
-    ) {
+    if (Number.isNaN(cantidadNum) || cantidadNum < 0 || Number.isNaN(precioNum) || precioNum < 0) {
       setError('Cantidad y precio deben ser numéricos y mayores o iguales a 0');
       return;
     }
 
-    // Validar que la categoría pertenezca al negocio de óptica
     if (!categoriasOptica.includes(newProduct.categoria)) {
       setError('Selecciona una categoría válida de óptica');
       return;
@@ -135,31 +134,100 @@ export default function InventarioPage() {
           categoria: insertedItem?.categoria || newProduct.categoria,
           marca: insertedItem?.marca || newProduct.marca,
           modelo: insertedItem?.modelo || newProduct.modelo,
-          cantidad: insertedItem?.cantidad ?? cantidadNum,
-          precio: insertedItem?.precio ?? precioNum,
+          cantidad: typeof insertedItem?.cantidad === 'number' ? insertedItem?.cantidad : cantidadNum,
+          precio: typeof insertedItem?.precio === 'number' ? insertedItem?.precio : precioNum,
           descripcion: insertedItem?.descripcion || newProduct.descripcion,
           created_at: insertedItem?.created_at || new Date().toISOString(),
-          updated_at: insertedItem?.updated_at || new Date().toISOString()
+          updated_at: null
         };
-
         setInventarioItems(prev => [...prev, newItem]);
       }
 
-      // Cerrar el diálogo y resetear el formulario
-      setIsDialogOpen(false);
-      setNewProduct({
-        nombre_producto: '',
-        categoria: '',
-        marca: '',
-        modelo: '',
-        cantidad: '',
-        precio: '',
-        descripcion: ''
-      });
+      setIsAddOpen(false);
       setError(null);
     } catch (err: any) {
       console.error('Error adding product:', err);
       setError(err.message || 'Error al agregar el producto');
+    }
+  };
+
+  // Editar producto (desde diálogo)
+  const handleEditSubmit = async (updates: {
+    nombre_producto: string; categoria: string; marca: string; modelo: string; cantidad: string; precio: string; descripcion: string;
+  }) => {
+    if (!selectedItem) return;
+    const cantidadNum = Number(updates.cantidad);
+    const precioNum = Number(updates.precio);
+    if (Number.isNaN(cantidadNum) || cantidadNum < 0 || Number.isNaN(precioNum) || precioNum < 0) {
+      setError('Cantidad y precio deben ser numéricos y mayores o iguales a 0');
+      return;
+    }
+    if (!categoriasOptica.includes(updates.categoria)) {
+      setError('Selecciona una categoría válida de óptica');
+      return;
+    }
+    try {
+      const { data: auth, error: userError } = await supabase.auth.getUser();
+      if (userError || !auth?.user) {
+        setError("Debes iniciar sesión para editar productos");
+        return;
+      }
+      const { data, error } = await supabase
+        .from("inventarios" as any)
+        .update({
+          nombre_producto: updates.nombre_producto,
+          categoria: updates.categoria,
+          marca: updates.marca,
+          modelo: updates.modelo,
+          cantidad: cantidadNum,
+          precio: precioNum,
+          descripcion: updates.descripcion,
+        })
+        .eq("id", selectedItem.id)
+        .eq("user_id", auth.user.id)
+        .select();
+      if (error) throw error;
+      if (data && data.length > 0) {
+        const updated = data[0] as any;
+        setInventarioItems(prev => prev.map(it => it.id === selectedItem.id ? {
+          ...it,
+          nombre_producto: updated?.nombre_producto ?? updates.nombre_producto,
+          categoria: updated?.categoria ?? updates.categoria,
+          marca: updated?.marca ?? updates.marca,
+          modelo: updated?.modelo ?? updates.modelo,
+          cantidad: typeof updated?.cantidad === 'number' ? updated?.cantidad : cantidadNum,
+          precio: typeof updated?.precio === 'number' ? updated?.precio : precioNum,
+          descripcion: updated?.descripcion ?? updates.descripcion,
+          updated_at: null,
+        } : it));
+      }
+      setIsEditOpen(false);
+      setSelectedItem(null);
+      setError(null);
+    } catch (err: any) {
+      console.error('Error editing product:', err);
+      setError(err.message || 'Error al editar el producto');
+    }
+  };
+
+  // Eliminar producto
+  const handleDeleteProduct = async (id: string) => {
+    try {
+      const { data: auth, error: userError } = await supabase.auth.getUser();
+      if (userError || !auth?.user) {
+        setError("Debes iniciar sesión para eliminar productos");
+        return;
+      }
+      const { error } = await supabase
+        .from("inventarios" as any)
+        .delete()
+        .eq("id", id)
+        .eq("user_id", auth.user.id);
+      if (error) throw error;
+      setInventarioItems(prev => prev.filter(it => it.id !== id));
+    } catch (err: any) {
+      console.error('Error deleting product:', err);
+      setError(err.message || 'Error al eliminar el producto');
     }
   };
 
@@ -170,135 +238,35 @@ export default function InventarioPage() {
         description={<Trans i18nKey={'common:homeTabDescription'} />}
       />
       <PageBody>
-        {isDialogOpen && (
-          <div className="fixed inset-0 bg-black/30 dark:bg-black/40 backdrop-blur-md z-40" />
-        )}
         <div className="container mx-auto py-10">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-3xl font-bold">Inventario</h1>
               <p className="text-muted-foreground">Gestiona tu inventario de productos</p>
             </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => setIsAddOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Agregar Producto
             </Button>
-          </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Añadir Nuevo Producto</DialogTitle>
-                  <DialogDescription>
-                    Completa la información del nuevo producto para añadirlo al inventario.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="nombre_producto" className="text-right">
-                      Nombre
-                    </Label>
-                    <Input
-                      id="nombre_producto"
-                      value={newProduct.nombre_producto}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, nombre_producto: e.target.value }))}
-                      className="col-span-3"
-                      autoComplete="off"
-                      placeholder="Nombre del producto"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="categoria" className="text-right">
-                      Categoría
-                    </Label>
-                    <Select value={newProduct.categoria} onValueChange={(value) => setNewProduct(prev => ({ ...prev, categoria: value }))}>
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Selecciona una categoría de óptica" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categoriasOptica.map((cat) => (
-                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="marca" className="text-right">
-                      Marca
-                    </Label>
-                    <Input
-                      id="marca"
-                      value={newProduct.marca}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, marca: e.target.value }))}
-                      className="col-span-3"
-                      autoComplete="off"
-                      placeholder="Marca del producto (opcional)"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="modelo" className="text-right">
-                      Modelo
-                    </Label>
-                    <Input
-                      id="modelo"
-                      value={newProduct.modelo}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, modelo: e.target.value }))}
-                      className="col-span-3"
-                      autoComplete="off"
-                      placeholder="Modelo del producto (opcional)"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="cantidad" className="text-right">
-                      Cantidad
-                    </Label>
-                    <Input
-                      id="cantidad"
-                      type="number"
-                      value={newProduct.cantidad}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, cantidad: e.target.value }))}
-                      className="col-span-3"
-                      autoComplete="off"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="precio" className="text-right">
-                      Precio
-                    </Label>
-                    <Input
-                      id="precio"
-                      type="number"
-                      step="0.01"
-                      value={newProduct.precio}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, precio: e.target.value }))}
-                      className="col-span-3"
-                      autoComplete="off"
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="descripcion" className="text-right">
-                      Descripción
-                    </Label>
-                    <Textarea
-                      id="descripcion"
-                      value={newProduct.descripcion}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, descripcion: e.target.value }))}
-                      className="col-span-3"
-                      autoComplete="off"
-                      placeholder="Descripción del producto (opcional)"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="submit" onClick={handleAddProduct}>
-                    Guardar Producto
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-      </div>
+          </div>
+
+          <AddProductDialog
+            open={isAddOpen}
+            onOpenChange={setIsAddOpen}
+            categoriasOptica={categoriasOptica}
+            onSubmit={handleAddSubmit}
+          />
+
+          <EditProductDialog
+            open={isEditOpen}
+            onOpenChange={(open) => {
+              setIsEditOpen(open);
+              if (!open) setSelectedItem(null);
+            }}
+            categoriasOptica={categoriasOptica}
+            item={selectedItem}
+            onSubmit={handleEditSubmit}
+          />
 
       <Card>
         <CardHeader>
@@ -317,11 +285,18 @@ export default function InventarioPage() {
               <p>{error}</p>
             </div>
           ) : (
-            <DataTable
-              columns={columns}
-              data={inventarioItems}
-              searchPlaceholder="Buscar productos por nombre, categoría, marca o modelo..."
-            />
+            <>
+              <div className="mb-6">
+                <InventoryTotalCard items={inventarioItems} />
+              </div>
+              <DataTable
+                columns={columns}
+                data={inventarioItems}
+                searchPlaceholder="Buscar productos por nombre, categoría, marca o modelo..."
+                onEdit={(item) => { setSelectedItem(item as InventarioItem); setIsEditOpen(true); }}
+                onDelete={(id) => handleDeleteProduct(id as any)}
+              />
+            </>
           )}
         </CardContent>
       </Card>
