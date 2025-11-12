@@ -6,8 +6,7 @@ import type { CreateBillingCheckoutSchema } from '@kit/billing/schema';
 /**
  * @description If set to true, users can start a trial without entering their credit card details
  */
-const enableTrialWithoutCreditCard =
-  process.env.STRIPE_ENABLE_TRIAL_WITHOUT_CC === 'true';
+const enableTrialWithoutCreditCard = process.env.STRIPE_ENABLE_TRIAL_WITHOUT_CC === 'true';
 
 /**
  * @name createStripeCheckout
@@ -129,7 +128,7 @@ export async function createStripeCheckout(
 
 function getUrls(params: { returnUrl: string }) {
   const returnUrl = `${params.returnUrl}?session_id={CHECKOUT_SESSION_ID}`;
-
+  
   return {
     return_url: returnUrl,
   };
