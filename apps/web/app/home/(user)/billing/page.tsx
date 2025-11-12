@@ -21,7 +21,7 @@ import { requireUserInServerComponent } from '~/lib/server/require-user-in-serve
 import { HomeLayoutPageHeader } from '../_components/home-page-header';
 import { createPersonalAccountBillingPortalSession } from '../billing/_lib/server/server-actions';
 import { PersonalAccountCheckoutForm } from './_components/personal-account-checkout-form';
-import { loadPersonalAccountBillingPageData } from './_lib/server/personal-account-billing-page.loader';
+import { loadPersonalAccountBillingPageData } from '../billing/_lib/server/personal-account-billing-page.loader';
 
 export const generateMetadata = async () => {
   const i18n = await createI18nServerInstance();

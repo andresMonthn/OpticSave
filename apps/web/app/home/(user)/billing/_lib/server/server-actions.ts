@@ -1,12 +1,9 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-
 import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
 import featureFlagsConfig from '~/config/feature-flags.config';
-
 import { PersonalAccountCheckoutSchema } from '../schema/personal-account-checkout.schema';
 import { createUserBillingService } from './user-billing.service';
 
