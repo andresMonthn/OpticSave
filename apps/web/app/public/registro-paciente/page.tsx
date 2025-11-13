@@ -22,7 +22,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@kit/u
 import { Badge } from "@kit/ui/badge";
 import { Checkbox } from "@kit/ui/checkbox";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
-import { enviarNotificacionPusher } from './pusher-service';
+// Módulos extraídos para arquitectura limpia
+import { ThemeButton } from "./components/ThemeButton";
+import { SuccessMessage } from "./components/SuccessMessage";
+import { Paciente, DomicilioCompleto, CitaInfo } from "./types/types";
+import { validateTelefono, isStepValidCtx } from "./utils/validation";
+import { injectStylesOnce } from "./utils/styles";
+import { getCitasInfoByUserId } from "./services/citas";
 
 
 // Estilos de animación personalizados
@@ -45,58 +51,17 @@ const styles = `
 
 
 // Usamos los estilos globales de CSS definidos en la hoja global
-if (typeof document !== 'undefined') {
-  // Agregar solo los estilos de animación
-  const styleSheet = document.createElement("style");
-  styleSheet.textContent = styles;
-  document.head.appendChild(styleSheet);
-}
+// Evitar inyectar múltiples veces en HMR: agregar una única etiqueta de estilo con id estable.
+injectStylesOnce('registro-paciente-animations', styles);
 
 // Definición de la interfaz para el tipo Paciente
-interface Paciente {
-  id?: string;
-  user_id?: string;
-  nombre: string;
-  edad?: number;
-  sexo?: string;
-  domicilio?: string;
-  motivo_consulta?: string;
-  diagnostico_id?: string;
-  telefono?: string;
-  fecha_de_cita?: Date | string | null;
-  created_at?: string;
-  updated_at?: string;
-  estado?: string;
-  fecha_nacimiento?: Date | string | null;
-  ocupacion?: string;
-  sintomas_visuales?: string;
-  ultimo_examen_visual?: string;
-  uso_lentes?: boolean;
-  tipos_de_lentes?: string;
-  tiempo_de_uso_lentes?: string;
-  cirujias?: boolean;
-  traumatismos_oculares?: boolean;
-  nombre_traumatismos_oculares?: string;
-  antecedentes_visuales_familiares?: string;
-  antecedente_familiar_salud?: string;
-  habitos_visuales?: string;
-  salud_general?: string;
-  medicamento_actual?: string;
-}
+// Tipos movidos a ./types/types
 
 // Interfaz para los campos de domicilio completo
-interface DomicilioCompleto {
-  calle: string;
-  numero: string;
-  interior: string;
-  colonia: string;
-}
+// Tipos movidos a ./types/types
 
 // Interfaz para las citas
-interface CitaInfo {
-  fecha: Date;
-  cantidadPacientes: number;
-}
+// Tipos movidos a ./types/types
 
 export default function CrearPacientePage() {
   // Estado para controlar la notificación
@@ -124,52 +89,16 @@ export default function CrearPacientePage() {
     // Aplicar el tema al documento
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
   };
-  
-  // Componente interno para el botón de tema
-  const ThemeButton = () => {
-    if (!mounted) return null;
-    return (
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={toggleTheme}
-        className={`rounded-full fixed top-4 right-4 z-50 ${
-          currentTheme === 'dark' ? 'bg-gray-800 hover:bg-gray-700 border-gray-600' : 'bg-white hover:bg-gray-100'
-        }`}
-        aria-label="Cambiar tema"
-      >
-        {currentTheme === 'dark' ? (
-          <Sun className="h-5 w-5 text-yellow-500" />
-        ) : (
-          <Moon className="h-5 w-5 text-slate-700" />
-        )}
-      </Button>
-    );
+
+  // Cierre manual del mensaje de éxito
+  const handleCloseSuccess = () => {
+    setShowSuccessMessage(false);
+    limpiarFormulario();
+    window.scrollTo(0, 0);
+    window.close();
   };
   
-  // Componente de mensaje de éxito a pantalla completa
-  const SuccessMessage = () => (
-    <div className="fixed inset-0 bg-primary flex items-center justify-center z-50 animate-in fade-in duration-300">
-        <div className="text-white text-center p-8 scale-in-center rounded-lg shadow-xl bg-primary">
-        <CheckCircle2 className="w-24 h-24 mx-auto mb-6 animate-bounce text-white" />
-        <div className="text-5xl font-bold mb-4 text-white">
-          SU CITA YA ESTÁ REGISTRADA
-        </div>
-        <div className="text-xl text-white">
-          ¡Gracias por confiar en nosotros!
-        </div>
-        <div className="text-lg mt-4 text-white">
-          Esta ventana se cerrará automáticamente en 5 segundos...
-        </div>
-        <Button
-          onClick={() => window.close()}
-          className="mt-6 bg-white text-primary hover:bg-white/90 font-bold"
-        >
-          Cerrar ventana
-        </Button>
-      </div>
-    </div>
-  );
+  // Componentes presentacionales extraídos (ThemeButton, SuccessMessage) se importan arriba
 
   // Referencias para los inputs
   const nombreRef = useRef<HTMLInputElement>(null);
@@ -211,46 +140,15 @@ export default function CrearPacientePage() {
     }
   }, []);
 
-  // Función para obtener las citas existentes
+  // Función para obtener las citas existentes (servicio modular)
   const obtenerCitasExistentes = async (id: string) => {
     if (!id) {
       console.warn("No se proporcionó user_id para obtener citas");
       return;
     }
-
     setCargandoCitas(true);
     try {
-      // Obtener las citas usando el user_id
-      const { data, error } = await supabase
-        .from('pacientes' as any)
-        .select('fecha_de_cita')
-        .eq('user_id', id)
-        .not('fecha_de_cita', 'is', null);
-
-      if (error) {
-        console.error("Error al obtener citas:", error);
-        return;
-      }
-
-      // Procesar los datos para contar pacientes por fecha
-      const citasPorFecha = new Map<string, number>();
-      const pacientes = (data as any[]) || [];
-      
-      pacientes.forEach(paciente => {
-        if (paciente?.fecha_de_cita) {
-          const fecha = paciente.fecha_de_cita.split('T')[0];
-          citasPorFecha.set(fecha, (citasPorFecha.get(fecha) || 0) + 1);
-        }
-      });
-
-      // Convertir a array de CitaInfo
-      const citasInfoArray: CitaInfo[] = Array.from(citasPorFecha.entries()).map(
-        ([fechaStr, cantidad]) => ({
-          fecha: new Date(fechaStr),
-          cantidadPacientes: cantidad
-        })
-      );
-
+      const citasInfoArray = await getCitasInfoByUserId(supabase, id);
       setCitasInfo(citasInfoArray);
       console.log('Citas obtenidas exitosamente para user_id:', id);
     } catch (err) {
@@ -295,6 +193,59 @@ export default function CrearPacientePage() {
   const [saludGeneralSeleccionados, setSaludGeneralSeleccionados] = useState<string[]>([]);
   const [medicamentosActuales, setMedicamentosActuales] = useState("");
 
+  // Flujo progresivo: pasos y navegación
+  const [currentStep, setCurrentStep] = useState(0);
+  const steps = [
+    'nombre',
+    'fecha_nacimiento',
+    'edad',
+    'telefono',
+    'sexo',
+    'domicilio',
+    'motivo_consulta',
+    'ocupacion',
+    'ultimo_examen_visual',
+    'sintomas_visuales',
+    'uso_lentes',
+    'cirugias_y_traumatismos',
+    'antecedentes_visuales_familiares',
+    'antecedentes_familiares_salud',
+    'habitos_visuales',
+    'salud_general',
+    'medicamento_actual',
+    'fecha_de_cita'
+  ];
+
+  const isStepValid = (step: number) => {
+    return isStepValidCtx(steps, step, {
+      nombre,
+      fechaNacimiento,
+      telefono,
+      sexo,
+      domicilio,
+      domicilioCompleto,
+      domicilioFields,
+      motivoConsulta,
+      motivoConsultaOtro,
+      ocupacion,
+      sintomasVisualesSeleccionados,
+      usaLentes,
+      tipoLentesSeleccionados,
+      tiempoUsoLentes,
+      cirugiasOculares,
+      traumatismosOculares,
+      traumatismosDetalle,
+      antecedentesVisualesFamiliaresSeleccionados,
+      antecedentesVisualesFamiliaresOtros,
+      antecedentesFamiliaresSaludSeleccionados,
+      habitosVisualesSeleccionados,
+      saludGeneralSeleccionados,
+    });
+  };
+
+  const nextStep = () => setCurrentStep((s) => Math.min(s + 1, steps.length - 1));
+  const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 0));
+
   // Estados para validación
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -336,13 +287,7 @@ export default function CrearPacientePage() {
     setTouched({ ...touched, [field]: true });
   };
 
-  // Validación de teléfono
-  const validateTelefono = (value: string) => {
-    if (value && (value.length < 10 || value.length > 10)) {
-      return "El teléfono debe tener exactamente 10 dígitos";
-    }
-    return null;
-  };
+  // Validación de teléfono movida a utils/validation
 
   // Manejar cambio en el teléfono
   const handleTelefonoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -490,7 +435,6 @@ export default function CrearPacientePage() {
     setOcrRunning(true);
     setOcrStatus("Inicializando OCR...");
     try {
-      // @ts-expect-error: Tipado del módulo opcional; se resuelve en tiempo de ejecución si está instalado
       const mod: any = await import('tesseract.js').catch(() => null);
       const Tesseract: any = mod?.default || mod;
       if (!Tesseract) {
@@ -852,22 +796,7 @@ export default function CrearPacientePage() {
         console.warn("Error obteniendo account_id:", e);
       }
 
-      // Enviar notificación Pusher con los datos del paciente
-      try {
-        const pacienteData = {
-          nombre,
-          edad: edad ? parseInt(edad) : undefined,
-          telefono,
-          motivo_consulta: motivoConsulta === "Otro" ? `Otro: ${motivoConsultaOtro}` : motivoConsulta,
-          fecha_de_cita: (fechaCita ? fechaCita : startOfDay(new Date())).toISOString()
-        };
-        
-        enviarNotificacionPusher(pacienteData, accountId);
-        console.log('Notificación de nuevo paciente enviada correctamente');
-      } catch (notificationError) {
-        console.error('Error al enviar notificación Pusher:', notificationError);
-        // No interrumpimos el flujo si falla la notificación
-      }
+      
 
       // Mostrar mensaje de éxito a pantalla completa
       setShowSuccessMessage(true);
@@ -893,8 +822,8 @@ export default function CrearPacientePage() {
 
   return (
     <>
-      {showSuccessMessage && <SuccessMessage />}
-      <ThemeButton />
+      {showSuccessMessage && <SuccessMessage onClose={handleCloseSuccess} />}
+      <ThemeButton mounted={mounted} currentTheme={currentTheme} onToggle={toggleTheme} />
       {/* Eliminado botón flotante móvil para mantener un único control */}
       
       <div className="container mx-auto px-4 sm:px-6 py-6">
@@ -963,10 +892,11 @@ export default function CrearPacientePage() {
               />
 
               {/* UI de revisión eliminada: la cámara se abre y el OCR aplica los datos automáticamente */}
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6" autoComplete="off">
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6" autoComplete="off" aria-live="polite">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Nombre - Campo requerido */}
-              <div className="space-y-2">
+              {currentStep === 0 && (
+              <div className="space-y-2 transition-all" role="group" aria-labelledby="step-nombre">
                 <Label htmlFor="nombre">
                   Nombre <span className="text-red-500">*</span>
                 </Label>
@@ -979,24 +909,30 @@ export default function CrearPacientePage() {
                   placeholder="Ingrese el nombre"
                   required
                       autoComplete="off"
+                  aria-invalid={touched['nombre'] && nombre.trim() === ""}
+                  aria-describedby={touched['nombre'] && nombre.trim() === "" ? 'error-nombre' : undefined}
                   className={touched['nombre'] && nombre.trim() === "" ? "border-red-300" : ""}
                 />
                 {touched['nombre'] && nombre.trim() === "" && (
-                  <p className="text-red-500 text-xs">Este campo es requerido</p>
+                  <p id="error-nombre" className="text-red-500 text-xs" role="alert">Este campo es requerido</p>
                 )}
               </div>
+              )}
 
 
 
               {/* Fecha de Nacimiento */}
-              <div className="space-y-2">
-                <Label htmlFor="fechaNacimiento">Fecha de Nacimiento</Label>
+              {currentStep === 1 && (
+              <div className="space-y-2 transition-all" role="group" aria-labelledby="step-fecha-nac">
+                <Label id="step-fecha-nac" htmlFor="fechaNacimiento">Fecha de Nacimiento</Label>
                 <Popover open={fechaNacimientoOpen} onOpenChange={setFechaNacimientoOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       id="fechaNacimiento"
                       className="w-full justify-between font-normal"
+                      aria-invalid={!fechaNacimiento}
+                      aria-describedby={!fechaNacimiento ? 'error-fecha-nac' : undefined}
                     >
                       {fechaNacimiento ? format(fechaNacimiento, "PPP", { locale: es }) : "Seleccionar fecha"}
                       <CalendarIcon className="h-4 w-4 ml-2" />
@@ -1023,10 +959,15 @@ export default function CrearPacientePage() {
                     />
                   </PopoverContent>
                 </Popover>
+                {!fechaNacimiento && (
+                  <p id="error-fecha-nac" className="text-red-500 text-xs" role="alert">Seleccione una fecha válida</p>
+                )}
               </div>
+              )}
 
               {/* Edad */}
-              <div className="space-y-2">
+              {currentStep === 2 && (
+              <div className="space-y-2 transition-all" role="group" aria-labelledby="step-edad">
                 <Label htmlFor="edad">Edad</Label>
                 <Input
                   id="edad"
@@ -1037,9 +978,11 @@ export default function CrearPacientePage() {
                       autoComplete="off"
                 />
               </div>
+              )}
 
               {/* Teléfono */}
-              <div className="space-y-2">
+              {currentStep === 3 && (
+              <div className="space-y-2 transition-all" role="group" aria-labelledby="step-telefono">
                 <Label htmlFor="telefono">Teléfono</Label>
                 <Input
                   id="telefono"
@@ -1056,11 +999,13 @@ export default function CrearPacientePage() {
                   <p className="text-red-500 text-xs">{telefonoError}</p>
                 )}
               </div>
+              )}
             </div>
 
             {/* Sexo - Radio buttons */}
-            <div className="space-y-2">
-              <Label>Sexo</Label>
+            {currentStep === 4 && (
+            <div className="space-y-2 transition-all" role="group" aria-labelledby="step-sexo">
+              <Label id="step-sexo">Sexo</Label>
               <RadioGroup value={sexo} onValueChange={setSexo} className="flex space-x-4">
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="femenino" id="femenino" />
@@ -1071,10 +1016,15 @@ export default function CrearPacientePage() {
                   <Label htmlFor="masculino">Masculino</Label>
                 </div>
               </RadioGroup>
+              {sexo.trim() === "" && (
+                <p className="text-red-500 text-xs" role="alert">Seleccione una opción</p>
+              )}
             </div>
+            )}
 
             {/* Domicilio con switch */}
-            <div className="space-y-4">
+            {currentStep === 5 && (
+            <div className="space-y-4 transition-all" role="group" aria-labelledby="step-domicilio">
               <div className="flex items-center justify-between">
                 <Label htmlFor="domicilio-switch">Domicilio</Label>
                 <div className="flex items-center space-x-2">
@@ -1143,10 +1093,12 @@ export default function CrearPacientePage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Motivo de consulta */}
-            <div className="space-y-2">
-                  <Label>Motivo de Consulta</Label>
+            {currentStep === 6 && (
+            <div className="space-y-2 transition-all" role="group" aria-labelledby="step-motivo">
+                  <Label id="step-motivo">Motivo de Consulta</Label>
                   <RadioGroup
                     value={motivoConsulta}
                     onValueChange={setMotivoConsulta}
@@ -1184,12 +1136,17 @@ export default function CrearPacientePage() {
                       </div>
                     )}
                   </RadioGroup>
+                  {motivoConsulta.trim() === "" && (
+                    <p className="text-red-500 text-xs" role="alert">Seleccione una opción</p>
+                  )}
                 </div>
+            )}
 
                 {/* Ocupación y Último examen visual en 2 columnas */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Ocupación */}
-                  <div className="space-y-2">
+                  {currentStep === 7 && (
+                  <div className="space-y-2 transition-all" role="group" aria-labelledby="step-ocupacion">
                     <Label htmlFor="ocupacion">Ocupación</Label>
                     <Input
                       id="ocupacion"
@@ -1199,9 +1156,11 @@ export default function CrearPacientePage() {
                       autoComplete="off"
                     />
                   </div>
+                  )}
 
                   {/* Último Examen Visual (años aproximados) */}
-                  <div className="space-y-2">
+                  {currentStep === 8 && (
+                  <div className="space-y-2 transition-all" role="group" aria-labelledby="step-ultimo-examen">
                     <Label htmlFor="ultimoExamenVisual">Último Examen Visual</Label>
                     <Input
                       id="ultimoExamenVisual"
@@ -1222,10 +1181,12 @@ export default function CrearPacientePage() {
                         : 'Indique un número entero, por ejemplo: 1, 2, 3'}
                     </div>
                   </div>
+                  )}
                 </div>
 
                 {/* Síntomas Visuales */}
-                <div className="space-y-2">
+                {currentStep === 9 && (
+                <div className="space-y-2 transition-all" role="group" aria-labelledby="step-sintomas">
                   <Label htmlFor="sintomasVisuales">Síntomas Visuales</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-2">
                     {[
@@ -1286,12 +1247,17 @@ export default function CrearPacientePage() {
                       />
                     </div>
                   )}
+                  {sintomasVisualesSeleccionados.length === 0 && (
+                    <p className="text-red-500 text-xs" role="alert">Seleccione al menos un síntoma</p>
+                  )}
                 </div>
+                )}
 
 
 
                 {/* Uso de Lentes */}
-                <div className="space-y-2">
+                {currentStep === 10 && (
+                <div className="space-y-2 transition-all" role="group" aria-labelledby="step-lentes">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="usaLentes">¿Usa Lentes?</Label>
                     <div className="flex items-center gap-2">
@@ -1304,8 +1270,9 @@ export default function CrearPacientePage() {
                     </div>
                   </div>
                 </div>
+                )}
 
-                {usaLentes && (
+                {currentStep === 10 && usaLentes && (
                   <>
                     {/* Contenedor de dos columnas para Tipo de Lentes y Tiempo de Uso */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1384,11 +1351,15 @@ export default function CrearPacientePage() {
                         />
                       </div>
                     </div>
+                    {(tipoLentesSeleccionados.length === 0 || tiempoUsoLentes.trim() === "") && (
+                      <p className="text-red-500 text-xs" role="alert">Indique tipo de lentes y tiempo de uso</p>
+                    )}
                   </>
                 )}
 
                 {/* Cirugías Oculares */}
-                <div className="space-y-2">
+                {currentStep === 11 && (
+                <div className="space-y-2 transition-all" role="group" aria-labelledby="step-cirugias">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="cirugiasOculares">¿Ha tenido cirugías oculares?</Label>
                     <div className="flex items-center gap-2">
@@ -1401,9 +1372,11 @@ export default function CrearPacientePage() {
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Traumatismos Oculares */}
-                <div className="space-y-2">
+                {currentStep === 11 && (
+                <div className="space-y-2 transition-all" role="group" aria-labelledby="step-trauma">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="traumatismosOculares">¿Ha tenido traumatismos oculares?</Label>
                     <div className="flex items-center gap-2">
@@ -1415,9 +1388,13 @@ export default function CrearPacientePage() {
                       />
                     </div>
                   </div>
+                  {traumatismosOculares && traumatismosDetalle.trim() === "" && (
+                    <p className="text-red-500 text-xs" role="alert">Describa los traumatismos</p>
+                  )}
                 </div>
+                )}
 
-                {traumatismosOculares && (
+                {currentStep === 11 && traumatismosOculares && (
                   <div className="space-y-2">
                     <Label htmlFor="traumatismosDetalle">Detalles de Traumatismos Oculares</Label>
                     <Textarea
@@ -1431,7 +1408,8 @@ export default function CrearPacientePage() {
                 )}
 
                 {/* Antecedentes Visuales Familiares */}
-                <div className="space-y-2">
+                {currentStep === 12 && (
+                <div className="space-y-2 transition-all" role="group" aria-labelledby="step-antecedentes-visuales">
                   <Label htmlFor="antecedentesVisualesFamiliares">Antecedentes Visuales Familiares</Label>
                   {antecedentesVisualesFamiliaresError && (
                     <p className="text-sm text-red-500">{antecedentesVisualesFamiliaresError}</p>
@@ -1536,10 +1514,15 @@ export default function CrearPacientePage() {
                       />
                     </div>
                   )}
+                  {!antecedentesVisualesFamiliaresSeleccionados.includes("Ninguno") && antecedentesVisualesFamiliaresSeleccionados.length === 0 && (
+                    <p className="text-red-500 text-xs" role="alert">Seleccione al menos una opción</p>
+                  )}
                 </div>
+                )}
 
                 {/* Antecedentes Familiares de Salud */}
-                <div className="space-y-2">
+                {currentStep === 13 && (
+                <div className="space-y-2 transition-all" role="group" aria-labelledby="step-antecedentes-salud">
                   <Label>Antecedentes Familiares de Salud</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
                     {[
@@ -1594,10 +1577,15 @@ export default function CrearPacientePage() {
                       <Label htmlFor="antecedenteSalud-ninguno" className="font-normal">Ninguno</Label>
                     </div>
                   </div>
+                  {antecedentesFamiliaresSaludSeleccionados.length === 0 && (
+                    <p className="text-red-500 text-xs" role="alert">Seleccione al menos una opción</p>
+                  )}
                 </div>
+                )}
 
                 {/* Hábitos Visuales */}
-                <div className="space-y-2">
+                {currentStep === 14 && (
+                <div className="space-y-2 transition-all" role="group" aria-labelledby="step-habitos">
                   <Label>Hábitos Visuales</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
                     {[
@@ -1628,10 +1616,15 @@ export default function CrearPacientePage() {
                       </div>
                     ))}
                   </div>
+                  {habitosVisualesSeleccionados.length === 0 && (
+                    <p className="text-red-500 text-xs" role="alert">Seleccione al menos una opción</p>
+                  )}
                 </div>
+                )}
 
                 {/* Salud General */}
-                <div className="space-y-2">
+                {currentStep === 15 && (
+                <div className="space-y-2 transition-all" role="group" aria-labelledby="step-salud-general">
                   <Label>Salud General</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
                     {[
@@ -1686,12 +1679,15 @@ export default function CrearPacientePage() {
                       <Label htmlFor="saludGeneral-ninguno" className="font-normal">Ninguno</Label>
                     </div>
                   </div>
+                  {saludGeneralSeleccionados.length === 0 && (
+                    <p className="text-red-500 text-xs" role="alert">Seleccione al menos una opción</p>
+                  )}
                 </div>
+                )}
 
-                {/* Medicamentos Actuales y Fecha de Cita en 2 columnas */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Medicamentos Actuales */}
-                  <div className="space-y-2">
+                {/* Medicamentos Actuales y Fecha de Cita en pasos separados */}
+                {currentStep === 16 && (
+                  <div className="space-y-2 transition-all" role="group" aria-labelledby="step-medicamentos">
                     <Label htmlFor="medicamentosActuales">Medicamentos Actuales</Label>
                     <Input
                       id="medicamentosActuales"
@@ -1700,9 +1696,10 @@ export default function CrearPacientePage() {
                       placeholder="Describa los medicamentos que toma actualmente"
                     />
                   </div>
+                )}
 
-                  {/* Fecha de Cita */}
-                  <div className="space-y-2">
+                {currentStep === 17 && (
+                  <div className="space-y-2 transition-all" role="group" aria-labelledby="step-fecha-cita">
                     <Label htmlFor="fechaCita">Fecha de Cita</Label>
                     <div className="flex space-x-2">
                       <Popover open={fechaCitaOpen} onOpenChange={setFechaCitaOpen}>
@@ -1798,38 +1795,76 @@ export default function CrearPacientePage() {
                         Hoy
                       </Button>
                     </div>
-              </div>
-            </div>
+                  </div>
+                )}
 
             <div className="flex flex-col sm:flex-row justify-end gap-3 sm:space-x-4 mt-4 sm:mt-6">
-                  <Button
-                    type="button"
-                    variant="outline"
+              <Button
+                type="button"
+                variant="outline"
                 onClick={limpiarFormulario}
                 disabled={isSubmitting}
-                className="w-full sm:w-auto order-2 sm:order-1 flex items-center justify-center"
+                className="w-full sm:w-auto order-3 sm:order-1 flex items-center justify-center"
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Limpiar datos
               </Button>
 
-                  <Button
-                    type="submit"
-                    disabled={!isFormValid || isSubmitting}
-                    className="bg-primary text-white w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center font-bold py-6"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
-                        Guardando...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="mr-2 h-5 w-5" />
-                        Guardar paciente
-                      </>
-                    )}
-                  </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  // Marcar el campo del paso como tocado si no es válido
+                  if (!isStepValid(currentStep)) {
+                    switch (steps[currentStep]) {
+                      case 'nombre':
+                        handleBlur('nombre');
+                        break;
+                      case 'telefono':
+                        handleBlur('telefono');
+                        break;
+                      default:
+                        break;
+                    }
+                    return;
+                  }
+                  nextStep();
+                }}
+                disabled={isSubmitting || currentStep >= steps.length - 1 || !isStepValid(currentStep)}
+                className="w-full sm:w-auto order-2 sm:order-2 flex items-center justify-center"
+              >
+                Siguiente
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={prevStep}
+                disabled={isSubmitting || currentStep === 0}
+                className="w-full sm:w-auto order-1 sm:order-3 flex items-center justify-center"
+              >
+                Atrás
+              </Button>
+
+              {currentStep === steps.length - 1 && (
+                <Button
+                  type="submit"
+                  disabled={!isFormValid || isSubmitting}
+                  className="bg-primary text-white w-full sm:w-auto order-4 sm:order-4 flex items-center justify-center font-bold py-6"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-2 h-5 w-5" />
+                      Guardar paciente
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>

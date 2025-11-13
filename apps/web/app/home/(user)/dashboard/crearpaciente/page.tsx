@@ -24,7 +24,6 @@ import { Badge } from "@kit/ui/badge";
 import { Checkbox } from "@kit/ui/checkbox";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
 // Importaciones para notificaciones y correos
-import { enviarNotificacionPusher } from '../../../../public/registro-paciente/pusher-service';
 
 // Definición de la interfaz para el tipo Paciente
 interface Paciente {
@@ -470,48 +469,7 @@ export default function CrearPacientePage() {
       // Se ha eliminado la creación automática de registros en las tablas rx y diagnóstico
       // Solo se mantiene la creación del paciente
 
-      // Obtener el account_id del usuario para enviar la notificación (primera membresía encontrada)
-      let accountId: string = user.id;
-      try {
-        const { data: membership, error: membershipError } = await (supabase
-          .from("accounts_memberships" as any)
-          .select("account_id")
-          .eq("user_id", user.id)
-          .limit(1)
-          .maybeSingle() as any);
-
-        if (membershipError) {
-          console.warn("No se pudo obtener accounts_memberships, intentando memberships:", membershipError);
-          const { data: membership2 } = await (supabase
-            .from("memberships" as any)
-            .select("account_id")
-            .eq("user_id", user.id)
-            .limit(1)
-            .maybeSingle() as any);
-          accountId = (membership2 as any)?.account_id;
-        } else {
-          accountId = (membership as any)?.account_id;
-        }
-      } catch (e) {
-        console.warn("Error obteniendo account_id:", e);
-      }
-
-      // Enviar notificación Pusher con los datos del paciente (igual que en registro público)
-      try {
-        const pacienteData = {
-          nombre,
-          edad: edad ? parseInt(edad) : undefined,
-          telefono,
-          motivo_consulta: motivoConsulta === "Otro" ? `Otro: ${motivoConsultaOtro}` : motivoConsulta,
-          fecha_de_cita: (fechaCita ? fechaCita : startOfDay(new Date())).toISOString()
-        };
-
-        enviarNotificacionPusher(pacienteData, accountId);
-        console.log('Notificación de nuevo paciente enviada correctamente');
-      } catch (notificationError) {
-        console.error('Error al enviar notificación Pusher:', notificationError);
-        // No interrumpimos el flujo si falla la notificación
-      }
+      
 
       // setSuccess(true);
 

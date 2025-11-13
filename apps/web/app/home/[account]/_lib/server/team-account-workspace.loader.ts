@@ -28,20 +28,24 @@ export const loadTeamWorkspace = cache(workspaceLoader);
 async function workspaceLoader(accountSlug: string) {
   const client = getSupabaseServerClient();
   const api = createTeamAccountsApi(client);
+  const user = await requireUserInServerComponent();
 
-  const [workspace, user] = await Promise.all([
-    api.getAccountWorkspace(accountSlug),
-    requireUserInServerComponent(),
-  ]);
+  try {
+    const workspace = await api.getAccountWorkspace(accountSlug);
 
-  // we cannot find any record for the selected account
-  // so we redirect the user to the home page
-  if (!workspace.data?.account) {
+    // we cannot find any record for the selected account
+    // so we redirect the user to the home page
+    if (!workspace.data?.account) {
+      return redirect(pathsConfig.app.home);
+    }
+
+    return {
+      ...workspace.data,
+      user,
+    };
+  } catch (error) {
+    console.error('loadTeamWorkspace failed:', error);
+    // En caso de error en la carga del workspace, redirigimos al home
     return redirect(pathsConfig.app.home);
   }
-
-  return {
-    ...workspace.data,
-    user,
-  };
 }

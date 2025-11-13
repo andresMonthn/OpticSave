@@ -10,6 +10,7 @@
     "build:test": "NODE_ENV=test next build --turbopack",
     "clean": "git clean -xdf .next .turbo node_modules",
     "dev": "next dev --turbo | pino-pretty -c",
+    "test": "vitest --passWithNoTests",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --check \"**/*.{js,cjs,mjs,ts,tsx,md,json}\"",
@@ -75,6 +76,8 @@
     "react-wrap-balancer": "^1.1.1",
     "recharts": "2.15.3",
     "tailwind-merge": "^3.3.1",
+    "tesseract.js": "^6.0.1",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.74"
   },
   "devDependencies": {
@@ -94,7 +97,11 @@
     "supabase": "2.34.0",
     "tailwindcss": "4.1.12",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.9"
+  },
+  "vitest": {
+    "environment": "node"
   },
   "prettier": "@kit/prettier-config",
   "browserslist": [
