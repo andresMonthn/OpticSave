@@ -39,7 +39,9 @@ export async function syncInventarios(db: OptiOfflineDB) {
   const { data: auth, error: userError } = await supabase.auth.getUser();
   if (userError || !auth?.user) return; // no se puede sincronizar sin usuario
 
-  const pending = await db.syncQueue.where({ table: "inventarios", status: "pending" }).toArray();
+  const pending = await db.syncQueue
+    .where({ table: "inventarios", status: "pending" })
+    .sortBy("timestamp");
 
   for (const q of pending) {
     try {
@@ -65,14 +67,25 @@ export async function syncInventarios(db: OptiOfflineDB) {
         const inserted: any = (data as any)?.[0];
         if (inserted?.id) {
           // Vincula el id remoto al registro local si existiera
-          if (payload.id) {
+          if (payload.localId != null) {
+            await db.inventarios.update(payload.localId, { id: inserted.id, _status: "synced" });
+          } else if (payload.id) {
             await db.inventarios.where({ id: payload.id }).modify({ _status: "synced" });
           }
           await db.syncQueue.update(q.id!, { status: "synced" });
         }
       } else if (q.operation === "update") {
         const payload = q.payload as InventarioSyncPayload;
-        if (!payload.id) throw new Error("Update sin id");
+        // Resolver id usando localId si falta
+        let targetId = payload.id;
+        if (!targetId && payload.localId != null) {
+          const local = await db.inventarios.get(payload.localId);
+          targetId = local?.id;
+        }
+        if (!targetId) {
+          // todavía no hay id remoto, posponer hasta que el insert se vincule
+          continue;
+        }
         const { data, error } = await supabase
           .from("inventarios" as any)
           .update({
@@ -85,18 +98,30 @@ export async function syncInventarios(db: OptiOfflineDB) {
             descripcion: payload.descripcion ?? null,
             caducidad: payload.caducidad ?? null,
           })
-          .eq("id", payload.id)
+          .eq("id", targetId)
           .eq("user_id", auth.user.id)
           .select();
         if (error) throw error;
+        if (payload.localId != null) {
+          await db.inventarios.update(payload.localId, { _status: "synced" });
+        }
         await db.syncQueue.update(q.id!, { status: "synced" });
       } else if (q.operation === "delete") {
         const payload = q.payload as InventarioSyncPayload;
-        if (!payload.id) throw new Error("Delete sin id");
+        // Resolver id usando localId si falta
+        let targetId = payload.id;
+        if (!targetId && payload.localId != null) {
+          const local = await db.inventarios.get(payload.localId);
+          targetId = local?.id;
+        }
+        if (!targetId) {
+          // nada que borrar remotamente aún
+          continue;
+        }
         const { error } = await supabase
           .from("inventarios" as any)
           .delete()
-          .eq("id", payload.id)
+          .eq("id", targetId)
           .eq("user_id", auth.user.id);
         if (error) throw error;
         await db.syncQueue.update(q.id!, { status: "synced" });
@@ -111,6 +136,7 @@ export async function syncInventarios(db: OptiOfflineDB) {
 // Helpers para transformar registros locales a payload de Supabase
 export function toSyncPayload(item: InventarioLocal): InventarioSyncPayload {
   return {
+    localId: item.localId,
     id: item.id,
     user_id: item.user_id,
     nombre_producto: item.nombre_producto ?? null,

@@ -3,9 +3,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@kit/ui/card";
 import { Badge } from "@kit/ui/badge";
 import { InventarioItem } from "../columns";
+import { Package } from "lucide-react";
 
 export function InventoryTotalCard({ items }: { items: InventarioItem[] }) {
-  const total = items.reduce((acc, item) => {
+  // Excluir registros locales (offline no sincronizados) del cálculo real
+  const total = items
+    .filter((item) => !String(item.id).startsWith("local-"))
+    .reduce((acc, item) => {
     const cantidad = typeof item.cantidad === "number" ? item.cantidad : Number(item.cantidad) || 0;
     const precio = typeof item.precio === "number" ? item.precio : Number(item.precio) || 0;
     return acc + cantidad * precio;
@@ -14,7 +18,10 @@ export function InventoryTotalCard({ items }: { items: InventarioItem[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Total del inventario</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          Total del inventario
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">

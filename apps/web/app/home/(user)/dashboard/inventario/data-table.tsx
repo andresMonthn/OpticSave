@@ -11,6 +11,7 @@ import {
   ColumnFiltersState,
   getFilteredRowModel,
   Row,
+  VisibilityState,
 } from "@tanstack/react-table"
 
 import {
@@ -24,6 +25,8 @@ import {
 import { Button } from "@kit/ui/button"
 import { Input } from "@kit/ui/input"
 import { useState } from "react"
+import { Checkbox } from "@kit/ui/checkbox"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@kit/ui/tooltip"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@kit/ui/dropdown-menu"
 import { toast } from "@kit/ui/sonner"
-import { Copy, Edit, Trash2, Eye } from "lucide-react"
+import { Edit, Trash2 } from "lucide-react"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -53,6 +56,7 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState("")
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
 
   const table = useReactTable({
     data,
@@ -64,22 +68,59 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onGlobalFilterChange: setGlobalFilter,
+    onColumnVisibilityChange: setColumnVisibility,
     state: {
       sorting,
       columnFilters,
       globalFilter,
+      columnVisibility,
     },
   })
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <Input
           placeholder={searchPlaceholder}
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="max-w-sm"
         />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">Ver campos</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[240px]">
+            <div className="p-2 space-y-2">
+              {[
+                { key: 'id', label: 'ID' },
+                { key: 'nombre_producto', label: 'Producto' },
+                { key: 'categoria', label: 'Categoría' },
+                { key: 'marca', label: 'Marca' },
+                { key: 'modelo', label: 'Modelo' },
+                { key: 'cantidad', label: 'Cantidad' },
+                { key: 'precio', label: 'Precio' },
+                { key: 'descripcion', label: 'Descripción' },
+                { key: 'caducidad', label: 'Caducidad' },
+                { key: 'created_at', label: 'Fecha Creación' },
+              ].map(({ key, label }) => {
+                const col = table.getColumn(key as any);
+                if (!col) return null;
+                const checked = col.getIsVisible();
+                return (
+                  <div key={key} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`col-${key}`}
+                      checked={checked}
+                      onCheckedChange={(v) => col.toggleVisibility(!!v)}
+                    />
+                    <label htmlFor={`col-${key}`} className="text-sm">{label}</label>
+                  </div>
+                );
+              })}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <div className="rounded-md border">
         <Table>
@@ -119,50 +160,43 @@ export function DataTable<TData, TValue>({
                     </TableCell>
                   ))}
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menú</span>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => {
-                          navigator.clipboard.writeText((row.original as any).id);
-                          toast("ID copiado", {
-                            description: "El ID del producto ha sido copiado al portapapeles"
-                          });
-                        }}>
-                          <Copy className="mr-2 h-4 w-4" />
-                          <span>Copiar ID</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          const nombre = (row.original as any).nombre_producto;
-                          navigator.clipboard.writeText(nombre);
-                          toast("Nombre copiado", {
-                            description: "El nombre del producto ha sido copiado al portapapeles"
-                          });
-                        }}>
-                          <Copy className="mr-2 h-4 w-4" />
-                          <span>Copiar nombre</span>
-                        </DropdownMenuItem>
-                        {onEdit && (
-                          <DropdownMenuItem onClick={() => onEdit(row.original)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Editar producto</span>
-                          </DropdownMenuItem>
-                        )}
-                        {onDelete && (
-                          <DropdownMenuItem 
-                            onClick={() => onDelete((row.original as any).id)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            <span>Eliminar producto</span>
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-2">
+                      {onEdit && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Editar producto"
+                                onClick={() => onEdit(row.original)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Editar producto</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      {onDelete && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Eliminar producto"
+                                onClick={() => onDelete((row.original as any).id)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Eliminar producto</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

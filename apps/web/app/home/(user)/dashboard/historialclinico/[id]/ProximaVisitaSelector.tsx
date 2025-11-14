@@ -20,9 +20,10 @@ interface ProximaVisitaSelectorProps {
   pacienteId: string;
   diagnosticoId?: string;
   onSuccess?: () => void;
+  estado?: string;
 }
 
-export function ProximaVisitaSelector({ pacienteId, diagnosticoId, onSuccess }: ProximaVisitaSelectorProps) {
+export function ProximaVisitaSelector({ pacienteId, diagnosticoId, onSuccess, estado }: ProximaVisitaSelectorProps) {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,6 +34,16 @@ export function ProximaVisitaSelector({ pacienteId, diagnosticoId, onSuccess }: 
   }>({ show: false, type: 'success', message: '' });
   
   const supabase = getSupabaseBrowserClient();
+
+  // Determinar el título según el estado del paciente
+  const estadoLower = (estado || '').toLowerCase();
+  const titulo = estadoLower === 'completado'
+    ? 'Próxima visita'
+    : estadoLower === 'pendiente'
+      ? 'Modifica la fecha de la cita'
+      : estadoLower === 'programado' || estadoLower === 'expirado'
+        ? 'Re-agendar cita'
+        : 'Programar próxima visita';
 
   const handleSaveDate = async () => {
     if (!date) {
@@ -89,6 +100,16 @@ export function ProximaVisitaSelector({ pacienteId, diagnosticoId, onSuccess }: 
         } 
       }
 
+      // Actualizar también el campo `fecha_de_cita` del paciente
+      {
+        const { error: pacienteUpdateError } = await supabase
+          .from('pacientes' as any)
+          .update({ fecha_de_cita: date.toISOString() })
+          .eq('id', pacienteId);
+
+        if (pacienteUpdateError) throw pacienteUpdateError;
+      }
+
       setAlert({
         show: true,
         type: 'success',
@@ -136,7 +157,7 @@ export function ProximaVisitaSelector({ pacienteId, diagnosticoId, onSuccess }: 
       )}
 
       <div className="flex flex-col space-y-4">
-        <h3 className="text-lg font-medium">Programar próxima visita</h3>
+        <h3 className="text-lg font-medium">{titulo}</h3>
         <div className="flex items-center gap-2">
           <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>

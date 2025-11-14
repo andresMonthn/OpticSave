@@ -2,13 +2,9 @@
 
 import { Button } from "@kit/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@kit/ui/card";
-import { Input } from "@kit/ui/input";
-import { Label } from "@kit/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@kit/ui/select";
-import { Textarea } from "@kit/ui/textarea";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
-import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Plus, WifiOff } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { HomeLayoutPageHeader } from '../../_components/home-page-header';
 import { Trans } from '@kit/ui/trans';
 import { PageBody } from '@kit/ui/page';
@@ -17,10 +13,19 @@ import { columns, InventarioItem } from "./columns";
 import { AddProductDialog } from "./components/AddProductDialog";
 import { EditProductDialog } from "./components/EditProductDialog";
 import { InventoryTotalCard } from "./components/InventoryTotalCard";
+import { ClientOnly } from "./components/ClientOnly";
+import { useOffline } from "../../_lib/offline/useOffline";
+import { useInventariosDB } from "../../_lib/offline/useDB";
+import { Badge } from "@kit/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@kit/ui/tooltip";
+// Se elimina el diálogo de confirmación offline para centralizar el aviso en OfflineWrapper
 
 
 export default function InventarioPage() {
   const supabase = getSupabaseBrowserClient();
+  const { isOnline, offlineAccepted, setOfflineAccepted, promptOffline, syncing, lastSyncAt } = useOffline({ autoPrompt: false });
+  const [userId, setUserId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const categoriasOptica = [
     "Lentes oftálmicos",
     "Lentes de contacto",
@@ -38,43 +43,146 @@ export default function InventarioPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventarioItem | null>(null);
+  const [localIndexById, setLocalIndexById] = useState<Record<string, number>>({});
+  // Se elimina el estado de diálogo offline; el aviso se gestiona globalmente
   // Validaciones y operaciones se harán al recibir datos del diálogo
 
-  const fetchInventario = async () => {
-    setLoading(true);
-    try {
-      const { data: auth, error: userError } = await supabase.auth.getUser();
-      if (userError || !auth?.user) {
-        throw new Error("Debes iniciar sesión para ver el inventario");
-      }
+  useEffect(() => { setMounted(true); }, []);
 
-      const { data, error } = await supabase
-        .from("inventarios" as any)
-        .select("*")
-        .eq("user_id", auth.user.id);
-      console.log(data);
-      
-      if (error) {
-        throw error;
+  // Hook de DB para CRUD unificado y Dexie
+  const inventariosDB = useInventariosDB({ userId: userId ?? "", isOnline, offlineAccepted });
+
+  // Resolver userId desde Supabase (online) o localStorage (offline)
+  useEffect(() => {
+    (async () => {
+      try {
+        if (isOnline) {
+          const { data: auth } = await supabase.auth.getUser();
+          if (auth?.user?.id) {
+            setUserId(auth.user.id);
+            try { localStorage.setItem("optisave_user_id", auth.user.id); } catch {}
+          } else {
+            setUserId(null);
+          }
+          // Al estar online, no se muestra aviso offline
+        } else {
+          const cached = typeof window !== "undefined" ? localStorage.getItem("optisave_user_id") : null;
+          if (cached) setUserId(cached);
+          // El aviso offline se gestiona globalmente en OfflineWrapper
+        }
+      } catch (e) {
+        // Ignorar errores de red al desconectarse
       }
-      // Normalizar tipos (cantidad y precio vienen como texto en la BD)
-      const normalized = (data as any[]).map((item) => ({
-        ...item,
-        cantidad: typeof item.cantidad === 'number' ? item.cantidad : Number(item.cantidad) || 0,
-        precio: typeof item.precio === 'number' ? item.precio : Number(item.precio) || 0,
-      }));
-      setInventarioItems(normalized as any);
-    } catch (err: any) {
-      console.error("Error fetching inventario:", err);
-      setError(err.message || "Error al cargar el inventario");
-    } finally {
-      setLoading(false);
+    })();
+  }, [isOnline, supabase, offlineAccepted]);
+
+  // Función: normalizar objetos a InventarioItem y mantener índice local
+  const toInventarioItems = useMemo(() => {
+    return (list: any[]) => {
+      const nextIndex: Record<string, number> = {};
+      const out: InventarioItem[] = list.map((it: any) => {
+        const idStr = it.id ? String(it.id) : `local-${it.localId}`;
+        if (typeof it.localId === "number") nextIndex[idStr] = it.localId;
+        return {
+          id: idStr,
+          user_id: it.user_id ?? userId ?? "",
+          nombre_producto: it.nombre_producto ?? "",
+          categoria: it.categoria ?? "",
+          marca: it.marca ?? null,
+          modelo: it.modelo ?? null,
+          cantidad: typeof it.cantidad === 'number' ? it.cantidad : Number(it.cantidad) || 0,
+          precio: typeof it.precio === 'number' ? it.precio : Number(it.precio) || 0,
+          descripcion: it.descripcion ?? null,
+          caducidad: it.caducidad ?? null,
+          created_at: it.created_at ?? null,
+          updated_at: it.updated_at ?? null,
+        };
+      });
+      setLocalIndexById(nextIndex);
+      return out;
+    };
+  }, [userId]);
+
+  // Sembrar/actualizar Dexie desde remoto cuando online (sin perder pendientes)
+  const seedDexieFromRemote = async (uid: string) => {
+    const { data, error } = await supabase
+      .from("inventarios" as any)
+      .select("*")
+      .eq("user_id", uid);
+    if (error) throw error;
+    const remote = (data as any[]).map((item) => ({
+      ...item,
+      cantidad: typeof item.cantidad === 'number' ? item.cantidad : Number(item.cantidad) || 0,
+      precio: typeof item.precio === 'number' ? item.precio : Number(item.precio) || 0,
+      _status: "synced",
+    }));
+
+    // Por cada registro remoto, upsert en Dexie por id
+    for (const r of remote) {
+      const found = await inventariosDB.db.inventarios.where({ id: r.id, user_id: uid }).first();
+      if (found) {
+        await inventariosDB.db.inventarios.update(found.localId!, {
+          nombre_producto: r.nombre_producto ?? null,
+          categoria: r.categoria ?? null,
+          marca: r.marca ?? null,
+          modelo: r.modelo ?? null,
+          cantidad: r.cantidad ?? 0,
+          precio: r.precio ?? 0,
+          descripcion: r.descripcion ?? null,
+          caducidad: r.caducidad ?? null,
+          created_at: r.created_at ?? null,
+          updated_at: r.updated_at ?? null,
+          _status: "synced",
+        });
+      } else {
+        await inventariosDB.db.inventarios.add({
+          id: r.id,
+          user_id: uid,
+          nombre_producto: r.nombre_producto ?? null,
+          categoria: r.categoria ?? null,
+          marca: r.marca ?? null,
+          modelo: r.modelo ?? null,
+          cantidad: r.cantidad ?? 0,
+          precio: r.precio ?? 0,
+          descripcion: r.descripcion ?? null,
+          caducidad: r.caducidad ?? null,
+          created_at: r.created_at ?? null,
+          updated_at: r.updated_at ?? null,
+          _status: "synced",
+        });
+      }
     }
   };
 
+  // Cargar datos según estado online/offline
   useEffect(() => {
-    fetchInventario();
-  }, []);
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        if (isOnline && userId) {
+          await seedDexieFromRemote(userId);
+          const list = await inventariosDB.list();
+          const filtered = list.filter(it => it.user_id === userId);
+          // Al estar online, oculta elementos creados sólo offline (sin id remoto)
+          const visible = filtered.filter((it: any) => Boolean(it.id));
+          setInventarioItems(toInventarioItems(visible));
+        } else if (!isOnline && offlineAccepted) {
+          const list = await inventariosDB.list();
+          const filtered = userId ? list.filter(it => it.user_id === userId) : list;
+          setInventarioItems(toInventarioItems(filtered));
+        } else if (!isOnline && !offlineAccepted) {
+          setError("Sin conexión. Acepta modo offline para seguir trabajando.");
+          setInventarioItems([]);
+        }
+      } catch (err: any) {
+        console.error("Error al cargar inventario:", err);
+        setError(err.message || "Error al cargar el inventario");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [isOnline, offlineAccepted, userId]);
 
 
 
@@ -103,46 +211,28 @@ export default function InventarioPage() {
     }
 
     try {
-      const { data: auth, error: userError } = await supabase.auth.getUser();
-      if (userError || !auth?.user) {
-        setError("Debes iniciar sesión para agregar productos");
+      if (!userId) {
+        setError("No se pudo determinar el usuario. Inicia sesión para continuar.");
         return;
       }
 
-      const { data, error } = await supabase
-        .from("inventarios" as any)
-        .insert([{ 
-          user_id: auth.user.id,
-          nombre_producto: newProduct.nombre_producto,
-          categoria: newProduct.categoria,
-          marca: newProduct.marca,
-          modelo: newProduct.modelo,
-          cantidad: cantidadNum,
-          precio: precioNum,
-          descripcion: newProduct.descripcion
-        }])
-        .select();
+      const localId = await inventariosDB.add({
+        user_id: userId,
+        nombre_producto: newProduct.nombre_producto,
+        categoria: newProduct.categoria,
+        marca: newProduct.marca || null,
+        modelo: newProduct.modelo || null,
+        cantidad: cantidadNum,
+        precio: precioNum,
+        descripcion: newProduct.descripcion || null,
+        caducidad: null,
+      } as any);
 
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        const insertedItem = data[0] as any;
-        const newItem: InventarioItem = {
-          id: insertedItem?.id || '',
-          user_id: insertedItem?.user_id || auth.user.id,
-          nombre_producto: insertedItem?.nombre_producto || newProduct.nombre_producto,
-          categoria: insertedItem?.categoria || newProduct.categoria,
-          marca: insertedItem?.marca || newProduct.marca,
-          modelo: insertedItem?.modelo || newProduct.modelo,
-          cantidad: typeof insertedItem?.cantidad === 'number' ? insertedItem?.cantidad : cantidadNum,
-          precio: typeof insertedItem?.precio === 'number' ? insertedItem?.precio : precioNum,
-          descripcion: insertedItem?.descripcion || newProduct.descripcion,
-          created_at: insertedItem?.created_at || new Date().toISOString(),
-          updated_at: null
-        };
-        setInventarioItems(prev => [...prev, newItem]);
-      }
-
+      // Refrescar lista desde Dexie para reflejar id remoto si se asignó
+      const list = await inventariosDB.list();
+      const filtered = list.filter(it => it.user_id === userId);
+      const visible = isOnline ? filtered.filter((it: any) => Boolean(it.id)) : filtered;
+      setInventarioItems(toInventarioItems(visible));
       setIsAddOpen(false);
       setError(null);
     } catch (err: any) {
@@ -167,40 +257,29 @@ export default function InventarioPage() {
       return;
     }
     try {
-      const { data: auth, error: userError } = await supabase.auth.getUser();
-      if (userError || !auth?.user) {
-        setError("Debes iniciar sesión para editar productos");
+      if (!userId || !selectedItem) {
+        setError("No se pudo determinar el usuario o el elemento a editar.");
         return;
       }
-      const { data, error } = await supabase
-        .from("inventarios" as any)
-        .update({
-          nombre_producto: updates.nombre_producto,
-          categoria: updates.categoria,
-          marca: updates.marca,
-          modelo: updates.modelo,
-          cantidad: cantidadNum,
-          precio: precioNum,
-          descripcion: updates.descripcion,
-        })
-        .eq("id", selectedItem.id)
-        .eq("user_id", auth.user.id)
-        .select();
-      if (error) throw error;
-      if (data && data.length > 0) {
-        const updated = data[0] as any;
-        setInventarioItems(prev => prev.map(it => it.id === selectedItem.id ? {
-          ...it,
-          nombre_producto: updated?.nombre_producto ?? updates.nombre_producto,
-          categoria: updated?.categoria ?? updates.categoria,
-          marca: updated?.marca ?? updates.marca,
-          modelo: updated?.modelo ?? updates.modelo,
-          cantidad: typeof updated?.cantidad === 'number' ? updated?.cantidad : cantidadNum,
-          precio: typeof updated?.precio === 'number' ? updated?.precio : precioNum,
-          descripcion: updated?.descripcion ?? updates.descripcion,
-          updated_at: null,
-        } : it));
+      const idStr = selectedItem.id;
+      const localId = idStr.startsWith("local-") ? Number(idStr.replace("local-", "")) : localIndexById[idStr];
+      if (typeof localId !== "number") {
+        setError("No se encontró el registro local para editar.");
+        return;
       }
+      await inventariosDB.update(localId, {
+        nombre_producto: updates.nombre_producto,
+        categoria: updates.categoria,
+        marca: updates.marca || null,
+        modelo: updates.modelo || null,
+        cantidad: cantidadNum,
+        precio: precioNum,
+        descripcion: updates.descripcion || null,
+      } as any);
+      const list = await inventariosDB.list();
+      const filtered = list.filter(it => it.user_id === userId);
+      const visible = isOnline ? filtered.filter((it: any) => Boolean(it.id)) : filtered;
+      setInventarioItems(toInventarioItems(visible));
       setIsEditOpen(false);
       setSelectedItem(null);
       setError(null);
@@ -213,18 +292,20 @@ export default function InventarioPage() {
   // Eliminar producto
   const handleDeleteProduct = async (id: string) => {
     try {
-      const { data: auth, error: userError } = await supabase.auth.getUser();
-      if (userError || !auth?.user) {
-        setError("Debes iniciar sesión para eliminar productos");
+      if (!userId) {
+        setError("No se pudo determinar el usuario para eliminar el producto");
         return;
       }
-      const { error } = await supabase
-        .from("inventarios" as any)
-        .delete()
-        .eq("id", id)
-        .eq("user_id", auth.user.id);
-      if (error) throw error;
-      setInventarioItems(prev => prev.filter(it => it.id !== id));
+      const localId = id.startsWith("local-") ? Number(id.replace("local-", "")) : localIndexById[id];
+      if (typeof localId !== "number") {
+        setError("No se encontró el registro local para eliminar.");
+        return;
+      }
+      await inventariosDB.remove(localId);
+      const list = await inventariosDB.list();
+      const filtered = list.filter(it => it.user_id === userId);
+      const visible = isOnline ? filtered.filter((it: any) => Boolean(it.id)) : filtered;
+      setInventarioItems(toInventarioItems(visible));
     } catch (err: any) {
       console.error('Error deleting product:', err);
       setError(err.message || 'Error al eliminar el producto');
@@ -233,6 +314,7 @@ export default function InventarioPage() {
 
   return (
     <>
+      {/* Aviso offline centralizado por OfflineWrapper; se elimina diálogo local */}
       <HomeLayoutPageHeader
         title={<Trans i18nKey={'common:routes.home'} />}
         description={<Trans i18nKey={'common:homeTabDescription'} />}
@@ -244,10 +326,40 @@ export default function InventarioPage() {
               <h1 className="text-3xl font-bold">Inventario</h1>
               <p className="text-muted-foreground">Gestiona tu inventario de productos</p>
             </div>
-            <Button onClick={() => setIsAddOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Agregar Producto
-            </Button>
+            <ClientOnly>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Agregar producto"
+                      onClick={() => setIsAddOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Agregar producto</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </ClientOnly>
+          </div>
+
+          <div className="flex items-center gap-3 mb-4">
+            <ClientOnly>
+              {!isOnline && (
+                <Badge variant="secondary">Offline</Badge>
+              )}
+              {syncing && (
+                <Badge variant="success">Sincronizando cambios…</Badge>
+              )}
+              {/* El botón para abrir el diálogo offline se elimina; control global en OfflineWrapper */}
+              {lastSyncAt && (
+                <span className="text-xs text-muted-foreground">
+                  Última sincronización: {new Date(lastSyncAt).toLocaleString()}
+                </span>
+              )}
+            </ClientOnly>
           </div>
 
           <AddProductDialog

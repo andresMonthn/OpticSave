@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useState, useRef, Suspense } from "react";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
 import { useParams, useRouter } from "next/navigation";
-import { format, addDays, parseISO, isValid } from "date-fns";
+import { format, addDays, parseISO, isValid, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { ArrowLeft, Briefcase, Calendar as CalendarIcon, CalendarCheck, Eye, Phone, MapPin, FileText, Pencil, Trash2, CheckCircle2Icon, AlertCircleIcon, XCircleIcon, Edit, X, PencilIcon } from "lucide-react";
     import {
@@ -14,9 +14,7 @@ import { ArrowLeft, Briefcase, Calendar as CalendarIcon, CalendarCheck, Eye, Pho
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
-    DialogOverlay,
-    DialogClose,
+ 
 } from "@kit/ui/dialog";
 import {
     Popover,
@@ -48,6 +46,11 @@ import {
 } from "@kit/ui/accordion";
 import { TeamAccountLayoutPageHeader } from '../../../../[account]/_components/team-account-layout-page-header';
 import { Trans } from '@kit/ui/trans';
+import { Paciente, Diagnostico, Rx } from '@/app/home/(user)/dashboard/historialclinico/[id]/types';
+import { formatDateSafe } from '@/app/home/(user)/dashboard/historialclinico/[id]/utils/helpers';
+import { useAlerts } from '@/app/home/(user)/dashboard/historialclinico/[id]/hooks/useAlerts';
+import { usePaciente } from '@/app/home/(user)/dashboard/historialclinico/[id]/hooks/usePaciente';
+import { useRecetas } from '@/app/home/(user)/dashboard/historialclinico/[id]/hooks/useRecetas';
 // Importar componentes con dynamic para evitar errores de carga
 const DiagnosticoForm = dynamic(() => import("./DiagnosticoForm").then(mod => ({ default: mod.DiagnosticoForm })), {
     ssr: false,
@@ -68,87 +71,7 @@ const ProximaVisitaSelector = dynamic(() => import("./ProximaVisitaSelector").th
 });
 
 
-// Interfaces
-interface Paciente {
-    id: string;
-    user_id: string;
-    nombre: string;
-    edad: number | null;
-    sexo: string | null;
-    domicilio: string | null;
-    motivo_consulta: string | null;
-    diagnostico_id: string | null;
-    telefono: string | null;
-    fecha_de_cita: string | null;
-    created_at: string | null;
-    updated_at: string | null;
-    estado: string | null;
-    fecha_nacimiento: string | null;
-    ocupacion: string | null;
-    sintomas_visuales: string | null;
-    ultimo_examen_visual: string | null;
-    uso_lentes: boolean | null;
-    tipos_de_lentes: string | null;
-    tiempo_de_uso_lentes: string | null;
-    cirujias: boolean | null;
-    traumatismos_oculares: boolean | null;
-    nombre_traumatismos_oculares: string | null;
-    antecedentes_visuales_familiares: string | null;
-    antecedente_familiar_salud: string | null;
-    habitos_visuales: string | null;
-    salud_general: string | null;
-    medicamento_actual: string | null;
-}
-
-interface Diagnostico {
-    id: string;
-    paciente_id: string;
-    user_id: string;
-    fecha_diagnostico: string;
-    tipo_diagnostico: string | null;
-    diagnostico: string | null;
-    tratamiento_refraactivo: string | null;
-    tratamiento: string | null;
-    observaciones: string | null;
-    proxima_visita: string | null;
-    vb_salud_ocular: boolean;
-    created_at: string;
-    rx_uso_od_id?: string | null;
-    rx_uso_oi_id?: string | null;
-    rx_final_od_id?: string | null;
-    rx_final_oi_id?: string | null;
-}
-
-// Tipos fuertes para Recetas
-type RxType = 'uso' | 'final';
-type EyeType = 'OD' | 'OI';
-interface Relacion {
-    tipo: RxType;
-    ojo: EyeType;
-    diagnosticoId: string;
-}
-
-interface Rx {
-    id: string;
-    tipo: RxType;
-    ojo: EyeType;
-    esf: number | null;
-    cil: number | null;
-    eje: number | null;
-    add: number | null;
-    fecha: string;
-    user_id: string;
-    created_at: string;
-    // Alias para visualización (no duplicados)
-    esfera?: number | null; // Alias de esf
-    cilindro?: number | null; // Alias de cil
-    adicion?: number | null; // Alias de add
-    // Propiedades adicionales
-    altura?: number | null;
-    observaciones?: string | null;
-    // Relación con el diagnóstico
-    relacion?: Relacion;
-}
+// Tipos y entidades extraídos a './types'
 
 export default function PacienteDetalle() {
     const params = useParams();
@@ -157,24 +80,21 @@ export default function PacienteDetalle() {
     const account = params.account as string;
     const supabase = getSupabaseBrowserClient();
 
-        const [paciente, setPaciente] = useState<Paciente | null>(null);
+        const { alertInfo, showAlert } = useAlerts();
+        const { paciente, loading, error, diasRestantes, citaExpirada, refetch: fetchPaciente, verificarEstadoCita, setPaciente, setError } = usePaciente(supabase, pacienteId);
+        const { recetas, refetch: fetchRx, setRecetas } = useRecetas(supabase, pacienteId);
         const [diagnosticos, setDiagnosticos] = useState<Diagnostico[]>([]);
-        const [recetas, setRecetas] = useState<Rx[]>([]);
-        const [loading, setLoading] = useState(true);
-        const [error, setError] = useState<string | null>(null);
         const [dialogOpen, setDialogOpen] = useState(false);
         const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [alertDialogOpen, setAlertDialogOpen] = useState(false);
         const [user, setUser] = useState<any>(null);
         const [editForm, setEditForm] = useState<Partial<Paciente>>({});
         const [editDialogOpen, setEditDialogOpen] = useState(false);
-const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
         const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+        const [isLoading, setIsLoading] = useState(false);
         const [deleteDiagnosticoId, setDeleteDiagnosticoId] = useState<string | null>(null);
         const [editDiagnosticoData, setEditDiagnosticoData] = useState<Partial<Diagnostico>>({});
         const [editDiagnosticoDialogOpen, setEditDiagnosticoDialogOpen] = useState(false);
-        const [diasRestantes, setDiasRestantes] = useState<number | null>(null);
-        const [citaExpirada, setCitaExpirada] = useState(false);
 
         // Estado para el modal de recetas
         const [rxDialogOpen, setRxDialogOpen] = useState(false);
@@ -195,43 +115,15 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
             ojo: 'Derecho'
         });
         const [editRxData, setEditRxData] = useState<Rx | null>(null);
+        // Flag para evitar múltiples actualizaciones de estado completado
+        const estadoCompletoMarcadoRef = useRef(false);
     
 
 
         // Estado para las alertas y eliminación de recetas
-        const [alertInfo, setAlertInfo] = useState<{
-            show: boolean;
-            type: 'success' | 'error' | 'warning';
-            title: string;
-            message: string;
-        }>({
-            show: false,
-            type: 'success',
-            title: '',
-            message: ''
-        });
+        // Alertas gestionadas por useAlerts
 
-        // Función para mostrar alertas
-        const showAlert = (type: 'success' | 'error' | 'warning', title: string, message: string) => {
-            setAlertInfo({
-                show: true,
-                type,
-                title,
-                message
-            });
-
-            // Ocultar la alerta después de 3 segundos
-            setTimeout(() => {
-                setAlertInfo(prev => ({ ...prev, show: false }));
-            }, 3000);
-        };
-
-        // Helper para formatear fechas de manera segura
-        const formatDateSafe = (val: string | Date | null | undefined, fallback: string) => {
-            if (!val) return fallback;
-            const d = val instanceof Date ? val : new Date(String(val));
-            return isValid(d) ? format(d, "PPP", { locale: es }) : fallback;
-        };
+        // Formateo de fechas provisto por helpers
     
         // Validación simple del formulario de edición
         const isEditFormValid = () => {
@@ -253,11 +145,15 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
 
                 const updateData: any = {};
                 if (editForm.nombre !== undefined) updateData.nombre = String(editForm.nombre).trim();
+                if (editForm.edad !== undefined) updateData.edad = editForm.edad === null ? null : Number(editForm.edad);
+                if (editForm.sexo !== undefined) updateData.sexo = String(editForm.sexo || '').trim();
+                if (editForm.telefono !== undefined) updateData.telefono = String(editForm.telefono || '').trim();
+                if (editForm.domicilio !== undefined) updateData.domicilio = String(editForm.domicilio || '').trim();
                 if (editForm.ocupacion !== undefined) updateData.ocupacion = String(editForm.ocupacion || '').trim();
                 if (editForm.motivo_consulta !== undefined) updateData.motivo_consulta = String(editForm.motivo_consulta || '').trim();
-                if (editForm.fecha_de_cita !== undefined) {
-                    const val = editForm.fecha_de_cita as any;
-                    updateData.fecha_de_cita = val ? (val instanceof Date ? val.toISOString() : new Date(String(val)).toISOString()) : null;
+                if (editForm.fecha_nacimiento !== undefined) {
+                    const val = editForm.fecha_nacimiento as any;
+                    updateData.fecha_nacimiento = val ? (val instanceof Date ? val.toISOString() : new Date(String(val)).toISOString()) : null;
                 }
 
                 const { error } = await supabase
@@ -269,11 +165,9 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
 
                 showAlert('success', 'Paciente actualizado', 'Los datos del paciente se han actualizado correctamente puede que nesesites actualizar para poder ver los cambios reflejados');
                 await fetchPaciente();
+                // Forzar refresco de la ruta para asegurar revalidación y render
+                router.refresh();
                 
-                // Verificar y actualizar el estado según la fecha de cita si fue modificada
-                if (editForm.fecha_de_cita !== undefined && updateData.fecha_de_cita) {
-                    verificarEstadoCita(updateData.fecha_de_cita);
-                }
                 
                 setEditDialogOpen(false);
             } catch (err: any) {
@@ -320,159 +214,28 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
         }, [pacienteId]);
 
         // Función para obtener las recetas del paciente
-        const fetchRx = async () => {
+        const fetchRxWrapper = async () => {
             try {
-                // Obtener los diagnósticos del paciente para extraer los IDs de recetas
-                const { data: diagData, error: diagError } = await supabase
-                    .from("diagnostico" as any)
-                    .select("*")
-                    .eq("paciente_id", pacienteId);
-            
-                if (diagError) throw diagError;
-            
-                if (diagData && Array.isArray(diagData) && diagData.length > 0) {
-                    // Convertir a tipo Diagnostico para acceder a las propiedades de forma segura
-                    const diagnosticos = diagData as unknown as Diagnostico[];
-                
-                    // Crear un mapa para relacionar cada receta con su tipo y ojo
-                    const recetasMap: Record<string, { tipo: string, ojo: string, diagnosticoId: string }> = {};
-                
-                    // Extraer todos los IDs de recetas de los diagnósticos y guardar su relación
-                    diagnosticos.forEach(diag => {
-                        if (diag.rx_uso_od_id) {
-                            recetasMap[diag.rx_uso_od_id] = { tipo: 'uso', ojo: 'OD', diagnosticoId: diag.id };
-                        }
-                        if (diag.rx_uso_oi_id) {
-                            recetasMap[diag.rx_uso_oi_id] = { tipo: 'uso', ojo: 'OI', diagnosticoId: diag.id };
-                        }
-                        if (diag.rx_final_od_id) {
-                            recetasMap[diag.rx_final_od_id] = { tipo: 'final', ojo: 'OD', diagnosticoId: diag.id };
-                        }
-                        if (diag.rx_final_oi_id) {
-                            recetasMap[diag.rx_final_oi_id] = { tipo: 'final', ojo: 'OI', diagnosticoId: diag.id };
-                        }
-                    });
-                
-                    const rxIds = Object.keys(recetasMap);
-                
-                    if (rxIds.length > 0) {
-                        // Obtener las recetas usando los IDs
-                        const { data: rxData, error: rxError } = await supabase
-                            .from("rx" as any)
-                            .select("*")
-                            .in("id", rxIds);
-                    
-                        if (rxError) throw rxError;
-                    
-                        if (rxData && Array.isArray(rxData)) {
-                            // Enriquecer los datos de recetas con la información de relación
-                            const recetasEnriquecidas = (rxData as unknown as Rx[]).map(rx => {
-                                const relacion = recetasMap[rx.id];
-                                return {
-                                    ...rx,
-                                    relacion: relacion ? {
-                                        tipo: relacion.tipo,
-                                        ojo: relacion.ojo,
-                                        diagnosticoId: relacion.diagnosticoId
-                                    } : undefined
-                                };
-                            });
-                        
-                            setRecetas(recetasEnriquecidas as any);
-                        } else {
-                            setRecetas([]);
-                        }
-                    } else {
-                        setRecetas([]);
-                    }
-                } else {
-                    setRecetas([]);
-                }
+                await fetchRx();
             } catch (err: any) {
-                console.error("Error fetching rx:", err);
-                setError(err.message || "Error al cargar las recetas");
-                showAlert('error', 'Error', err.message || "Error al cargar las recetas");
+                console.error('Error fetching rx:', err);
+                setError(err.message || 'Error al cargar las recetas');
+                showAlert('error', 'Error', err.message || 'Error al cargar las recetas');
             }
         };
 
         // Función para verificar el estado de la cita y calcular días restantes
-        const verificarEstadoCita = (fechaCita: string | null) => {
-            if (!fechaCita) {
-                console.warn("Fecha de cita no proporcionada");
-                return;
-            }
-        
-            // Crear fecha actual sin tiempo y en zona horaria local
-            const hoy = new Date();
-            hoy.setHours(0, 0, 0, 0);
-        
-            // Usar parseISO para manejar correctamente la fecha
-            let fechaCitaObj;
-            try {
-                // Asegurarse de que la fecha esté en formato ISO (YYYY-MM-DD)
-                fechaCitaObj = parseISO(fechaCita);
-                
-                // Verificar si la fecha es válida
-                if (!isValid(fechaCitaObj)) {
-                    throw new Error("Fecha inválida");
-                }
-                
-                fechaCitaObj.setHours(0, 0, 0, 0);
-            } catch (error) {
-                console.error("Error al parsear la fecha:", error);
+        const verificarEstadoCitaWrapper = (fechaCita: string | null) => {
+            const status = fechaCita;
+            if (!status) {
                 showAlert('warning', 'Fecha inválida', 'La fecha de cita no tiene un formato válido');
                 return;
             }
-        
-            // Calcular días restantes
-            const diferenciaTiempo = fechaCitaObj.getTime() - hoy.getTime();
-            const diasRestantesCalc = Math.ceil(diferenciaTiempo / (1000 * 3600 * 24)); // Eliminamos la resta de 1 día que causaba el adelanto
-        
-            setDiasRestantes(diasRestantesCalc);
-        
-            // Determinar el nuevo estado según la fecha de cita
-            let nuevoEstado = '';
-            
-            if (diasRestantesCalc < 0) {
-                // Si la fecha de cita es anterior a la fecha actual
-                nuevoEstado = 'Completado';
-                setCitaExpirada(true);
-            } else if (diasRestantesCalc === 0) {
-                // Si la fecha de cita es igual a la fecha actual
-                nuevoEstado = 'Pendiente';
-                setCitaExpirada(false);
-            } else {
-                // Si la fecha de cita es posterior a la fecha actual
-                nuevoEstado = 'Programado';
-                setCitaExpirada(false);
-            }
-            
-            // Actualizar el estado del paciente si es diferente al actual
-            if (paciente && paciente.estado !== nuevoEstado) {
-                actualizarEstadoPaciente(nuevoEstado);
-            }
+            verificarEstadoCita(fechaCita);
         };
     
         // Función para actualizar el estado del paciente
-        const actualizarEstadoPaciente = async (nuevoEstado: string) => {
-            if (!paciente || paciente.estado === nuevoEstado) return;
-        
-            try {
-                const { error } = await supabase
-                    .from("pacientes" as any)
-                    .update({ estado: nuevoEstado })
-                    .eq("id", pacienteId);
-                
-                if (error) throw error;
-            
-                // Actualizar el estado local
-                setPaciente(prev => prev ? { ...prev, estado: nuevoEstado } : null);
-            
-            } catch (err: any) {
-                console.error("Error al actualizar estado del paciente:", err);
-                showAlert('error', 'Error', err.message || "Error al actualizar el estado del paciente");
-            }
-        };
+        // Actualización de estado gestionada por usePaciente
 
         useEffect(() => {
             // Verificar si el usuario está logueado
@@ -490,9 +253,85 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
         // Efecto para verificar el estado de la cita cuando se carga el paciente
         useEffect(() => {
             if (paciente && paciente.fecha_de_cita) {
-                verificarEstadoCita(paciente.fecha_de_cita);
+                verificarEstadoCitaWrapper(paciente.fecha_de_cita);
             }
         }, [paciente]);
+
+        // Verificar "estado completado" cuando:
+        // 1) Existe al menos una receta (rx) cuyo id_paciente coincide con el paciente actual
+        // 2) La fecha de la cita fue ayer
+        useEffect(() => {
+            const marcarCompletadoSiAplica = async () => {
+                try {
+                    if (!paciente || !paciente.fecha_de_cita) return;
+                    if (estadoCompletoMarcadoRef.current) return;
+
+                    const fechaCita = parseISO(String(paciente.fecha_de_cita));
+                    if (!isValid(fechaCita)) return;
+
+                    const ayer = addDays(new Date(), -1);
+                    // Comparar solo por día/mes/año
+                    const fueAyer = isSameDay(
+                        new Date(ayer.getFullYear(), ayer.getMonth(), ayer.getDate()),
+                        new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate())
+                    );
+
+                    const tieneRxDelPaciente = Array.isArray(recetas)
+                        && recetas.some((rx: any) => {
+                            const rxPacienteId = (rx?.id_paciente ?? rx?.paciente_id ?? rx?.pacienteId);
+                            return String(rxPacienteId) === String(pacienteId);
+                        });
+
+                    if (fueAyer && tieneRxDelPaciente && paciente.estado !== 'completado') {
+                        const { error: updateError } = await supabase
+                            .from('pacientes' as any)
+                            .update({ estado: 'completado' })
+                            .eq('id', pacienteId);
+
+                        if (updateError) {
+                            console.error('Error actualizando estado a completado:', updateError);
+                            return;
+                        }
+
+                        estadoCompletoMarcadoRef.current = true;
+                        // Actualizar estado local y notificar
+                        setPaciente(prev => prev ? { ...prev, estado: 'completado' } : prev);
+                        window.dispatchEvent(new CustomEvent('pacienteEstadoActualizado', {
+                            detail: { pacienteId, nuevoEstado: 'completado' }
+                        }));
+                    }
+                } catch (err) {
+                    console.error('Error verificando estado completado:', err);
+                }
+            };
+
+            marcarCompletadoSiAplica();
+        }, [paciente, recetas, pacienteId, supabase]);
+
+        // Suscripción en tiempo real para auto-refrescar al detectar cambios del paciente
+        useEffect(() => {
+            const channel = (supabase as any)
+                .channel(`paciente-${pacienteId}-updates`)
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'pacientes', filter: `id=eq.${pacienteId}` },
+                    async (_payload: any) => {
+                        try {
+                            await fetchPaciente();
+                            router.refresh();
+                        } catch (err) {
+                            console.error('Error auto-refrescando paciente:', err);
+                        }
+                    }
+                )
+                .subscribe();
+
+            return () => {
+                try {
+                    (supabase as any).removeChannel(channel);
+                } catch {}
+            };
+        }, [pacienteId, supabase]);
     
         // Efecto para agregar animación hover a todos los botones (sin sonido)
         useEffect(() => {
@@ -574,29 +413,7 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
             };
         }, []);
 
-        const fetchPaciente = async () => {
-            try {
-                // Usar aserciones de tipo para evitar errores de TypeScript
-                const { data, error } = await supabase
-                    .from("pacientes" as any)
-                    .select("*")
-                    .eq("id", pacienteId)
-                    .single();
-
-                if (error) {
-                    throw error;
-                }
-
-                // Convertir explícitamente a unknown primero para evitar errores de TypeScript
-                setPaciente(data as unknown as Paciente);
-            } catch (err: any) {
-                console.error("Error fetching paciente:", err);
-                setError(err.message || "Error al cargar los datos del paciente");
-                showAlert('error', 'Error', err.message || "Error al cargar los datos del paciente");
-            } finally {
-                setLoading(false);
-            }
-        };
+        // fetchPaciente provisto por usePaciente
 
         // Se eliminó la función fetchDiagnosticos para evitar solicitudes innecesarias a la API
 
@@ -1015,30 +832,30 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
 
         const handleDeletePaciente = async () => {
             try {
-                setLoading(true);
+                setIsLoading(true);
 
                 // Verificar si el usuario está logueado
                 if (!user) {
                     showAlert('error', 'Acceso denegado', 'Debe iniciar sesión para eliminar pacientes');
-                    setLoading(false);
+                    setIsLoading(false);
                     return;
                 }
             
                 // Mostrar diálogo de confirmación con resumen de datos
                 setDeleteDialogOpen(true);
-                setLoading(false);
+                setIsLoading(false);
                 return;
             } catch (err: any) {
                 console.error("Error al preparar eliminación:", err);
                 showAlert('error', 'Error', err.message || "Error al preparar la eliminación");
-                setLoading(false);
+                setIsLoading(false);
             }
         };
     
         // Función para confirmar y ejecutar la eliminación del paciente
         const confirmarEliminacionPaciente = async () => {
             try {
-                setLoading(true);
+                setIsLoading(true);
                 
                 // Primero eliminar los registros relacionados en la tabla rx
                 const { error: rxError } = await supabase
@@ -1077,11 +894,11 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
                 console.error("Error al eliminar paciente:", err);
                 setError(err.message || "Error al eliminar el paciente");
                 showAlert('error', 'Error', err.message || "Error al eliminar el paciente");
-                setLoading(false);
+                setIsLoading(false);
             } finally {
                 // Asegurar que el diálogo se cierre en caso de error
-                if (loading) {
-                    setLoading(false);
+                if (isLoading) {
+                    setIsLoading(false);
                 }
             }
         };
@@ -1093,7 +910,7 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
         if (!paciente) return <div className="bg-destructive/20 p-4 rounded-md"><p>No se encontró el paciente</p></div>;
 
         return (
-            <div className="space-y-6 mx-[45px]">
+            <div className="space-y-6 mx-[45px] pt-4 sm:pt-8">
                 {/* Componente de alerta */}
                 {alertInfo.show && (
                     <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md animate-in fade-in slide-in-from-top-5">
@@ -1131,37 +948,46 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
                 {/* Información del paciente */}
                 <Card>
                     <CardHeader>
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <CardTitle className="text-2xl">{paciente.nombre}</CardTitle>
-                                <CardDescription>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                                <CardTitle className="text-2xl truncate">{paciente.nombre}</CardTitle>
+                                <CardDescription className="truncate">
                                     {paciente.edad && `${paciente.edad} años`} {paciente.sexo && `• ${paciente.sexo}`}
                                 </CardDescription>
                             </div>
-                            <div className="flex gap-2 items-center">
-                                <Badge variant={paciente.estado === "Activo" ? "success" : paciente.estado === "Pendiente" ? "warning" : "default"}>
-                                    {paciente.estado || "Sin estado"}
+                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
+                                <Badge
+                                    variant={
+                                        paciente?.estado?.toLowerCase() === 'completado' ? 'success'
+                                        : paciente?.estado?.toLowerCase() === 'pendiente' ? 'warning'
+                                        : paciente?.estado?.toLowerCase() === 'programado' ? 'secondary'
+                                        : paciente?.estado?.toLowerCase() === 'activo' ? 'success'
+                                        : 'default'
+                                    }
+                                >
+                                    {paciente?.estado || 'Sin estado'}
                                 </Badge>
-                                {/* Botón de edición solo visible cuando no hay datos en RX o diagnóstico */}
-                                {(recetas.length === 0 && diagnosticos.length === 0) && (
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => {
-                                            setEditForm({
-                                                nombre: paciente.nombre || '',
-                                                edad: paciente.edad ?? null,
-                                                fecha_de_cita: paciente.fecha_de_cita ? paciente.fecha_de_cita.split('T')[0] : '',
-                                                ocupacion: paciente.ocupacion || '',
-                                                motivo_consulta: paciente.motivo_consulta || ''
-                                            });
-                                            setAlertDialogOpen(true);
-                                        }}
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                )}
+                                {/* Botón de edición siempre visible */}
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => {
+                                        setEditForm({
+                                            nombre: paciente.nombre || '',
+                                            edad: paciente.edad ?? null,
+                                            sexo: paciente.sexo || '',
+                                            telefono: paciente.telefono || '',
+                                            domicilio: paciente.domicilio || '',
+                                            fecha_nacimiento: paciente.fecha_nacimiento || '',
+                                            ocupacion: paciente.ocupacion || '',
+                                            motivo_consulta: paciente.motivo_consulta || ''
+                                        });
+                                        setAlertDialogOpen(true);
+                                    }}
+                                >
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
                                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setDeleteDialogOpen(true)}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -1307,20 +1133,22 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
                     </CardContent>
                 </Card>
 
-                {/* Recetas del paciente */}
-                <div className="w-full mt-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium">Recetas</h3>
+                {/* Recetas del paciente (solo si estado = Pendiente) */}
+                {paciente?.estado && paciente.estado.toLowerCase() === 'pendiente' && (
+                    <div className="w-full mt-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-medium">Recetas</h3>
+                        </div>
+                        <RecetasTable
+                            pacienteId={pacienteId}
+                            recetas={recetas}
+                            showAlert={showAlert}
+                            setRxData={setRxData}
+                            setRxDialogOpen={setRxDialogOpen}
+                            handleDeleteRx={handleDeleteRx}
+                        />
                     </div>
-                    <RecetasTable
-                        pacienteId={pacienteId}
-                        recetas={recetas}
-                        showAlert={showAlert}
-                        setRxData={setRxData}
-                        setRxDialogOpen={setRxDialogOpen}
-                        handleDeleteRx={handleDeleteRx}
-                    />
-                </div>
+                )}
 
                 {/* Formulario de diagnóstico */}
                 <DiagnosticoForm
@@ -1383,41 +1211,67 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
                                 />
                             </div>
 
-
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <label htmlFor="edad" className="text-right font-medium">Edad</label>
+                                <input
+                                    id="edad"
+                                    type="number"
+                                    className="col-span-3 p-2 border rounded"
+                                    value={editForm.edad ?? ''}
+                                    onChange={(e) => setEditForm({ ...editForm, edad: e.target.value ? Number(e.target.value) : null })}
+                                />
+                            </div>
 
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <label htmlFor="fecha_de_cita" className="text-right font-medium">Fecha de cita</label>
-                                <div className="col-span-3">
-                                    <Popover open={editFechaCitaOpen} onOpenChange={setEditFechaCitaOpen}>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="outline" className="w-full justify-start text-left font-normal">
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {formatDateSafe(editForm.fecha_de_cita as any, "Selecciona una fecha")}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
-                                            <div className="flex items-center justify-between p-2 border-b">
-                                                <Button variant="ghost" size="sm" onClick={() => {
-                                                    const today = new Date();
-                                                    setEditForm({ ...editForm, fecha_de_cita: today.toISOString() });
-                                                    setEditFechaCitaOpen(false);
-                                                }}>
-                                                    Hoy
-                                                </Button>
-                                            </div>
-                                            <Calendar
-                                                mode="single"
-                                                selected={editForm.fecha_de_cita ? new Date(editForm.fecha_de_cita as any) : undefined}
-                                                onSelect={(date) => {
-                                                    setEditForm({ ...editForm, fecha_de_cita: date ? date.toISOString() : null });
-                                                    if (date) setEditFechaCitaOpen(false);
-                                                }}
-                                                initialFocus
-                                            />
-                                        </PopoverContent>
-                                    </Popover>
-                                </div>
+                                <label htmlFor="sexo" className="text-right font-medium">Sexo</label>
+                                <select
+                                    id="sexo"
+                                    className="col-span-3 p-2 border rounded"
+                                    value={editForm.sexo || ''}
+                                    onChange={(e) => setEditForm({ ...editForm, sexo: e.target.value })}
+                                >
+                                    <option value="">Selecciona</option>
+                                    <option value="Masculino">Masculino</option>
+                                    <option value="Femenino">Femenino</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
                             </div>
+
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <label htmlFor="telefono" className="text-right font-medium">Teléfono</label>
+                                <input
+                                    id="telefono"
+                                    type="text"
+                                    className="col-span-3 p-2 border rounded"
+                                    value={editForm.telefono || ''}
+                                    onChange={(e) => setEditForm({ ...editForm, telefono: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <label htmlFor="domicilio" className="text-right font-medium">Domicilio</label>
+                                <input
+                                    id="domicilio"
+                                    type="text"
+                                    className="col-span-3 p-2 border rounded"
+                                    value={editForm.domicilio || ''}
+                                    onChange={(e) => setEditForm({ ...editForm, domicilio: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <label htmlFor="fecha_nacimiento" className="text-right font-medium">Fecha de nacimiento</label>
+                                <input
+                                    id="fecha_nacimiento"
+                                    type="date"
+                                    className="col-span-3 p-2 border rounded"
+                                    value={editForm.fecha_nacimiento ? String(editForm.fecha_nacimiento).split('T')[0] : ''}
+                                    onChange={(e) => setEditForm({ ...editForm, fecha_nacimiento: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                                />
+                            </div>
+
+
+
 
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <label htmlFor="ocupacion" className="text-right font-medium">Ocupación</label>
@@ -1513,23 +1367,34 @@ const [editFechaCitaOpen, setEditFechaCitaOpen] = useState(false);
                     </AlertDialogContent>
                 </AlertDialog>
             
-                {/* Componente para seleccionar la fecha de próxima visita */}
-                <Card className="mt-6 mb-8">
-                    <CardHeader>
-                        <CardTitle className="text-lg">Programar próxima visita</CardTitle>
-                        <CardDescription>Selecciona una fecha para la próxima visita del paciente</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ProximaVisitaSelector 
-                            pacienteId={pacienteId} 
-                            onSuccess={() => {
-                                // Recargar los datos del paciente y diagnósticos
-                                fetchPaciente();
-                                showAlert('success', 'Próxima visita programada', 'Se ha programado correctamente la próxima visita del paciente');
-                            }}
-                        />
-                    </CardContent>
-                </Card>
+                {/* Selector de próxima visita (Programado/Expirado/Pendiente/Completado) */}
+                {paciente?.estado && ['programado', 'expirado', 'pendiente', 'completado'].includes(paciente.estado.toLowerCase()) && (
+                    <Card className="mt-6 mb-8">
+                        <CardHeader>
+                            <CardTitle className="text-lg">
+                                {(() => {
+                                    const e = paciente?.estado?.toLowerCase() || '';
+                                    if (e === 'completado') return 'Próxima visita';
+                                    if (e === 'pendiente') return 'Modifica la fecha de la cita';
+                                    if (e === 'programado' || e === 'expirado') return 'Re-agendar cita';
+                                    return 'Próxima visita';
+                                })()}
+                            </CardTitle>
+                            <CardDescription>Selecciona o modifica la fecha de la cita</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ProximaVisitaSelector 
+                                pacienteId={pacienteId}
+                                estado={paciente?.estado || ''}
+                                onSuccess={() => {
+                                    // Recargar los datos del paciente y diagnósticos
+                                    fetchPaciente();
+                                    showAlert('success', 'Próxima visita programada', 'Se ha programado correctamente la próxima visita del paciente');
+                                }}
+                            />
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Componente de botones de impresión */}
                 <PrintButtons pacienteId={params.id as string} />

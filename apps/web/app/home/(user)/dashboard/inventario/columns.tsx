@@ -16,6 +16,7 @@ export interface InventarioItem {
   cantidad: number;
   precio: number;
   descripcion: string | null;
+  caducidad: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -109,6 +110,14 @@ export const columns: ColumnDef<InventarioItem>[] = [
           {descripcion || "-"}
         </div>
       );
+    },
+  },
+  {
+    accessorKey: "caducidad",
+    header: "Caducidad",
+    cell: ({ row }) => {
+      const cad = row.getValue("caducidad") as string | null;
+      return <div>{cad || "-"}</div>;
     },
   },
   {

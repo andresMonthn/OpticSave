@@ -156,9 +156,15 @@ function getPatterns() {
 
         const origin = req.nextUrl.origin;
         const next = req.nextUrl.pathname;
+        // Permitir navegación offline si existe cookie con user_id
+        const offlineUserId = req.cookies.get('optisave_user_id')?.value;
 
         // If user is not logged in, redirect to sign in page.
         if (!data?.claims) {
+          if (offlineUserId) {
+            // Aceptar navegación en modo offline cuando hay cookie de usuario
+            return;
+          }
           const signIn = pathsConfig.auth.signIn;
           const redirectPath = `${signIn}?next=${next}`;
 

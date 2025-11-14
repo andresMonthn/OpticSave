@@ -10,16 +10,33 @@ interface UseOfflineOptions {
 
 export function useOffline(options: UseOfflineOptions = { autoPrompt: true }) {
   const [isOnline, setIsOnline] = React.useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
-  const [offlineAccepted, setOfflineAccepted] = React.useState<boolean>(false);
+  const [offlineAccepted, setOfflineAccepted] = React.useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const v = window.localStorage.getItem("optisave_offline_accepted");
+      return v === "true";
+    } catch {
+      return false;
+    }
+  });
   const [syncing, setSyncing] = React.useState<boolean>(false);
   const [lastSyncAt, setLastSyncAt] = React.useState<number | null>(null);
   const db = React.useMemo(() => getDB(), []);
 
+  const setOfflineAcceptedPersist = React.useCallback((value: boolean) => {
+    setOfflineAccepted(value);
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("optisave_offline_accepted", value ? "true" : "false");
+      }
+    } catch {}
+  }, []);
+
   const promptOffline = React.useCallback(() => {
     const ok = typeof window !== "undefined" ? window.confirm("Sin conexión. ¿Quieres continuar trabajando offline?") : true;
-    setOfflineAccepted(ok);
+    setOfflineAcceptedPersist(ok);
     return ok;
-  }, []);
+  }, [setOfflineAcceptedPersist]);
 
   React.useEffect(() => {
     function handleOnline() {
@@ -56,7 +73,7 @@ export function useOffline(options: UseOfflineOptions = { autoPrompt: true }) {
   return {
     isOnline,
     offlineAccepted,
-    setOfflineAccepted,
+    setOfflineAccepted: setOfflineAcceptedPersist,
     promptOffline,
     syncing,
     lastSyncAt,

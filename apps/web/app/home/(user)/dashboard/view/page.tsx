@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@kit/ui/card";
 import { Button } from "@kit/ui/button";
@@ -18,6 +18,9 @@ import { DataTable } from "./data-table";
 import { renderEstado, formatDate } from "./columns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@kit/ui/dialog";
 import ImportView from "./import";
+import { useOffline } from "../../_lib/offline/useOffline";
+import { usePacientesDB } from "../../_lib/offline/useDB";
+import { Badge } from "@kit/ui/badge";
 
 // Función para determinar el estado basado en la fecha de cita (PROGRAMADO/PENDIENTE/EXPIRADO)
 const determinarEstado = (fechaCita: string | null): string => {
@@ -57,6 +60,7 @@ export default function View() {
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     nombre: true,
     edad: true,
@@ -74,10 +78,35 @@ export default function View() {
   // Variables derivadas de hooks (no son hooks)
   const account = params.account as string;
   const supabase = getSupabaseBrowserClient();
+  const { isOnline, offlineAccepted, setOfflineAccepted, promptOffline, syncing, lastSyncAt } = useOffline({ autoPrompt: false });
+  const pacientesDB = usePacientesDB({ userId: userId ?? "", isOnline, offlineAccepted });
+
+  // Resolver userId (online via Supabase, offline via caché)
+  useEffect(() => {
+    (async () => {
+      try {
+        if (isOnline) {
+          const { data: auth } = await supabase.auth.getUser();
+          if (auth?.user?.id) {
+            setUserId(auth.user.id);
+            try { localStorage.setItem("optisave_user_id", auth.user.id); } catch {}
+          } else {
+            setUserId(null);
+          }
+        } else {
+          const cached = typeof window !== "undefined" ? localStorage.getItem("optisave_user_id") : null;
+          if (cached) setUserId(cached);
+          // El aviso offline se gestiona globalmente en OfflineWrapper
+        }
+      } catch (e) {
+        // Ignorar errores de red
+      }
+    })();
+  }, [isOnline, supabase, offlineAccepted, setOfflineAccepted, promptOffline]);
 
   useEffect(() => {
     fetchPacientes();
-  }, []);
+  }, [isOnline, offlineAccepted, userId]);
 
   // La función checkUser ha sido eliminada ya que no es necesaria
 
@@ -85,34 +114,104 @@ export default function View() {
     setLoading(true);
     setError(null);
     try {
-      // Usar type assertion para evitar errores de tipado con la tabla pacientes
-      const { data, error } = await supabase
-        .from('pacientes' as unknown as any)
-        .select('*');
-
-      if (error) {
-        throw error;
+      if (isOnline && userId) {
+        // Sembrar/actualizar Dexie desde remoto por user
+        const { data, error } = await supabase
+          .from('pacientes' as any)
+          .select('*')
+          .eq('user_id', userId);
+        if (error) throw error;
+        const remote = (data as any[]).map((item) => ({
+          ...item,
+          _status: 'synced',
+        }));
+        // Upsert en Dexie por id
+        for (const r of remote) {
+          const found = await pacientesDB.db.pacientes.where({ id: r.id, user_id: userId }).first();
+          if (found) {
+            await pacientesDB.db.pacientes.update(found.localId!, {
+              nombre: r.nombre ?? '',
+              edad: r.edad ?? null,
+              sexo: r.sexo ?? null,
+              domicilio: r.domicilio ?? null,
+              motivo_consulta: r.motivo_consulta ?? null,
+              diagnostico_id: r.diagnostico_id ?? null,
+              telefono: r.telefono ?? null,
+              fecha_de_cita: r.fecha_de_cita ?? null,
+              created_at: r.created_at ?? null,
+              updated_at: r.updated_at ?? null,
+              estado: r.estado ?? null,
+              fecha_nacimiento: r.fecha_nacimiento ?? null,
+              ocupacion: r.ocupacion ?? null,
+              sintomas_visuales: r.sintomas_visuales ?? null,
+              ultimo_examen_visual: r.ultimo_examen_visual ?? null,
+              uso_lentes: r.uso_lentes ?? null,
+              tipos_de_lentes: r.tipos_de_lentes ?? null,
+              tiempo_de_uso_lentes: r.tiempo_de_uso_lentes ?? null,
+              cirujias: r.cirujias ?? null,
+              traumatismos_oculares: r.traumatismos_oculares ?? null,
+              nombre_traumatismos_oculares: r.nombre_traumatismos_oculares ?? null,
+              antecedentes_visuales_familiares: r.antecedentes_visuales_familiares ?? null,
+              antecedente_familiar_salud: r.antecedente_familiar_salud ?? null,
+              habitos_visuales: r.habitos_visuales ?? null,
+              salud_general: r.salud_general ?? null,
+              medicamento_actual: r.medicamento_actual ?? null,
+              _status: 'synced',
+            });
+          } else {
+            await pacientesDB.db.pacientes.add({
+              id: r.id,
+              user_id: userId,
+              nombre: r.nombre ?? '',
+              edad: r.edad ?? null,
+              sexo: r.sexo ?? null,
+              domicilio: r.domicilio ?? null,
+              motivo_consulta: r.motivo_consulta ?? null,
+              diagnostico_id: r.diagnostico_id ?? null,
+              telefono: r.telefono ?? null,
+              fecha_de_cita: r.fecha_de_cita ?? null,
+              created_at: r.created_at ?? null,
+              updated_at: r.updated_at ?? null,
+              estado: r.estado ?? null,
+              fecha_nacimiento: r.fecha_nacimiento ?? null,
+              ocupacion: r.ocupacion ?? null,
+              sintomas_visuales: r.sintomas_visuales ?? null,
+              ultimo_examen_visual: r.ultimo_examen_visual ?? null,
+              uso_lentes: r.uso_lentes ?? null,
+              tipos_de_lentes: r.tipos_de_lentes ?? null,
+              tiempo_de_uso_lentes: r.tiempo_de_uso_lentes ?? null,
+              cirujias: r.cirujias ?? null,
+              traumatismos_oculares: r.traumatismos_oculares ?? null,
+              nombre_traumatismos_oculares: r.nombre_traumatismos_oculares ?? null,
+              antecedentes_visuales_familiares: r.antecedentes_visuales_familiares ?? null,
+              antecedente_familiar_salud: r.antecedente_familiar_salud ?? null,
+              habitos_visuales: r.habitos_visuales ?? null,
+              salud_general: r.salud_general ?? null,
+              medicamento_actual: r.medicamento_actual ?? null,
+              _status: 'synced',
+            });
+          }
+        }
+        const list = await pacientesDB.list();
+        const filtered = list.filter((p) => p.user_id === userId);
+        const visible = filtered.filter((p: any) => Boolean(p.id));
+        const pacientesActualizados = visible.map((paciente: any) => ({
+          ...paciente,
+          estado: determinarEstado(paciente.fecha_de_cita),
+        })) as unknown as Paciente[];
+        setPacientes(pacientesActualizados);
+      } else if (!isOnline && offlineAccepted) {
+        const list = await pacientesDB.list();
+        const filtered = userId ? list.filter((p) => p.user_id === userId) : list;
+        const pacientesActualizados = filtered.map((paciente: any) => ({
+          ...paciente,
+          estado: determinarEstado(paciente.fecha_de_cita),
+        })) as unknown as Paciente[];
+        setPacientes(pacientesActualizados);
+      } else if (!isOnline && !offlineAccepted) {
+        setPacientes([]);
+        setError("Sin conexión. Acepta modo offline para seguir trabajando.");
       }
-
-      // Actualizar el estado de cada paciente según la fecha de cita
-      const pacientesActualizados = data ? (data as unknown as Paciente[]).map(paciente => ({
-        ...paciente,
-        estado: determinarEstado(paciente.fecha_de_cita)
-      })) : [];
-
-      // Actualizar en BD los estados desincronizados (validación automática en render)
-      const updates = pacientesActualizados
-        .filter((pOriginal, idx) => {
-          const original = (data as any[])[idx];
-          return original && pOriginal.estado && original.estado !== pOriginal.estado;
-        })
-        .map((p) => supabase.from('pacientes' as any).update({ estado: p.estado }).eq('id', p.id));
-
-      if (updates.length > 0) {
-        await Promise.allSettled(updates);
-      }
-      
-      setPacientes(pacientesActualizados);
     } catch (err: any) {
       console.error("Error fetching pacientes:", err);
       setError(err.message || "Error al cargar los pacientes");
@@ -188,6 +287,18 @@ export default function View() {
 
   return (
     <>
+      {/* Indicadores de estado de conexión */}
+      <div className="flex items-center gap-2 px-4 py-2">
+        {!isOnline && (
+          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border border-yellow-300">Offline</Badge>
+        )}
+        {syncing && (
+          <Badge variant="secondary" className="bg-blue-100 text-blue-800 border border-blue-300">Sincronizando...</Badge>
+        )}
+        {lastSyncAt && (
+          <span className="text-xs text-muted-foreground">Última sync: {new Date(lastSyncAt).toLocaleString()}</span>
+        )}
+      </div>
       <HomeLayoutPageHeader
          title={<Trans i18nKey={'common:routes.home'} />}
          description={<Trans i18nKey={'common:homeTabDescription'} />}

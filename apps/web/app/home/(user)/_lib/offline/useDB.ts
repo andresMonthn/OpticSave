@@ -56,7 +56,7 @@ export function useInventariosDB(options: UseInventariosDBOptions) {
           await enqueueOperation(db, {
             table: "inventarios",
             operation: "insert",
-            payload: toSyncPayload({ ...record }),
+            payload: toSyncPayload({ ...record, localId }),
           });
           await db.inventarios.update(localId, { _status: "pending" });
         }
@@ -64,7 +64,7 @@ export function useInventariosDB(options: UseInventariosDBOptions) {
         await enqueueOperation(db, {
           table: "inventarios",
           operation: "insert",
-          payload: toSyncPayload({ ...record }),
+          payload: toSyncPayload({ ...record, localId }),
         });
       }
 

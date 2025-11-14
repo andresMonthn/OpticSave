@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@kit/ui/button";
 import { Printer } from "lucide-react";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -12,14 +13,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogTrigger,
 } from "@kit/ui/dialog";
 import { Input } from "@kit/ui/input";
 import { Label } from "@kit/ui/label";
 import { Textarea } from "@kit/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@kit/ui/select";
 import { RadioGroup, RadioGroupItem } from "@kit/ui/radio-group";
-import { Separator } from "@kit/ui/separator";
+import { updatePacienteEstado } from "@/app/home/(user)/dashboard/historialclinico/[id]/services/paciente";
+
+
 
 // Interfaces para los tipos de datos
 interface Paciente {
@@ -67,6 +69,8 @@ interface PrintButtonsProps {
 
 export function PrintButtons({ pacienteId }: PrintButtonsProps) {
   const supabase = getSupabaseBrowserClient();
+  const router = useRouter();
+  const printIframeRef = useRef<HTMLIFrameElement | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [printData, setPrintData] = useState({
     laboratorio: "VALCAST",
@@ -324,29 +328,25 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
   };
 
   // Función para imprimir orden de RX con los datos del diálogo
-  const handlePrintRxWithData = () => {
+  const handlePrintRxWithData = async () => {
     try {
       if (!paciente || !diagnosticoReciente || (!od && !oi)) {
         alert("Faltan datos necesarios para la impresión");
         return;
       }
 
-      // Actualizar el estado del paciente a 'ENVIO DE RECETA' usando Supabase directamente
+      // Actualizar el estado del paciente a 'Completado' usando servicio centralizado
       try {
-        // Actualizar el estado del paciente a 'ENVIO DE RECETA' usando Supabase directamente
-        supabase
-          .from("pacientes" as any)
-          .update({ estado: 'ENVIO DE RECETA' })
-          .eq("id", pacienteId);
-          
-        // Disparar un evento para notificar que el estado del paciente ha cambiado
-        const event = new CustomEvent('pacienteEstadoActualizado', { 
-          detail: { pacienteId, nuevoEstado: 'ENVIO DE RECETA' } 
+        await updatePacienteEstado(supabase, pacienteId, 'Completado');
+        setPaciente((prev) => (prev ? { ...prev, estado: 'Completado' } : prev));
+        const event = new CustomEvent('pacienteEstadoActualizado', {
+          detail: { pacienteId, nuevoEstado: 'Completado' }
         });
         window.dispatchEvent(event);
-        console.log("Estado del paciente actualizado a 'ENVIO DE RECETA'");
+        router.refresh();
       } catch (error: any) {
-        console.error("Error al actualizar estado del paciente:", error);
+        console.error('Error al actualizar estado del paciente:', error);
+        alert(error?.message || 'No se pudo actualizar el estado a Completado');
       }
 
       // Crear contenido HTML para imprimir la orden de RX
@@ -532,20 +532,48 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
           </body>
         </html>
       `;
+      // Imprimir de forma segura usando un iframe oculto y limpieza garantizada
+      const safePrint = (html: string) => {
+        const iframe = document.createElement('iframe');
+        printIframeRef.current = iframe;
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
 
-      // Abrir ventana de impresión
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(printContent);
-        printWindow.document.close();
-        printWindow.focus();
-        // Esperar a que el contenido se cargue antes de imprimir
-        setTimeout(() => {
-          printWindow.print();
-          // No cerramos la ventana para permitir al usuario guardar como PDF si lo desea
-        }, 500);
-      }
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (!doc) {
+          alert('No se pudo preparar el documento para impresión');
+          return;
+        }
 
+        iframe.onload = () => {
+          try {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+          } catch (err) {
+            console.error('Error al iniciar la impresión:', err);
+            alert('No se pudo iniciar la impresión. Revisa permisos de pop-ups o desactiva extensiones que interfieran.');
+          } finally {
+            setTimeout(() => {
+              try {
+                if (printIframeRef.current && document.body.contains(printIframeRef.current)) {
+                  document.body.removeChild(printIframeRef.current);
+                }
+              } catch {}
+              printIframeRef.current = null;
+            }, 300);
+          }
+        };
+
+        doc.open();
+        doc.write(html);
+        doc.close();
+      };
+      safePrint(printContent);
       // Cerrar el diálogo después de imprimir
       setDialogOpen(false);
     } catch (error) {
@@ -556,18 +584,19 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
 
   return (
     <>
-      <div className="flex justify-center gap-4 my-6">
+      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 my-6 relative z-30" style={{ marginBottom: '112px' }}>
         <Button 
+        
           variant="outline" 
           onClick={handlePrintPatient}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full sm:w-auto"
         >
           <Printer className="h-4 w-4" />
           Imprimir Paciente
         </Button>
         <Button 
           onClick={handleOpenRxDialog}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full sm:w-auto"
         >
           <Printer className="h-4 w-4" />
           Imprimir Orden RX
@@ -576,7 +605,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
 
       {/* Diálogo para introducir datos antes de imprimir */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent className="w-[95vw] sm:w-auto sm:max-w-4xl p-3 sm:p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="text-2xl font-bold">Datos para la Orden de RX</DialogTitle>
@@ -624,7 +653,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
                     <RadioGroup
                       value={printData.material}
                       onValueChange={(value) => setPrintData({ ...printData, material: value })}
-                      className="grid grid-cols-3 gap-x-4 gap-y-2"
+                      className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3"
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="CR-39" id="mat-cr39" />
@@ -666,7 +695,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
                     <RadioGroup
                       value={printData.tipoLente}
                       onValueChange={(value) => setPrintData({ ...printData, tipoLente: value })}
-                      className="grid grid-cols-3 gap-x-4 gap-y-2"
+                      className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3"
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="Monofocal" id="lente-mono" />
@@ -702,7 +731,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
                     <RadioGroup
                       value={printData.tratamiento}
                       onValueChange={(value) => setPrintData({ ...printData, tratamiento: value })}
-                      className="grid grid-cols-2 gap-x-4 gap-y-2"
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3"
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="Antirreflejante" id="trat-anti" />
@@ -740,7 +769,7 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
                     <RadioGroup
                       value={printData.tipoMontura}
                       onValueChange={(value) => setPrintData({ ...printData, tipoMontura: value })}
-                      className="grid grid-cols-3 gap-x-4 gap-y-2"
+                      className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3"
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="Completa" id="mont-comp" />
@@ -785,11 +814,11 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+          <DialogFooter className="sticky bottom-0 bg-white mt-4 p-3 sm:p-4 border-t flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setDialogOpen(false)} className="w-full sm:w-auto">
               Cancelar
             </Button>
-            <Button onClick={handlePrintRxWithData}>Imprimir</Button>
+            <Button onClick={handlePrintRxWithData} className="w-full sm:w-auto">Imprimir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

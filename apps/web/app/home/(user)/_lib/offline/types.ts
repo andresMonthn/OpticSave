@@ -23,6 +23,7 @@ export interface InventarioLocal {
 
 // Payload para sincronización con Supabase (usa tipos del esquema)
 export interface InventarioSyncPayload {
+  localId?: number;
   id?: string;
   user_id: string;
   nombre_producto?: string | null;

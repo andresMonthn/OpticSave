@@ -23,6 +23,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@kit/u
 import { Badge } from "@kit/ui/badge";
 import { Checkbox } from "@kit/ui/checkbox";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
+// Offline hooks y DB
+import { useOffline } from "../../_lib/offline/useOffline";
+import { usePacientesDB } from "../../_lib/offline/useDB";
 // Importaciones para notificaciones y correos
 
 // Definición de la interfaz para el tipo Paciente
@@ -73,11 +76,13 @@ interface CitaInfo {
 
 export default function CrearPacientePage() {
   const router = useRouter();
+  const { isOnline, offlineAccepted, syncing, lastSyncAt } = useOffline();
   // Referencias para los inputs
   const nombreRef = useRef<HTMLInputElement>(null);
   const telefonoRef = useRef<HTMLInputElement>(null);
   // Estado para el usuario actual
   const [userId, setUserId] = useState<string | null>(null);
+  const pacientesDB = usePacientesDB({ userId: userId ?? "offline-user", isOnline, offlineAccepted });
   // Estado para las alertas
   const [alertInfo, setAlertInfo] = useState<{
     show: boolean;
@@ -109,54 +114,80 @@ export default function CrearPacientePage() {
   const supabase = getSupabaseBrowserClient();
   useEffect(() => {
     const checkUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (data.user) {
-        setUserId(data.user.id);
-        console.log("Usuario logueado:", data.user.id);
-        // Cargar citas existentes después de verificar el usuario
-        obtenerCitasExistentes(data.user.id);
-      } else if (error) {
-        console.error("Error al verificar usuario:", error);
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (data?.user?.id) {
+          const uid = String(data.user.id);
+          setUserId(uid);
+          try {
+            localStorage.setItem("optisave_user_id", uid);
+          } catch {}
+          obtenerCitasExistentes(uid);
+        } else {
+          if (!isOnline) {
+            // Recuperar userId del storage para modo offline
+            const cached = typeof window !== "undefined" ? localStorage.getItem("optisave_user_id") : null;
+            if (cached) {
+              setUserId(cached);
+              obtenerCitasExistentes(cached);
+            }
+          }
+          if (error) {
+            console.error("Error al verificar usuario:", error);
+          }
+        }
+      } catch (e) {
+        console.warn("Fallo al obtener usuario; trabajando offline si procede", e);
+        const cached = typeof window !== "undefined" ? localStorage.getItem("optisave_user_id") : null;
+        if (cached) {
+          setUserId(cached);
+          obtenerCitasExistentes(cached);
+        }
       }
     };
     checkUser();
-  }, []);
+  }, [isOnline]);
 
   // Función para obtener las citas existentes
   const obtenerCitasExistentes = async (userId: string) => {
     setCargandoCitas(true);
     try {
-      // Obtener pacientes con sus fechas de cita
-      const { data, error } = await supabase
-        .from('pacientes' as any)
-        .select('fecha_de_cita')
-        .eq('user_id', userId)
-        .not('fecha_de_cita', 'is', null);
-
-      if (error) {
-        console.error("Error al obtener citas:", error);
-        return;
-      }
-
-      // Procesar los datos para contar pacientes por fecha
       const citasPorFecha = new Map<string, number>();
-
-      // Asegurarse de que data es un array y hacer type assertion
-      const pacientes = (data as any[]) || [];
-      pacientes.forEach(paciente => {
-        if (paciente && paciente.fecha_de_cita) {
-          const fecha = paciente.fecha_de_cita.split('T')[0]; // Formato YYYY-MM-DD
-          citasPorFecha.set(fecha, (citasPorFecha.get(fecha) || 0) + 1);
+      if (isOnline) {
+        const { data, error } = await supabase
+          .from('pacientes' as any)
+          .select('fecha_de_cita')
+          .eq('user_id', userId)
+          .not('fecha_de_cita', 'is', null);
+        if (error) {
+          console.error("Error al obtener citas:", error);
+        } else {
+          const pacientes = (data as any[]) || [];
+          pacientes.forEach(paciente => {
+            if (paciente && paciente.fecha_de_cita) {
+              const fecha = String(paciente.fecha_de_cita).split('T')[0];
+              citasPorFecha.set(fecha!, (citasPorFecha.get(fecha!) || 0) + 1);
+            }
+          });
         }
-      });
-      // Convertir a array de CitaInfo
+      } else {
+        // Offline: contar citas desde DB local
+        const locales = await pacientesDB.list();
+        locales.forEach(p => {
+          if (p && p.fecha_de_cita) {
+            const fecha = String(p.fecha_de_cita).split('T')[0];
+            if (fecha) {
+              citasPorFecha.set(fecha, (citasPorFecha.get(fecha) || 0) + 1);
+            }
+          }
+        });
+      }
       const citasInfoArray: CitaInfo[] = Array.from(citasPorFecha.entries()).map(
         ([fechaStr, cantidad]) => ({
           fecha: new Date(fechaStr),
-          cantidadPacientes: cantidad
-        })
+          cantidadPacientes: cantidad,
+        }),
       );
-
       setCitasInfo(citasInfoArray);
     } catch (err) {
       console.error("Error al procesar citas:", err);
@@ -273,6 +304,128 @@ export default function CrearPacientePage() {
       console.warn("No se pudo aplicar prefill del chat:", e);
     }
   }, []);
+
+  // Cargar borrador local del formulario (modo offline)
+  useEffect(() => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("optisave.crearpaciente.draft") : null;
+      if (!raw) return;
+      const d = JSON.parse(raw || "{}");
+      if (d.nombre) setNombre(String(d.nombre));
+      if (d.telefono) setTelefono(String(d.telefono));
+      if (d.edad) setEdad(String(d.edad));
+      if (d.sexo) setSexo(String(d.sexo));
+      if (d.domicilio) setDomicilio(String(d.domicilio));
+      if (d.motivoConsulta) setMotivoConsulta(String(d.motivoConsulta));
+      if (d.motivoConsultaOtro) setMotivoConsultaOtro(String(d.motivoConsultaOtro));
+      if (d.fechaCita) {
+        const fc = parseDate(d.fechaCita);
+        if (fc) setFechaCita(startOfDay(fc));
+      }
+      if (d.fechaNacimiento) {
+        const fn = parseDate(d.fechaNacimiento);
+        if (fn) setFechaNacimiento(fn);
+      }
+      if (d.ocupacion) setOcupacion(String(d.ocupacion));
+      if (d.sintomasVisuales) setSintomasVisuales(String(d.sintomasVisuales));
+      if (Array.isArray(d.sintomasVisualesSeleccionados)) setSintomasVisualesSeleccionados(d.sintomasVisualesSeleccionados);
+      if (d.sintomasVisualesOtro) setSintomasVisualesOtro(String(d.sintomasVisualesOtro));
+      if (d.ultimoExamenVisual) setUltimoExamenVisual(String(d.ultimoExamenVisual));
+      if (typeof d.usaLentes === "boolean") setUsaLentes(d.usaLentes);
+      if (Array.isArray(d.tipoLentesSeleccionados)) setTipoLentesSeleccionados(d.tipoLentesSeleccionados);
+      if (d.tiempoUsoLentes) setTiempoUsoLentes(String(d.tiempoUsoLentes));
+      if (typeof d.cirugiasOculares === "boolean") setCirugiasOculares(d.cirugiasOculares);
+      if (typeof d.traumatismosOculares === "boolean") setTraumatismosOculares(d.traumatismosOculares);
+      if (d.traumatismosDetalle) setTraumatismosDetalle(String(d.traumatismosDetalle));
+      if (d.antecedentesVisualesFamiliares) setAntecedentesVisualesFamiliares(String(d.antecedentesVisualesFamiliares));
+      if (Array.isArray(d.antecedentesVisualesFamiliaresSeleccionados)) setAntecedentesVisualesFamiliaresSeleccionados(d.antecedentesVisualesFamiliaresSeleccionados);
+      if (d.antecedentesVisualesFamiliaresOtros) setAntecedentesVisualesFamiliaresOtros(String(d.antecedentesVisualesFamiliaresOtros));
+      if (d.antecedentesFamiliaresSalud) setAntecedentesFamiliaresSalud(String(d.antecedentesFamiliaresSalud));
+      if (Array.isArray(d.habitosVisualesSeleccionados)) setHabitosVisualesSeleccionados(d.habitosVisualesSeleccionados);
+      if (d.habitosVisuales) setHabitosVisuales(String(d.habitosVisuales));
+      if (Array.isArray(d.saludGeneralSeleccionados)) setSaludGeneralSeleccionados(d.saludGeneralSeleccionados);
+      if (d.saludGeneral) setSaludGeneral(String(d.saludGeneral));
+      if (d.medicamentosActuales) setMedicamentosActuales(String(d.medicamentosActuales));
+      if (typeof d.domicilioCompleto === "boolean") setDomicilioCompleto(d.domicilioCompleto);
+      if (d.domicilioFields) setDomicilioFields(d.domicilioFields);
+    } catch (e) {
+      console.warn("No se pudo cargar borrador offline:", e);
+    }
+  }, []);
+
+  // Guardar borrador en localStorage al cambiar campos
+  useEffect(() => {
+    try {
+      const draft = {
+        nombre,
+        telefono,
+        edad,
+        sexo,
+        domicilio,
+        motivoConsulta,
+        motivoConsultaOtro,
+        fechaCita,
+        fechaNacimiento,
+        ocupacion,
+        sintomasVisuales,
+        sintomasVisualesSeleccionados,
+        sintomasVisualesOtro,
+        ultimoExamenVisual,
+        usaLentes,
+        tipoLentesSeleccionados,
+        tiempoUsoLentes,
+        cirugiasOculares,
+        traumatismosOculares,
+        traumatismosDetalle,
+        antecedentesVisualesFamiliares,
+        antecedentesVisualesFamiliaresSeleccionados,
+        antecedentesVisualesFamiliaresOtros,
+        antecedentesFamiliaresSalud,
+        habitosVisuales,
+        habitosVisualesSeleccionados,
+        saludGeneral,
+        saludGeneralSeleccionados,
+        medicamentosActuales,
+        domicilioCompleto,
+        domicilioFields,
+      };
+      localStorage.setItem("optisave.crearpaciente.draft", JSON.stringify(draft));
+    } catch (e) {
+      // ignore
+    }
+  }, [
+    nombre,
+    telefono,
+    edad,
+    sexo,
+    domicilio,
+    motivoConsulta,
+    motivoConsultaOtro,
+    fechaCita,
+    fechaNacimiento,
+    ocupacion,
+    sintomasVisuales,
+    sintomasVisualesSeleccionados,
+    sintomasVisualesOtro,
+    ultimoExamenVisual,
+    usaLentes,
+    tipoLentesSeleccionados,
+    tiempoUsoLentes,
+    cirugiasOculares,
+    traumatismosOculares,
+    traumatismosDetalle,
+    antecedentesVisualesFamiliares,
+    antecedentesVisualesFamiliaresSeleccionados,
+    antecedentesVisualesFamiliaresOtros,
+    antecedentesFamiliaresSalud,
+    habitosVisuales,
+    habitosVisualesSeleccionados,
+    saludGeneral,
+    saludGeneralSeleccionados,
+    medicamentosActuales,
+    domicilioCompleto,
+    domicilioFields,
+  ]);
 
   function parseTruthy(val: any): boolean {
     if (typeof val === "boolean") return val;
@@ -403,9 +556,68 @@ export default function CrearPacientePage() {
 
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        setError("Debes iniciar sesión para crear un paciente");
-        return;
+      // Si estamos offline o no hay usuario, procedemos con inserción local
+      if (userError || !user || !isOnline) {
+        // Preparar el domicilio según el tipo seleccionado
+        let domicilioFinal = domicilio;
+        if (domicilioCompleto) {
+          domicilioFinal = `${domicilioFields.calle} ${domicilioFields.numero}${domicilioFields.interior ? ', Int. ' + domicilioFields.interior : ''}, Col. ${domicilioFields.colonia}`;
+        }
+
+        const hoy = startOfDay(new Date());
+        const fc = startOfDay(fechaCita ? new Date(fechaCita) : new Date());
+        const estadoCalc = fc.getTime() === hoy.getTime() ? "PENDIENTE" : fc.getTime() > hoy.getTime() ? "PROGRAMADO" : "EXPIRADO";
+
+        await pacientesDB.add({
+          nombre,
+          edad: edad ? parseInt(edad) : null,
+          fecha_nacimiento: fechaNacimiento
+            ? format(
+                typeof fechaNacimiento === 'string'
+                  ? new Date(fechaNacimiento)
+                  : fechaNacimiento,
+                'yyyy-MM-dd'
+              )
+            : null,
+          sexo,
+          domicilio: domicilioFinal,
+          motivo_consulta: motivoConsulta === "Otro" ? `Otro: ${motivoConsultaOtro}` : motivoConsulta,
+          telefono,
+          fecha_de_cita: startOfDay(fechaCita ? new Date(fechaCita) : new Date()).toISOString(),
+          estado: estadoCalc,
+          diagnostico_id: null,
+          ocupacion,
+          sintomas_visuales: sintomasVisualesSeleccionados.length > 0
+            ? sintomasVisualesSeleccionados.map(s => s === "Otro" ? `Otro: ${sintomasVisualesOtro}` : s).join(", ")
+            : sintomasVisuales,
+          antecedentes_visuales_familiares: antecedentesVisualesFamiliaresSeleccionados.length > 0
+            ? antecedentesVisualesFamiliaresSeleccionados.map(a => a === "Otros" ? `Otros: ${antecedentesVisualesFamiliaresOtros}` : a).join(", ")
+            : antecedentesVisualesFamiliares,
+          ultimo_examen_visual: ultimoExamenVisual
+            ? `${parseInt(ultimoExamenVisual, 10)} ${parseInt(ultimoExamenVisual, 10) === 1 ? 'año' : 'años'}`
+            : "",
+          uso_lentes: usaLentes,
+          tipos_de_lentes: tipoLentesSeleccionados.length > 0 ? tipoLentesSeleccionados.join(", ") : "",
+          tiempo_de_uso_lentes: tiempoUsoLentes,
+          cirujias: cirugiasOculares,
+          traumatismos_oculares: traumatismosOculares,
+          nombre_traumatismos_oculares: traumatismosDetalle,
+          antecedente_familiar_salud: antecedentesFamiliaresSaludSeleccionados.length > 0
+            ? antecedentesFamiliaresSaludSeleccionados.join(", ")
+            : antecedentesFamiliaresSalud,
+          habitos_visuales: habitosVisualesSeleccionados.length > 0
+            ? habitosVisualesSeleccionados.join(", ")
+            : habitosVisuales,
+          salud_general: saludGeneralSeleccionados.length > 0
+            ? saludGeneralSeleccionados.join(", ")
+            : saludGeneral,
+          medicamento_actual: medicamentosActuales,
+        });
+
+        setSuccess(true);
+        showAlert('success', 'Paciente guardado offline', 'Se sincronizará automáticamente al recuperar la conexión.');
+        limpiarFormulario();
+        return; // evitamos continuar con flujo online
       }
       // Preparar el domicilio según el tipo seleccionado
       let domicilioFinal = domicilio;
@@ -418,13 +630,20 @@ export default function CrearPacientePage() {
         .insert([{
           user_id: user.id,
           nombre,
-          edad: edad ? parseInt(edad) : undefined,
-          fecha_nacimiento: fechaNacimiento ? fechaNacimiento.toISOString() : undefined,
+          edad: edad ? parseInt(edad) : null,
+          fecha_nacimiento: fechaNacimiento
+            ? format(
+                typeof fechaNacimiento === 'string'
+                  ? new Date(fechaNacimiento)
+                  : fechaNacimiento,
+                'yyyy-MM-dd'
+              )
+            : null,
           sexo,
           domicilio: domicilioFinal,
           motivo_consulta: motivoConsulta === "Otro" ? `Otro: ${motivoConsultaOtro}` : motivoConsulta,
           telefono,
-          fecha_de_cita: (fechaCita ? fechaCita : startOfDay(new Date())).toISOString(),
+          fecha_de_cita: startOfDay(fechaCita ? new Date(fechaCita) : new Date()).toISOString(),
           estado: (() => {
             const hoy = startOfDay(new Date());
             const fc = startOfDay(fechaCita ? fechaCita : new Date());
@@ -489,11 +708,9 @@ export default function CrearPacientePage() {
         showAlert('success', 'Paciente creado exitosamente', 'La cita no es para hoy. Redirigiendo a la página principal...');
       }
 
-      // Redirigir al componente estático de redirección
       setTimeout(() => {
-        // Siempre redirigimos al componente estático que buscará el paciente más reciente
         router.push('/home/dashboard/redireccion-paciente');
-      }, 2000); // Mantenemos el tiempo de espera en 2 segundos
+      }, 2000);
 
     } catch (err) {
       console.error("Error al crear paciente:", err);
@@ -502,6 +719,22 @@ export default function CrearPacientePage() {
       setIsSubmitting(false);
     }
   };
+
+  // Redirigir automáticamente tras sincronizar si se creó offline
+  useEffect(() => {
+    if (success && isOnline && lastSyncAt) {
+      router.push('/home/dashboard/redireccion-paciente');
+    }
+  }, [success, isOnline, lastSyncAt]);
+
+  // Indicadores visuales de estado offline
+  const OfflineIndicators = () => (
+    <div className="flex items-center gap-2 mb-4">
+      {!isOnline && <Badge variant="destructive">Offline</Badge>}
+      {syncing && <Badge>Sincronizando…</Badge>}
+      {lastSyncAt && <Badge variant="secondary">Última sync: {format(new Date(lastSyncAt), 'HH:mm')}</Badge>}
+    </div>
+  );
 
    const rellenarFormularioTest = () => {
       // Datos personales
@@ -558,6 +791,7 @@ export default function CrearPacientePage() {
       />
       <PageBody>
         <div className="container mx-auto px-4 sm:px-6 py-6">
+      <OfflineIndicators />
       <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Crear Nuevo Paciente</h1>
 
       {error && (

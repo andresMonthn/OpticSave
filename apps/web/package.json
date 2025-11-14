@@ -98,10 +98,11 @@
     "tailwindcss": "4.1.12",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.9.2",
-    "vitest": "^2.1.9"
+    "vitest": "^2.1.9",
+    "@testing-library/react": "^16.0.0"
   },
   "vitest": {
-    "environment": "node"
+    "environment": "jsdom"
   },
   "prettier": "@kit/prettier-config",
   "browserslist": [

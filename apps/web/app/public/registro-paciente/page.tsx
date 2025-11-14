@@ -54,6 +54,49 @@ const styles = `
 // Evitar inyectar múltiples veces en HMR: agregar una única etiqueta de estilo con id estable.
 injectStylesOnce('registro-paciente-animations', styles);
 
+// Componente: Aviso de Privacidad
+function AvisoDePrivacidad({
+  accepted,
+  onToggle,
+}: {
+  accepted: boolean;
+  onToggle: (v: boolean) => void;
+}) {
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle className="text-lg">Aviso de Privacidad</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Tu información personal será tratada de forma confidencial y segura. Solo se
+          utilizará para fines clínicos y administrativos dentro de la aplicación, y no será
+          compartida con terceros sin tu consentimiento.
+        </p>
+        <ul className="list-disc pl-5 text-sm space-y-1">
+          <li>Protegemos tus datos con estándares de seguridad.</li>
+          <li>Podrás ejercer tus derechos de acceso, rectificación y cancelación.</li>
+          <li>Consulta los términos completos en nuestros Términos y Condiciones.</li>
+        </ul>
+        <div className="flex items-center gap-3 pt-2">
+          <Checkbox
+            id="acepta-terminos"
+            checked={accepted}
+            onCheckedChange={(v) => onToggle(!!v)}
+            aria-checked={accepted}
+            aria-describedby="desc-terminos"
+          />
+          <Label htmlFor="acepta-terminos" className="text-sm">
+            Acepto los Términos y Condiciones y el Aviso de Privacidad
+          </Label>
+        </div>
+        <p id="desc-terminos" className="text-xs text-muted-foreground">
+          El botón de envío se habilita al aceptar esta casilla.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
 // Definición de la interfaz para el tipo Paciente
 // Tipos movidos a ./types/types
 
@@ -252,6 +295,8 @@ export default function CrearPacientePage() {
   const [success, setSuccess] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [telefonoError, setTelefonoError] = useState<string | null>(null);
+  // Aviso de Privacidad: aceptación de términos para habilitar envío
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // OCR: estados y referencias
   const [ocrDialogOpen, setOcrDialogOpen] = useState(false);
@@ -889,6 +934,12 @@ export default function CrearPacientePage() {
                 onChange={handleOcrFileChange}
                 autoComplete="off"
                 className="hidden"
+              />
+
+              {/* Aviso de Privacidad antes de llenar los campos */}
+              <AvisoDePrivacidad
+                accepted={acceptedTerms}
+                onToggle={setAcceptedTerms}
               />
 
               {/* UI de revisión eliminada: la cámara se abre y el OCR aplica los datos automáticamente */}
@@ -1849,7 +1900,7 @@ export default function CrearPacientePage() {
               {currentStep === steps.length - 1 && (
                 <Button
                   type="submit"
-                  disabled={!isFormValid || isSubmitting}
+                  disabled={!isFormValid || isSubmitting || !acceptedTerms}
                   className="bg-primary text-white w-full sm:w-auto order-4 sm:order-4 flex items-center justify-center font-bold py-6"
                 >
                   {isSubmitting ? (
