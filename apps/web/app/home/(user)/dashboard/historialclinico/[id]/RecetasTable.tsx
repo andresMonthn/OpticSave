@@ -459,13 +459,30 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
         throw new Error("No se pudo obtener el usuario actual");
       }
 
+      // Crear la orden_rx para vincularla al diagnóstico (solo ID, resto vacío)
+      const { data: ordenRxData, error: ordenRxError } = await supabase
+        .from("orden_rx" as any)
+        .insert({
+          // Crear únicamente el ID; dejar el resto de campos vacíos
+          // Anular el default de user_id para evitar FK inválido
+          user_id: null,
+        })
+        .select("id")
+        .single();
+
+      if (ordenRxError) throw ordenRxError;
+      const ordenRxId = (ordenRxData as any)?.id;
+      if (!ordenRxId) {
+        throw new Error("No se pudo generar la orden de RX");
+      }
+
       // Primero, crear o obtener el diagnóstico
       let diagnosticoId;
 
       // Obtener el diagnóstico actual o crear uno nuevo si no existe
       const { data: diagData, error: diagError } = await supabase
         .from("diagnostico" as any)
-        .select("id")
+        .select("id, order_rx_id")
         .eq("paciente_id", pacienteId)
         .maybeSingle();
 
@@ -473,7 +490,17 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
 
       if (diagData && 'id' in diagData) {
         // Usar el diagnóstico existente
-        diagnosticoId = diagData.id;
+        diagnosticoId = (diagData as any).id;
+
+        // Asegurar que el diagnóstico tenga vinculada la orden_rx
+        const currentOrderId = (diagData as any)?.order_rx_id ?? null;
+        if (!currentOrderId) {
+          const { error: linkOrderError } = await supabase
+            .from("diagnostico" as any)
+            .update({ order_rx_id: ordenRxId })
+            .eq("id", diagnosticoId);
+          if (linkOrderError) throw linkOrderError;
+        }
       } else {
         // Crear un nuevo diagnóstico con DIP por defecto
         const { data: newDiagData, error: newDiagError } = await supabase
@@ -481,7 +508,9 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
           .insert({
             paciente_id: pacienteId,
             user_id: user.id,
-            dip: 1 // Valor DIP por defecto
+            dip: 1, // Valor DIP por defecto
+            // Vincular la orden_rx recién creada para cumplir el FK
+            order_rx_id: ordenRxId,
           })
           .select("id")
           .single();
