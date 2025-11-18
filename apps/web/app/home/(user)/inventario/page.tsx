@@ -3,9 +3,9 @@
 import { Button } from "@kit/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@kit/ui/card";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
-import { Plus, WifiOff } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { HomeLayoutPageHeader } from '../../_components/home-page-header';
+import { HomeLayoutPageHeader } from '../_components/home-page-header';
 import { Trans } from '@kit/ui/trans';
 import { PageBody } from '@kit/ui/page';
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
@@ -15,16 +15,13 @@ import { AddProductDialog } from "./components/AddProductDialog";
 import { EditProductDialog } from "./components/EditProductDialog";
 import { InventoryTotalCard } from "./components/InventoryTotalCard";
 import { ClientOnly } from "./components/ClientOnly";
-import { useOffline } from "../../_lib/offline/useOffline";
-import { useInventariosDB } from "../../_lib/offline/useDB";
-import { Badge } from "@kit/ui/badge";
+import { useOffline } from "../_lib/offline/useOffline";
+import { useInventariosDB } from "../_lib/offline/useDB";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@kit/ui/tooltip";
-// Se elimina el diálogo de confirmación offline para centralizar el aviso en OfflineWrapper
-
 
 export default function InventarioPage() {
   const supabase = getSupabaseBrowserClient();
-  const { isOnline, offlineAccepted, setOfflineAccepted, promptOffline, syncing, lastSyncAt } = useOffline({ autoPrompt: false });
+  const { isOnline, offlineAccepted } = useOffline({ autoPrompt: false });
   const [userId, setUserId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const categoriasOptica = [
@@ -45,15 +42,11 @@ export default function InventarioPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventarioItem | null>(null);
   const [localIndexById, setLocalIndexById] = useState<Record<string, number>>({});
-  // Se elimina el estado de diálogo offline; el aviso se gestiona globalmente
-  // Validaciones y operaciones se harán al recibir datos del diálogo
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Hook de DB para CRUD unificado y Dexie
   const inventariosDB = useInventariosDB({ userId: userId ?? "", isOnline, offlineAccepted });
 
-  // Resolver userId desde Supabase (online) o localStorage (offline)
   useEffect(() => {
     (async () => {
       try {
@@ -65,19 +58,16 @@ export default function InventarioPage() {
           } else {
             setUserId(null);
           }
-          // Al estar online, no se muestra aviso offline
         } else {
           const cached = typeof window !== "undefined" ? localStorage.getItem("optisave_user_id") : null;
           if (cached) setUserId(cached);
-          // El aviso offline se gestiona globalmente en OfflineWrapper
         }
       } catch (e) {
-        // Ignorar errores de red al desconectarse
+        // Ignorar errores de red
       }
     })();
   }, [isOnline, supabase, offlineAccepted]);
 
-  // Función: normalizar objetos a InventarioItem y mantener índice local
   const toInventarioItems = useMemo(() => {
     return (list: any[]) => {
       const nextIndex: Record<string, number> = {};
@@ -104,7 +94,6 @@ export default function InventarioPage() {
     };
   }, [userId]);
 
-  // Sembrar/actualizar Dexie desde remoto cuando online (sin perder pendientes)
   const seedDexieFromRemote = async (uid: string) => {
     const { data, error } = await supabase
       .from("inventarios" as any)
@@ -118,7 +107,6 @@ export default function InventarioPage() {
       _status: "synced",
     }));
 
-    // Por cada registro remoto, upsert en Dexie por id
     for (const r of remote) {
       const found = await inventariosDB.db.inventarios.where({ id: r.id, user_id: uid }).first();
       if (found) {
@@ -155,7 +143,6 @@ export default function InventarioPage() {
     }
   };
 
-  // Cargar datos según estado online/offline
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -165,7 +152,6 @@ export default function InventarioPage() {
           await seedDexieFromRemote(userId);
           const list = await inventariosDB.list();
           const filtered = list.filter(it => it.user_id === userId);
-          // Al estar online, oculta elementos creados sólo offline (sin id remoto)
           const visible = filtered.filter((it: any) => Boolean(it.id));
           setInventarioItems(toInventarioItems(visible));
         } else if (!isOnline && offlineAccepted) {
@@ -185,11 +171,6 @@ export default function InventarioPage() {
     })();
   }, [isOnline, offlineAccepted, userId]);
 
-
-
-
-
-  // Añadir nuevo producto (desde diálogo)
   const handleAddSubmit = async (newProduct: {
     nombre_producto: string; categoria: string; marca: string; modelo: string; cantidad: string; precio: string; descripcion: string;
   }) => {
@@ -217,7 +198,7 @@ export default function InventarioPage() {
         return;
       }
 
-      const localId = await inventariosDB.add({
+      await inventariosDB.add({
         user_id: userId,
         nombre_producto: newProduct.nombre_producto,
         categoria: newProduct.categoria,
@@ -229,7 +210,6 @@ export default function InventarioPage() {
         caducidad: null,
       } as any);
 
-      // Refrescar lista desde Dexie para reflejar id remoto si se asignó
       const list = await inventariosDB.list();
       const filtered = list.filter(it => it.user_id === userId);
       const visible = isOnline ? filtered.filter((it: any) => Boolean(it.id)) : filtered;
@@ -242,32 +222,30 @@ export default function InventarioPage() {
     }
   };
 
-  // Editar producto (desde diálogo)
   const handleEditSubmit = async (updates: {
     nombre_producto: string; categoria: string; marca: string; modelo: string; cantidad: string; precio: string; descripcion: string;
   }) => {
     if (!selectedItem) return;
     const cantidadNum = Number(updates.cantidad);
     const precioNum = Number(updates.precio);
+
     if (Number.isNaN(cantidadNum) || cantidadNum < 0 || Number.isNaN(precioNum) || precioNum < 0) {
       setError('Cantidad y precio deben ser numéricos y mayores o iguales a 0');
       return;
     }
+
     if (!categoriasOptica.includes(updates.categoria)) {
       setError('Selecciona una categoría válida de óptica');
       return;
     }
+
     try {
-      if (!userId || !selectedItem) {
-        setError("No se pudo determinar el usuario o el elemento a editar.");
+      const localId = localIndexById[selectedItem.id];
+      if (typeof localId !== 'number') {
+        setError('No se pudo localizar el registro local para editar.');
         return;
       }
-      const idStr = selectedItem.id;
-      const localId = idStr.startsWith("local-") ? Number(idStr.replace("local-", "")) : localIndexById[idStr];
-      if (typeof localId !== "number") {
-        setError("No se encontró el registro local para editar.");
-        return;
-      }
+
       await inventariosDB.update(localId, {
         nombre_producto: updates.nombre_producto,
         categoria: updates.categoria,
@@ -277,34 +255,30 @@ export default function InventarioPage() {
         precio: precioNum,
         descripcion: updates.descripcion || null,
       } as any);
+
       const list = await inventariosDB.list();
-      const filtered = list.filter(it => it.user_id === userId);
+      const filtered = userId ? list.filter(it => it.user_id === userId) : list;
       const visible = isOnline ? filtered.filter((it: any) => Boolean(it.id)) : filtered;
       setInventarioItems(toInventarioItems(visible));
       setIsEditOpen(false);
       setSelectedItem(null);
       setError(null);
     } catch (err: any) {
-      console.error('Error editing product:', err);
-      setError(err.message || 'Error al editar el producto');
+      console.error('Error updating product:', err);
+      setError(err.message || 'Error al actualizar el producto');
     }
   };
 
-  // Eliminar producto
-  const handleDeleteProduct = async (id: string) => {
+  const handleDelete = async (id: string) => {
     try {
-      if (!userId) {
-        setError("No se pudo determinar el usuario para eliminar el producto");
-        return;
-      }
-      const localId = id.startsWith("local-") ? Number(id.replace("local-", "")) : localIndexById[id];
-      if (typeof localId !== "number") {
-        setError("No se encontró el registro local para eliminar.");
+      const localId = localIndexById[id];
+      if (typeof localId !== 'number') {
+        setError('No se pudo localizar el registro local para eliminar.');
         return;
       }
       await inventariosDB.remove(localId);
       const list = await inventariosDB.list();
-      const filtered = list.filter(it => it.user_id === userId);
+      const filtered = userId ? list.filter(it => it.user_id === userId) : list;
       const visible = isOnline ? filtered.filter((it: any) => Boolean(it.id)) : filtered;
       setInventarioItems(toInventarioItems(visible));
     } catch (err: any) {
@@ -313,108 +287,77 @@ export default function InventarioPage() {
     }
   };
 
+  const handleRowClick = (id: string) => {
+    const found = inventarioItems.find((it) => String(it.id) === String(id));
+    if (!found) return;
+    setSelectedItem(found);
+    setIsEditOpen(true);
+  };
+
   return (
-    <>
-      {/* Aviso offline centralizado por OfflineWrapper; se elimina diálogo local */}
+    <PageBody>
       <HomeLayoutPageHeader
-        title={<Trans i18nKey={'common:routes.home'} />}
-        description={<><Trans i18nKey={'common:homeTabDescription'} /> <AppBreadcrumbs /></>}
+        title={
+          <Trans i18nKey={'common:labels.inventory'} defaults={'Inventario'} />
+        }
+        description={
+          <Trans i18nKey={'common:descriptions.inventory'} defaults={'Gestiona tus productos y stock.'} />
+        }
       />
-      <PageBody>
-        <div className="container mx-auto py-10">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-3xl font-bold">Inventario</h1>
-              <p className="text-muted-foreground">Gestiona tu inventario de productos</p>
-            </div>
+      <AppBreadcrumbs values={{ current: 'Inventario' }} />
+      <Card>
+        <CardHeader>
+          <CardTitle>Inventario</CardTitle>
+          <CardDescription>Gestiona tus productos y stock</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {error && (
+              <div className="text-red-600">{error}</div>
+            )}
             <ClientOnly>
+              <InventoryTotalCard items={inventarioItems} />
+            </ClientOnly>
+            <div className="flex items-center justify-between">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      aria-label="Agregar producto"
-                      onClick={() => setIsAddOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" />
+                    <Button onClick={() => setIsAddOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" /> Agregar producto
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Agregar producto</TooltipContent>
+                  <TooltipContent>Agregar nuevo producto</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            </ClientOnly>
-          </div>
+            </div>
 
-          <div className="flex items-center gap-3 mb-4">
             <ClientOnly>
-              {!isOnline && (
-                <Badge variant="secondary">Offline</Badge>
-              )}
-              {syncing && (
-                <Badge variant="success">Sincronizando cambios…</Badge>
-              )}
-              {/* El botón para abrir el diálogo offline se elimina; control global en OfflineWrapper */}
-              {lastSyncAt && (
-                <span className="text-xs text-muted-foreground">
-                  Última sincronización: {new Date(lastSyncAt).toLocaleString()}
-                </span>
-              )}
-            </ClientOnly>
-          </div>
-
-          <AddProductDialog
-            open={isAddOpen}
-            onOpenChange={setIsAddOpen}
-            categoriasOptica={categoriasOptica}
-            onSubmit={handleAddSubmit}
-          />
-
-          <EditProductDialog
-            open={isEditOpen}
-            onOpenChange={(open) => {
-              setIsEditOpen(open);
-              if (!open) setSelectedItem(null);
-            }}
-            categoriasOptica={categoriasOptica}
-            item={selectedItem}
-            onSubmit={handleEditSubmit}
-          />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Productos</CardTitle>
-          <CardDescription>
-            Visualiza y gestiona todos tus productos de inventario
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center items-center h-40">
-              <p>Cargando inventario...</p>
-            </div>
-          ) : error ? (
-            <div className="flex justify-center items-center h-40 text-red-500">
-              <p>{error}</p>
-            </div>
-          ) : (
-            <>
-              <div className="mb-6">
-                <InventoryTotalCard items={inventarioItems} />
-              </div>
               <DataTable
                 columns={columns}
                 data={inventarioItems}
-                searchPlaceholder="Buscar productos por nombre, categoría, marca o modelo..."
-                onEdit={(item) => { setSelectedItem(item as InventarioItem); setIsEditOpen(true); }}
-                onDelete={(id) => handleDeleteProduct(id as any)}
+                onRowClick={handleRowClick}
+                onEdit={(it) => handleRowClick((it as any).id)}
+                onDelete={handleDelete}
               />
-            </>
-          )}
+            </ClientOnly>
+          </div>
         </CardContent>
       </Card>
-        </div>
-      </PageBody>
-    </>
+
+      <AddProductDialog
+        open={isAddOpen}
+        onOpenChange={setIsAddOpen}
+        categoriasOptica={categoriasOptica}
+        onSubmit={handleAddSubmit}
+      />
+
+      <EditProductDialog
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        categoriasOptica={categoriasOptica}
+        item={selectedItem}
+        onSubmit={handleEditSubmit}
+      />
+    </PageBody>
   );
 }

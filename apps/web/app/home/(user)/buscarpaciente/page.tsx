@@ -96,7 +96,7 @@ export default function BuscarPaciente() {
 
     // Navegar al historial clínico del paciente
     const navegarAHistorialClinico = (pacienteId: string) => {
-        router.push(`/home/dashboard/historialclinico/${pacienteId}`);
+        router.push(`/home/historialclinico/${pacienteId}`);
     };
 
     // Formatear fecha para mostrar
@@ -121,10 +121,9 @@ export default function BuscarPaciente() {
     };
 
     return (
-        <div className="flex flex-col items-center justify-start min-h-screen p-4">
+        <div className="flex flex-col items-center justify-start h-120 p-6">
             <div className="w-full max-w-3xl mx-auto text-center">
-                <h1 className="text-3xl font-bold mb-8">Buscar Paciente</h1>
-                
+                <h1 className="text-3xl font-bold mb-8">Buscar Paciente</h1>        
                 <div className="relative mb-10 w-full max-w-xl mx-auto">
                     <div className="relative">
                         <Input

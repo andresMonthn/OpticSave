@@ -4,7 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 // @ts-ignore
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
-import { HomeLayoutPageHeader } from '../../../(user)/_components/home-page-header';
+import { HomeLayoutPageHeader } from '../_components/home-page-header';
 import { PageBody } from '@kit/ui/page';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@kit/ui/card";
 import { Button } from "@kit/ui/button";

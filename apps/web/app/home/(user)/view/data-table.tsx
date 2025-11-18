@@ -10,7 +10,6 @@ import {
   getSortedRowModel,
   ColumnFiltersState,
   getFilteredRowModel,
-  Row,
 } from "@tanstack/react-table"
 
 import {
@@ -40,6 +39,7 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   searchPlaceholder?: string
   onRowClick?: (id: string) => void
+  onRowContextMenu?: (payload: { id: string; event: React.MouseEvent }) => void
 }
 
 export function DataTable<TData, TValue>({
@@ -47,6 +47,7 @@ export function DataTable<TData, TValue>({
   data,
   searchPlaceholder = "Buscar...",
   onRowClick,
+  onRowContextMenu,
 }: DataTableProps<TData, TValue>) {
   const router = useRouter()
   const [sorting, setSorting] = useState<SortingState>([])
@@ -139,13 +140,20 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  className={`transition-all duration-200 ${isMobile ? "touch-manipulation" : "cursor-pointer hover:bg-muted/50"}`}
-                  onClick={() => !isMobile && onRowClick && onRowClick((row.original as any).id)}
-                  onTouchStart={() => handleRowTouch(row)}
-                >
+              <TableRow
+                key={row.id}
+                data-state={row.getIsSelected() && "selected"}
+                className={`transition-all duration-200 ${isMobile ? "touch-manipulation" : "cursor-pointer hover:bg-muted/50"}`}
+                onClick={() => !isMobile && onRowClick && onRowClick((row.original as any).id)}
+                onTouchStart={() => handleRowTouch(row)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  const id = (row.original as any).id;
+                  if (!isMobile && onRowContextMenu && id) {
+                    onRowContextMenu({ id, event: e });
+                  }
+                }}
+              >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="transition-all duration-200">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -179,7 +187,7 @@ export function DataTable<TData, TValue>({
                               className="w-full justify-start"
                               onClick={() => {
                                 const pacienteId = (row.original as any).id;
-                                router.push(`/home/dashboard/historialclinico/${pacienteId}`);
+                                router.push(`/home/historialclinico/${pacienteId}`);
                                 setMenuOpen(false);
                               }}
                             >

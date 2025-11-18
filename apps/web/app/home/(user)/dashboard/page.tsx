@@ -13,5 +13,4 @@ export default function Dashboard() {
     });
   }, [supabase]);
 
-  return <div />;
 }

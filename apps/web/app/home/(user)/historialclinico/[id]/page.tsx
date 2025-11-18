@@ -5,7 +5,6 @@ import { useEffect, useState, useRef, Suspense } from "react";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
 import { useParams, useRouter } from "next/navigation";
 import { format, addDays, parseISO, isValid, isSameDay } from "date-fns";
-import { es } from "date-fns/locale";
 import { ArrowLeft, Briefcase, Calendar as CalendarIcon, CalendarCheck, Eye, Phone, MapPin, FileText, Pencil, Trash2, CheckCircle2Icon, AlertCircleIcon, XCircleIcon, Edit, X, PencilIcon } from "lucide-react";
     import {
     Dialog,
@@ -14,13 +13,7 @@ import { ArrowLeft, Briefcase, Calendar as CalendarIcon, CalendarCheck, Eye, Pho
     DialogFooter,
     DialogHeader,
     DialogTitle,
- 
 } from "@kit/ui/dialog";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@kit/ui/popover";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -37,15 +30,15 @@ import { Calendar } from "@kit/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@kit/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@kit/ui/tabs";
 import { Badge } from "@kit/ui/badge";
-import { Separator } from "@kit/ui/separator";
 import {
     Accordion,
     AccordionContent,
     AccordionItem,
     AccordionTrigger,
 } from "@kit/ui/accordion";
-import { TeamAccountLayoutPageHeader } from '../../../../[account]/_components/team-account-layout-page-header';
+import { TeamAccountLayoutPageHeader } from '../../../[account]/_components/team-account-layout-page-header';
 import { Trans } from '@kit/ui/trans';
+import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { Paciente, Diagnostico, Rx } from '@/app/home/(user)/dashboard/historialclinico/[id]/types';
 import { formatDateSafe } from '@/app/home/(user)/dashboard/historialclinico/[id]/utils/helpers';
 import { useAlerts } from '@/app/home/(user)/dashboard/historialclinico/[id]/hooks/useAlerts';
@@ -86,7 +79,7 @@ export default function PacienteDetalle() {
         const [diagnosticos, setDiagnosticos] = useState<Diagnostico[]>([]);
         const [dialogOpen, setDialogOpen] = useState(false);
         const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [alertDialogOpen, setAlertDialogOpen] = useState(false);
+        const [alertDialogOpen, setAlertDialogOpen] = useState(false);
         const [user, setUser] = useState<any>(null);
         const [editForm, setEditForm] = useState<Partial<Paciente>>({});
         const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -96,6 +89,8 @@ export default function PacienteDetalle() {
         const [editDiagnosticoData, setEditDiagnosticoData] = useState<Partial<Diagnostico>>({});
         const [editDiagnosticoDialogOpen, setEditDiagnosticoDialogOpen] = useState(false);
 
+        // Estado de conexión para alertar modo offline
+        const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
         // Estado para el modal de recetas
         const [rxDialogOpen, setRxDialogOpen] = useState(false);
         const [deleteRxId, setDeleteRxId] = useState<string | null>(null);
@@ -145,7 +140,7 @@ export default function PacienteDetalle() {
 
                 const updateData: any = {};
                 if (editForm.nombre !== undefined) updateData.nombre = String(editForm.nombre).trim();
-                if (editForm.edad !== undefined) updateData.edad = editForm.edad === null ? null : Number(editForm.edad);
+                // Edad se calcula desde fecha_nacimiento y no se edita directamente
                 if (editForm.sexo !== undefined) updateData.sexo = String(editForm.sexo || '').trim();
                 if (editForm.telefono !== undefined) updateData.telefono = String(editForm.telefono || '').trim();
                 if (editForm.domicilio !== undefined) updateData.domicilio = String(editForm.domicilio || '').trim();
@@ -155,12 +150,10 @@ export default function PacienteDetalle() {
                     const val = editForm.fecha_nacimiento as any;
                     updateData.fecha_nacimiento = val ? (val instanceof Date ? val.toISOString() : new Date(String(val)).toISOString()) : null;
                 }
-
                 const { error } = await supabase
-                    .from('pacientes' as any)
+                    .from('pacientes')
                     .update(updateData)
                     .eq('id', pacienteId);
-
                 if (error) throw error;
 
                 showAlert('success', 'Paciente actualizado', 'Los datos del paciente se han actualizado correctamente puede que nesesites actualizar para poder ver los cambios reflejados');
@@ -179,14 +172,6 @@ export default function PacienteDetalle() {
         };
 
         // Función para manejar el éxito al guardar una receta
-        const handleRxSaveSuccess = (rxIds: string[]) => {
-            // Actualizar la lista de recetas
-            fetchRx();
-            // Cerrar el modal
-            setRxDialogOpen(false);
-            // Mostrar alerta de éxito
-            showAlert('success', 'Receta guardada', 'La receta ha sido guardada exitosamente ');
-        };
     
         // Escuchar eventos personalizados para actualizar las recetas y el estado del paciente
         useEffect(() => {
@@ -249,6 +234,24 @@ export default function PacienteDetalle() {
             // Se eliminó la llamada a fetchDiagnosticos para evitar solicitudes innecesarias
             fetchRx();
         }, [pacienteId]);
+
+        // Detectar cambios de conexión para banner offline
+        useEffect(() => {
+            const handleOnline = () => {
+                setIsOnline(true);
+                showAlert('success', 'Conectado', 'Has vuelto al modo online');
+            };
+            const handleOffline = () => {
+                setIsOnline(false);
+                showAlert('warning', 'Sin conexión', 'Estás en modo offline. Los cambios se sincronizarán al reconectar.');
+            };
+            window.addEventListener('online', handleOnline);
+            window.addEventListener('offline', handleOffline);
+            return () => {
+                window.removeEventListener('online', handleOnline);
+                window.removeEventListener('offline', handleOffline);
+            };
+        }, [showAlert]);
     
         // Efecto para verificar el estado de la cita cuando se carga el paciente
         useEffect(() => {
@@ -888,7 +891,7 @@ export default function PacienteDetalle() {
 
                 // Redirigir después de mostrar la alerta (con un pequeño retraso para que se vea la alerta)
                 setTimeout(() => {
-                    router.push(`/home/dashboard/view`);
+                    router.push(`/home/view`);
                 }, 1000);
             } catch (err: any) {
                 console.error("Error al eliminar paciente:", err);
@@ -926,13 +929,24 @@ export default function PacienteDetalle() {
                     </div>
                 )}
 
+                {/* Banner de modo offline */}
+                {!isOnline && (
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertCircleIcon className="h-4 w-4" />
+                        <AlertTitle>Modo offline</AlertTitle>
+                        <AlertDescription>
+                            Sin conexión. Tus cambios no se sincronizarán hasta reconectar.
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 {/* Modal para editar diagnóstico */}
                
 
                 <TeamAccountLayoutPageHeader
                     account={account}
                     title={<Trans i18nKey={'common:routes.historialClinico'} />}
-                    description={''}
+                    description={<AppBreadcrumbs />}
                 />
 
                 {/* Botón para volver */}
@@ -940,7 +954,7 @@ export default function PacienteDetalle() {
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-2"
-                    onClick={() => router.push(`/home/dashboard/view`)}
+                    onClick={() => router.push(`/home/view`)}
                 >
                     <ArrowLeft className="h-4 w-4" /> Volver a la lista de pacientes
                 </Button>
@@ -975,7 +989,6 @@ export default function PacienteDetalle() {
                                     onClick={() => {
                                         setEditForm({
                                             nombre: paciente.nombre || '',
-                                            edad: paciente.edad ?? null,
                                             sexo: paciente.sexo || '',
                                             telefono: paciente.telefono || '',
                                             domicilio: paciente.domicilio || '',
@@ -1192,15 +1205,15 @@ export default function PacienteDetalle() {
                         setEditForm({});
                     }
                 }}>
-                    <DialogContent className="sm:max-w-[600px]">
+                    <DialogContent className="sm:max-w-[600px] p-6 sm:p-8">
                         <DialogHeader>
-                            <DialogTitle>Editar Paciente</DialogTitle>
+                            <DialogTitle className='text-4xl font-bold text-center mb-6' style={{borderBottom: '2px solid #007bff'}}>Editar Paciente</DialogTitle>
                             <DialogDescription>
                                 Modifica los datos y guarda para actualizar el registro.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-4 items-center gap-6">
                                 <label htmlFor="nombre" className="text-right font-medium">Nombre</label>
                                 <input
                                     id="nombre"
@@ -1211,18 +1224,9 @@ export default function PacienteDetalle() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <label htmlFor="edad" className="text-right font-medium">Edad</label>
-                                <input
-                                    id="edad"
-                                    type="number"
-                                    className="col-span-3 p-2 border rounded"
-                                    value={editForm.edad ?? ''}
-                                    onChange={(e) => setEditForm({ ...editForm, edad: e.target.value ? Number(e.target.value) : null })}
-                                />
-                            </div>
+                            {/* Campo de edad eliminado: se muestra como etiqueta dinámica calculada desde fecha de nacimiento */}
 
-                            <div className="grid grid-cols-4 items-center gap-4">
+                            <div className="grid grid-cols-4 items-center gap-6">
                                 <label htmlFor="sexo" className="text-right font-medium">Sexo</label>
                                 <select
                                     id="sexo"
@@ -1237,7 +1241,7 @@ export default function PacienteDetalle() {
                                 </select>
                             </div>
 
-                            <div className="grid grid-cols-4 items-center gap-4">
+                            <div className="grid grid-cols-4 items-center gap-6">
                                 <label htmlFor="telefono" className="text-right font-medium">Teléfono</label>
                                 <input
                                     id="telefono"
@@ -1248,7 +1252,7 @@ export default function PacienteDetalle() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-4 items-center gap-4">
+                            <div className="grid grid-cols-4 items-center gap-6">
                                 <label htmlFor="domicilio" className="text-right font-medium">Domicilio</label>
                                 <input
                                     id="domicilio"
@@ -1259,7 +1263,7 @@ export default function PacienteDetalle() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-4 items-center gap-4">
+                            <div className="grid grid-cols-4 gap-6 items-start">
                                 <label htmlFor="fecha_nacimiento" className="text-right font-medium">Fecha de nacimiento</label>
                                 <input
                                     id="fecha_nacimiento"
@@ -1268,12 +1272,23 @@ export default function PacienteDetalle() {
                                     value={editForm.fecha_nacimiento ? String(editForm.fecha_nacimiento).split('T')[0] : ''}
                                     onChange={(e) => setEditForm({ ...editForm, fecha_nacimiento: e.target.value ? new Date(e.target.value).toISOString() : null })}
                                 />
+                                {/* Edad dinámica basada en la fecha seleccionada */}
+                                <div className="col-span-4 text-xs text-gray-600 pl-4 sm:pl-0">
+                                    Edad: {(() => {
+                                        const iso = editForm.fecha_nacimiento as any;
+                                        if (!iso) return '—';
+                                        const dob = new Date(String(iso));
+                                        if (isNaN(dob.getTime())) return '—';
+                                        const today = new Date();
+                                        let age = today.getFullYear() - dob.getFullYear();
+                                        const m = today.getMonth() - dob.getMonth();
+                                        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+                                        return `${age} años`;
+                                    })()}
+                                </div>
                             </div>
 
-
-
-
-                            <div className="grid grid-cols-4 items-center gap-4">
+                            <div className="grid grid-cols-4 items-center gap-6">
                                 <label htmlFor="ocupacion" className="text-right font-medium">Ocupación</label>
                                 <input
                                     id="ocupacion"
@@ -1284,7 +1299,7 @@ export default function PacienteDetalle() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-4 items-center gap-4">
+                            <div className="grid grid-cols-4 items-center gap-6 mb-6">
                                 <label htmlFor="motivo_consulta" className="text-right font-medium">Motivo de la consulta</label>
                                 <input
                                     id="motivo_consulta"
@@ -1295,7 +1310,7 @@ export default function PacienteDetalle() {
                                 />
                             </div>
                         </div>
-                        <DialogFooter>
+                        <DialogFooter className='flex items-center mt-6'>
                             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
                             <Button onClick={handleEditPaciente} disabled={isSubmittingEdit || !isEditFormValid()}>
                                 {isSubmittingEdit ? 'Guardando...' : 'Guardar cambios'}

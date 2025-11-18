@@ -335,6 +335,67 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
         return;
       }
 
+      // Actualizar la orden de RX existente en Supabase antes de imprimir
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData.user?.id ?? null;
+        if (!userId) {
+          alert("Sesión inválida o expirada. Vuelve a iniciar sesión.");
+          return;
+        }
+
+        const materialElegido = printData.material === "Otro" ? (printData.materialOtro || null) : (printData.material || null);
+        const tratamientoElegido = printData.tratamiento === "Otro" ? (printData.tratamientoOtro || null) : (printData.tratamiento || null);
+        const tipoLenteElegido = printData.tipoLente === "Otro" ? (printData.tipoLenteOtro || null) : (printData.tipoLente || null);
+        const tipoMonturaElegida = printData.tipoMontura === "Otro" ? (printData.tipoMonturaOtro || null) : (printData.tipoMontura || null);
+
+        const payload = {
+          material: materialElegido,
+          tratamiento: tratamientoElegido,
+          tipo_de_lente: tipoLenteElegido,
+          tipo_de_montura: tipoMonturaElegida,
+          laboratorio: printData.laboratorio || null,
+          subtotal: null,
+          total_neto: null,
+          cargo_extra: null,
+        } as any;
+
+        let orderId: string | null = diagnosticoReciente?.order_rx_id ?? null;
+        if (!orderId) {
+          const { data: diagList, error: diagError } = await supabase
+            .from("diagnostico" as any)
+            .select("id, order_rx_id")
+            .eq("paciente_id", pacienteId)
+            .order("created_at", { ascending: false })
+            .limit(10);
+          if (diagError) {
+            console.error("Error al obtener diagnóstico para orden RX:", diagError);
+            alert(diagError.message || "No se pudo obtener el diagnóstico reciente");
+            return;
+          }
+          const diagWithOrder = Array.isArray(diagList)
+            ? (diagList as any[]).find((d) => !!(d as any).order_rx_id)
+            : null;
+          orderId = diagWithOrder?.order_rx_id ?? null;
+        }
+        if (!orderId) {
+          alert("No existe una orden RX vinculada al diagnóstico más reciente");
+          return;
+        }
+        const { error: updateOrderError } = await supabase
+          .from("orden_rx")
+          .update(payload)
+          .eq("id", orderId)
+          .eq("user_id", userId);
+        if (updateOrderError) {
+          console.error("Error al actualizar orden_rx:", updateOrderError);
+          alert(updateOrderError.message || "No se pudo actualizar la orden RX");
+          return;
+        }
+      } catch (e) {
+        console.error("Excepción al guardar/vincular orden_rx:", e);
+      }
+
       // Actualizar el estado del paciente a 'Completado' usando servicio centralizado
       try {
         await updatePacienteEstado(supabase, pacienteId, 'Completado');
@@ -551,22 +612,45 @@ export function PrintButtons({ pacienteId }: PrintButtonsProps) {
         }
 
         iframe.onload = () => {
+          const win = iframe.contentWindow;
+          const cleanup = () => {
+            try {
+              if (printIframeRef.current && document.body.contains(printIframeRef.current)) {
+                document.body.removeChild(printIframeRef.current);
+              }
+            } catch {}
+            printIframeRef.current = null;
+          };
+
+          let handled = false;
+          const onAfterPrint = () => {
+            if (handled) return;
+            handled = true;
+            try { sessionStorage.setItem('optisave_print_return', '1'); } catch {}
+            cleanup();
+            try { router.push('/home/view'); } catch {}
+          };
+
+          try { win?.addEventListener('afterprint', onAfterPrint, { once: true }); } catch {}
+
           try {
-            iframe.contentWindow?.focus();
-            iframe.contentWindow?.print();
-          } catch (err) {
+            win?.focus();
+            win?.print();
+          } catch (err: any) {
             console.error('Error al iniciar la impresión:', err);
-            alert('No se pudo iniciar la impresión. Revisa permisos de pop-ups o desactiva extensiones que interfieran.');
-          } finally {
-            setTimeout(() => {
-              try {
-                if (printIframeRef.current && document.body.contains(printIframeRef.current)) {
-                  document.body.removeChild(printIframeRef.current);
-                }
-              } catch {}
-              printIframeRef.current = null;
-            }, 300);
+            try { sessionStorage.setItem('optisave_print_return', '1'); } catch {}
+            cleanup();
+            try { router.push('/home/view'); } catch {}
           }
+
+          setTimeout(() => {
+            if (!handled) {
+              handled = true;
+              try { sessionStorage.setItem('optisave_print_return', '1'); } catch {}
+              cleanup();
+              try { router.push('/home/view'); } catch {}
+            }
+          }, 5000);
         };
 
         doc.open();

@@ -497,6 +497,198 @@ export type Database = {
           },
         ];
       };
+      orden_rx: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      pacientes: {
+        Row: {
+          id: string;
+          user_id: string;
+          nombre: string;
+          apellido: string;
+          edad: number | null;
+          sexo: string | null;
+          domicilio: string | null;
+          motivo_consulta: string | null;
+          telefono: string | null;
+          fecha_de_cita: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          nombre: string;
+          apellido: string;
+          edad?: number | null;
+          sexo?: string | null;
+          domicilio?: string | null;
+          motivo_consulta?: string | null;
+          telefono?: string | null;
+          fecha_de_cita?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          nombre?: string;
+          apellido?: string;
+          edad?: number | null;
+          sexo?: string | null;
+          domicilio?: string | null;
+          motivo_consulta?: string | null;
+          telefono?: string | null;
+          fecha_de_cita?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      diagnostico: {
+        Row: {
+          id: string;
+          paciente_id: string;
+          user_id: string;
+          dip: number | null;
+          order_rx_id: string | null;
+          rx_uso_od_id: string | null;
+          rx_uso_oi_id: string | null;
+          rx_final_od_id: string | null;
+          rx_final_oi_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          paciente_id: string;
+          user_id: string;
+          dip?: number | null;
+          order_rx_id?: string | null;
+          rx_uso_od_id?: string | null;
+          rx_uso_oi_id?: string | null;
+          rx_final_od_id?: string | null;
+          rx_final_oi_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          paciente_id?: string;
+          user_id?: string;
+          dip?: number | null;
+          order_rx_id?: string | null;
+          rx_uso_od_id?: string | null;
+          rx_uso_oi_id?: string | null;
+          rx_final_od_id?: string | null;
+          rx_final_oi_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      rx: {
+        Row: {
+          id: string;
+          esf: string | number | null;
+          cil: string | number | null;
+          eje: string | number | null;
+          add: string | number | null;
+          fecha: string | null;
+          user_id: string;
+          paciente_id: string;
+          diagnostico_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          esf?: string | number | null;
+          cil?: string | number | null;
+          eje?: string | number | null;
+          add?: string | number | null;
+          fecha?: string | null;
+          user_id: string;
+          paciente_id: string;
+          diagnostico_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          esf?: string | number | null;
+          cil?: string | number | null;
+          eje?: string | number | null;
+          add?: string | number | null;
+          fecha?: string | null;
+          user_id?: string;
+          paciente_id?: string;
+          diagnostico_id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      inventarios: {
+        Row: {
+          id: string;
+          user_id: string;
+          producto: string;
+          categoria: string;
+          marca: string | null;
+          modelo: string | null;
+          cantidad: number | null;
+          precio: number | null;
+          descripcion: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          producto: string;
+          categoria: string;
+          marca?: string | null;
+          modelo?: string | null;
+          cantidad?: number | null;
+          precio?: number | null;
+          descripcion?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          producto?: string;
+          categoria?: string;
+          marca?: string | null;
+          modelo?: string | null;
+          cantidad?: number | null;
+          precio?: number | null;
+          descripcion?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       role_permissions: {
         Row: {
           id: number;

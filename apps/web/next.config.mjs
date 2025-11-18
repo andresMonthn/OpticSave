@@ -111,6 +111,12 @@ async function getRedirects() {
       destination: '/sitemap.xml',
       permanent: true,
     },
+    // Mantener compatibilidad tras mover módulos fuera de /home/(user)/dashboard
+    {
+      source: '/home/dashboard/:path*',
+      destination: '/home/:path*',
+      permanent: true,
+    },
   ];
 }
 

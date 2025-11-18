@@ -1,5 +1,5 @@
 "use client";
-import { HomeLayoutPageHeader } from '../../../(user)/_components/home-page-header';
+import { HomeLayoutPageHeader } from '../../(user)/_components/home-page-header';
 import { Trans } from '@kit/ui/trans';
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { PageBody } from '@kit/ui/page';
@@ -334,7 +334,7 @@ export default function Agenda() {
                         className="bg-blue-500 text-white text-[9px] md:text-xs px-1 md:px-2 py-[2px] md:py-1 rounded text-center cursor-pointer hover:bg-blue-600 transition-colors touch-manipulation min-h-[18px] md:min-h-auto"
                         onContextMenu={(e) => {
                           e.preventDefault();
-                          router.push(`/home/dashboard/historialclinico/${paciente.id}`);
+                          router.push(`/home/historialclinico/${paciente.id}`);
                         }}
                       >
                         <div className="flex items-center justify-center md:justify-start space-x-[2px] md:space-x-1">

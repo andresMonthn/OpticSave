@@ -4,9 +4,10 @@ import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Home, Users
 import { format, isSameDay, startOfDay, addDays } from "date-fns";
 import { es, id } from "date-fns/locale";
 import { useState, useEffect, useRef } from "react";
-import { HomeLayoutPageHeader } from '../../../(user)/_components/home-page-header';
+import { HomeLayoutPageHeader } from '../../(user)/_components/home-page-header';
 import { Trans } from '@kit/ui/trans';
 import { PageBody } from '@kit/ui/page';
+import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 // Constante para monitorear la fecha actual
 const FECHA_HOY = startOfDay(new Date());
 // Importaciones de componentes UI desde @kit/ui
@@ -24,8 +25,8 @@ import { Badge } from "@kit/ui/badge";
 import { Checkbox } from "@kit/ui/checkbox";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
 // Offline hooks y DB
-import { useOffline } from "../../_lib/offline/useOffline";
-import { usePacientesDB } from "../../_lib/offline/useDB";
+import { useOffline } from "../_lib/offline/useOffline";
+import { usePacientesDB } from "../_lib/offline/useDB";
 // Importaciones para notificaciones y correos
 
 // Definición de la interfaz para el tipo Paciente
@@ -709,7 +710,7 @@ export default function CrearPacientePage() {
       }
 
       setTimeout(() => {
-        router.push('/home/dashboard/redireccion-paciente');
+        router.push('/home/redireccion-paciente');
       }, 2000);
 
     } catch (err) {
@@ -723,7 +724,7 @@ export default function CrearPacientePage() {
   // Redirigir automáticamente tras sincronizar si se creó offline
   useEffect(() => {
     if (success && isOnline && lastSyncAt) {
-      router.push('/home/dashboard/redireccion-paciente');
+      router.push('/home/redireccion-paciente');
     }
   }, [success, isOnline, lastSyncAt]);
 
@@ -786,8 +787,8 @@ export default function CrearPacientePage() {
   return (
     <>
       <HomeLayoutPageHeader
-        title={<Trans i18nKey={'common:routes.home'} />}
-        description={<Trans i18nKey={'common:homeTabDescription'} />}
+         title={<Trans i18nKey={'common:routes.home'} />}
+         description={<><Trans i18nKey={'common:homeTabDescription'} /> <AppBreadcrumbs /></>}
       />
       <PageBody>
         <div className="container mx-auto px-4 sm:px-6 py-6">

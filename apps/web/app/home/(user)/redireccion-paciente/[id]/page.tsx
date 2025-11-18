@@ -60,7 +60,7 @@ export default function RedireccionPaciente() {
         
         // Redirigir después de mostrar la información
         const timer = setTimeout(() => {
-          router.push(`/home/dashboard/historialclinico/${pacienteId}`);
+          router.push(`/home/historialclinico/${pacienteId}`);
         }, 3000);
         
         setCargando(false);
@@ -98,7 +98,7 @@ export default function RedireccionPaciente() {
           <h1 className="text-xl sm:text-2xl font-bold mb-2">Error</h1>
           <p className="text-gray-600 mb-4 text-sm sm:text-base">{error}</p>
           <button 
-            onClick={() => router.push(`/home/dashboard/historialclinico/${pacienteId}`)}
+            onClick={() => router.push(`/home/historialclinico/${pacienteId}`)}
             className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-md text-sm sm:text-base transition-colors hover:bg-primary/90"
           >
             Continuar de todos modos

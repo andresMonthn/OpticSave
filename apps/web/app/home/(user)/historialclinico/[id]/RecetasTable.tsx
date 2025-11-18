@@ -4,7 +4,7 @@ import { format, parseISO, isValid } from "date-fns";
 import { es } from "date-fns/locale";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@kit/ui/table";
 import { Button } from "@kit/ui/button";
-import { PencilIcon, ChevronDown } from "lucide-react";
+import { PencilIcon, ChevronDown, AlertCircleIcon } from "lucide-react";
 import { getSupabaseBrowserClient } from "@kit/supabase/browser-client";
 import {
   Popover,
@@ -13,6 +13,7 @@ import {
 } from "@kit/ui/popover";
 import { Checkbox } from "@kit/ui/checkbox";
 import { Label } from "@kit/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@kit/ui/alert";
 
 // Helper: parseo seguro de fechas para evitar RangeError al convertir a ISO
 function parseDateSafe(input: unknown): Date | null {
@@ -107,9 +108,13 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
   const [openPopover, setOpenPopover] = useState<string | null>(null);
   // Estado para controlar si está cargando
   const [isLoading, setIsLoading] = useState(false);
-  // Estado para almacenar el valor DIP
-  const [dipValue, setDipValue] = useState<number | null>(null);
+  // Estado para almacenar el valor DIP como texto (según esquema)
+  const [dipValue, setDipValue] = useState<string | null>(null);
+  const [dipInput, setDipInput] = useState<string>("");
   const [isDipPopoverOpen, setIsDipPopoverOpen] = useState(false);
+
+  // Estado de conexión para alertar modo offline
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
   // Estado para almacenar el estado del paciente
   const [estadoPaciente, setEstadoPaciente] = useState<string | null>(null);
@@ -133,7 +138,10 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
 
           if (!error && data && 'dip' in data) {
             console.log("Valor DIP obtenido por diagnosticoId:", data.dip);
-            setDipValue(data.dip as any);
+            const val = (data as any).dip;
+            const str = val === null || val === undefined ? null : String(val);
+            setDipValue(str);
+            setDipInput(str ?? "");
             return;
           }
         }
@@ -153,7 +161,10 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
 
         if (data && 'dip' in data) {
           console.log("Valor DIP obtenido por pacienteId:", data.dip);
-          setDipValue(data.dip as any);
+          const val = (data as any).dip;
+          const str = val === null || val === undefined ? null : String(val);
+          setDipValue(str);
+          setDipInput(str ?? "");
         }
       } catch (error) {
         console.error("Error al obtener valor DIP:", error);
@@ -161,6 +172,24 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
     };
     fetchDipValue();
   }, [diagnosticoId, pacienteId, supabase]);
+
+  // Escuchar cambios de conexión para alertar modo offline
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      showAlert('success', 'Conectado', 'Has vuelto al modo online');
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      showAlert('warning', 'Sin conexión', 'Estás en modo offline. Los cambios se sincronizarán al reconectar.');
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [showAlert]);
 
   // Obtener la fecha de cita y el estado del paciente al cargar el componente
   useEffect(() => {
@@ -317,7 +346,10 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
         if (error) throw error;
 
         if (data && 'dip' in data) {
-          setDipValue(data.dip as any);
+          const val = (data as any).dip;
+          const str = val === null || val === undefined ? null : String(val);
+          setDipValue(str);
+          setDipInput(str ?? "");
         }
       } catch (error) {
         console.error("Error al obtener el valor DIP:", error);
@@ -342,12 +374,12 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
    * Guarda el valor de DIP en la base de datos
    * @param newValue Valor opcional para actualizar directamente (usado por los botones + y -)
    */
-  const handleSaveDip = async (newValue?: number | React.MouseEvent<HTMLButtonElement>) => {
+  const handleSaveDip = async (newValue?: string | React.MouseEvent<HTMLButtonElement>) => {
     // Si es un evento de clic, no usamos su valor
     const isMouseEvent = newValue && typeof newValue === 'object' && 'target' in newValue;
     
     // Determinar el valor a guardar
-    const valueToSave = !isMouseEvent && newValue !== undefined ? (newValue as number) : dipValue;
+    const valueToSave = !isMouseEvent && newValue !== undefined ? (newValue as string) : (dipInput ?? dipValue ?? '');
     
     if (!diagnosticoId && !pacienteId) {
       showAlert('error', 'Error', 'No se encontró información del paciente o diagnóstico');
@@ -355,11 +387,7 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
     }
 
     try {
-      // Verificar que el valor esté en el rango permitido (0-100)
-      if (valueToSave !== null && (valueToSave < 0 || valueToSave > 100)) {
-        showAlert('warning', 'Advertencia', 'El valor DIP debe estar entre 0 y 100');
-        return;
-      }
+      // DIP es texto según esquema; no hay validación de rango aquí
 
       console.log("Guardando DIP:", { valueToSave, diagnosticoId, pacienteId });
 
@@ -401,7 +429,7 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
       if (existingDiagId) {
         const { error } = await supabase
           .from("diagnostico" as any)
-          .update({ dip: valueToSave })
+          .update({ dip: valueToSave === '' ? null : String(valueToSave) })
           .eq("id", existingDiagId);
 
         if (error) throw error;
@@ -417,7 +445,7 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
           .insert({
             id: newDiagId,
             paciente_id: pacienteId,
-            dip: valueToSave
+            dip: valueToSave === '' ? null : String(valueToSave)
           })
           .select("id")
           .single();
@@ -431,7 +459,8 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
       }
       
       // Actualizamos el estado local
-      setDipValue(valueToSave);
+      setDipValue(valueToSave === '' ? null : String(valueToSave));
+      setDipInput(valueToSave ?? "");
       setIsDipPopoverOpen(false);
     } catch (error: any) {
       console.error("Error al guardar el valor DIP:", error);
@@ -459,13 +488,11 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
         throw new Error("No se pudo obtener el usuario actual");
       }
 
-      // Crear la orden_rx para vincularla al diagnóstico (solo ID, resto vacío)
+      // Crear la orden_rx para vincularla al diagnóstico (con user_id del usuario actual para cumplir RLS)
       const { data: ordenRxData, error: ordenRxError } = await supabase
         .from("orden_rx" as any)
         .insert({
-          // Crear únicamente el ID; dejar el resto de campos vacíos
-          // Anular el default de user_id para evitar FK inválido
-          user_id: null,
+          user_id: user.id,
         })
         .select("id")
         .single();
@@ -508,7 +535,7 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
           .insert({
             paciente_id: pacienteId,
             user_id: user.id,
-            dip: 1, // Valor DIP por defecto
+            dip: null, // DIP como texto, iniciar sin valor por defecto
             // Vincular la orden_rx recién creada para cumplir el FK
             order_rx_id: ordenRxId,
           })
@@ -778,6 +805,16 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
       {/* Mostrar el card DIP solo cuando showDipCard es true */}
       {showDipCard && (
         <div className="bg-blue-500 dark:bg-blue-700 p-6 border-b flex justify-center items-center">
+          {/* Banner de modo offline dentro del card DIP */}
+          {!isOnline && (
+            <Alert variant="destructive" className="mb-2 w-full max-w-md">
+              <AlertCircleIcon className="h-4 w-4" />
+              <AlertTitle>Modo offline</AlertTitle>
+              <AlertDescription>
+                Sin conexión. Los cambios de DIP no se sincronizarán hasta reconectar.
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="flex flex-col items-center">
             <span className="font-bold text-white mb-1">DIP</span>
             <span className="text-4xl font-bold text-white">
@@ -804,16 +841,16 @@ export function RecetasTable({ recetas, showAlert,  pacienteId, diagnosticoId: p
                       <Label htmlFor="dip">Valor DIP</Label>
                       <input
                         id="dip"
-                        type="number"
-                        min="0"
-                        max="100"
+                        type="text"
                         className="col-span-2 h-8 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                        value={dipValue !== null ? dipValue : ''}
-                        onChange={(e) => setDipValue(e.target.value === '' ? null : Number(e.target.value))}
+                        value={dipInput}
+                        onChange={(e) => setDipInput(e.target.value)}
                       />
                     </div>
                   </div>
-                  <Button onClick={handleSaveDip}>Guardar</Button>
+                  <Button onClick={() => handleSaveDip(dipInput)} disabled={!isOnline}>
+                    {isOnline ? 'Guardar' : 'Sin conexión'}
+                  </Button>
                 </div>
               </PopoverContent>
             </Popover>

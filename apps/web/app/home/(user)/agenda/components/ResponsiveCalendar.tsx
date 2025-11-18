@@ -478,7 +478,7 @@ export default function ResponsiveCalendar() {
                             className="bg-blue-500 text-white text-xs px-2 py-1 rounded text-center cursor-pointer hover:bg-blue-600 transition-colors"
                             onContextMenu={(e) => {
                               e.preventDefault();
-                              router.push(`/home/dashboard/historialclinico/${paciente.id}`);
+                              router.push(`/home/historialclinico/${paciente.id}`);
                             }}
                           >
                             <div className="flex items-center space-x-1">

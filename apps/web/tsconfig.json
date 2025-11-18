@@ -5,6 +5,7 @@
     "paths": {
       "@/*": ["./*"],
       "@/app/*": ["./app/*"],
+      "@/app/home/(user)/dashboard/*": ["./app/home/(user)/*"],
       "@/components/*": ["./components/*"],
       "@/lib/*": ["./lib/*"],
       "~/*": ["./app/*"],

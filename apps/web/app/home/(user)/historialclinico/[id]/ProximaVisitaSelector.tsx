@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar as CalendarIcon } from "lucide-react";
@@ -32,6 +32,7 @@ export function ProximaVisitaSelector({ pacienteId, diagnosticoId, onSuccess, es
     type: 'success' | 'error';
     message: string;
   }>({ show: false, type: 'success', message: '' });
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
   
   const supabase = getSupabaseBrowserClient();
 
@@ -46,6 +47,11 @@ export function ProximaVisitaSelector({ pacienteId, diagnosticoId, onSuccess, es
         : 'Programar próxima visita';
 
   const handleSaveDate = async () => {
+    if (!isOnline) {
+      setAlert({ show: true, type: 'error', message: 'Sin conexión. Estás en modo offline. Conéctate para guardar.' });
+      setTimeout(() => setAlert({ ...alert, show: false }), 3000);
+      return;
+    }
     if (!date) {
       setAlert({
         show: true,
@@ -138,8 +144,28 @@ export function ProximaVisitaSelector({ pacienteId, diagnosticoId, onSuccess, es
     }
   };
 
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   return (
     <div className="w-full">
+      {!isOnline && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircleIcon className="h-4 w-4" />
+          <AlertTitle>Modo offline</AlertTitle>
+          <AlertDescription>
+            Sin conexión. No puedes guardar cambios hasta reconectar.
+          </AlertDescription>
+        </Alert>
+      )}
       {alert.show && (
         <Alert variant={alert.type === 'success' ? 'default' : 'destructive'} className="mb-4">
           {alert.type === 'success' ? (

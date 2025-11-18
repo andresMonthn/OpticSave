@@ -38,7 +38,7 @@ export default function RedireccionPaciente() {
         
         // Redirigir al historial clínico después de un breve retraso
         setTimeout(() => {
-          router.push(`/home/dashboard/historialclinico/${pacienteId}`);
+          router.push(`/home/historialclinico/${pacienteId}`);
         }, 1000);
       } catch (err: any) {
         console.error("Error al buscar paciente reciente:", err);

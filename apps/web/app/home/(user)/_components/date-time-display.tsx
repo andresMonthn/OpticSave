@@ -33,7 +33,7 @@ export const DigitalClock = () => {
   }, []);
 
   if (error) {
-    return <span className="text-destructive">{error}</span>;
+    return <span className="text-gray-500">{error}</span>;
   }
 
   if (!time) {
@@ -44,7 +44,6 @@ export const DigitalClock = () => {
   const formattedTime = time.toLocaleTimeString('es-ES', {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
     hour12: true
   });
 
@@ -75,10 +74,10 @@ export const DateDisplay = () => {
   const weekday = currentDate.toLocaleString('es-ES', { weekday: 'long' });
   
   return (
-    <div className="flex flex-col items-center justify-center bg-red-500 text-white p-3 rounded-md shadow-md w-24 h-24">
-      <div className="text-xs capitalize mb-1">{weekday}</div>
-      <div className="text-4xl font-bold">{day}</div>
-      <div className="text-xs uppercase mt-1">{month} {year}</div>
+    <div className="flex flex-col items-center justify-center bg-red-500 text-white rounded-md shadow-md w-15 h-17">
+      <div className="text-2xs capitalize">{weekday}</div>
+      <div className="text-2xl font-bold">{day}</div>
+      <div className="text-2xs uppercase">{month} {year}</div>
     </div>
   );
 };
@@ -86,10 +85,10 @@ export const DateDisplay = () => {
 // Componente contenedor que combina fecha y hora
 export const DateTimeDisplay = () => {
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-4" style={{height: "50%"}}>
       <DateDisplay />
       <div className="px-4 py-2 rounded-md flex items-center">
-        <Clock className="h-5 w-5 mr-2 text-gray-600" />
+        <Clock className="h-4 w-4 mr-2 text-gray-600" />
         <DigitalClock />
       </div>
     </div>

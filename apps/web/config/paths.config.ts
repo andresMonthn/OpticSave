@@ -41,12 +41,12 @@ const pathsConfig = PathsSchema.parse({
   app: {
     home: '/home',
     
-    creardiagnostico: '/home/dashboard/creardiagnostico',
-    crearpaciente: '/home/dashboard/crearpaciente',
-    agenda: '/home/dashboard/agenda',
-    inventario: '/home/dashboard/inventario',
-    pacientes: '/home/dashboard/view',
-    qr: '/home/dashboard/qr',
+    creardiagnostico: '/home/buscarpaciente',
+    crearpaciente: '/home/crearpaciente',
+    agenda: '/home/agenda',
+    inventario: '/home/inventario',
+    pacientes: '/home/view',
+    qr: '/home/qr',
     personalAccountSettings: '/home/settings',
     personalAccountBilling: '/home/billing',
     personalAccountBillingReturn: '/home/billing/return',
