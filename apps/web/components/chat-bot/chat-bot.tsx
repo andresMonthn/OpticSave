@@ -6,6 +6,7 @@ import { Button } from "@kit/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@kit/ui/card";
 import { Input } from "@kit/ui/input";
 import { MessageCircle, Send, X } from "lucide-react";
+import { makeFallbackAnswer } from "./ollama-fallback";
 
 // Base de conocimiento para respuestas predefinidas
 const knowledgeBase = {
@@ -52,6 +53,7 @@ type Message = {
   text?: string;
   sender: "user" | "bot";
   candidates?: { id: string; nombre: string }[];
+  component?: React.ReactNode;
 };
 
 export function ChatBot() {
@@ -108,10 +110,11 @@ export function ChatBot() {
       });
 
       if (!res.ok) {
+        const fallbackComp = makeFallbackAnswer(input, undefined, (id) => router.push(`/home/dashboard/historialclinico/${id}`));
         const errorMessage: Message = {
           id: messages.length + 2,
-          text: "El asistente no pudo procesar la solicitud.",
           sender: "bot",
+          component: fallbackComp,
         };
         setMessages(prev => [...prev, errorMessage]);
         return;
@@ -169,10 +172,11 @@ export function ChatBot() {
       }
     } catch (err) {
       console.error("Error en conexión:", err);
+      const fallbackComp = makeFallbackAnswer(input, undefined, (id) => router.push(`/home/dashboard/historialclinico/${id}`));
       const errorMessage: Message = {
         id: messages.length + 2,
-        text: "Error al conectar con el asistente.",
         sender: "bot",
+        component: fallbackComp,
       };
       setMessages(prev => [...prev, errorMessage]);
     }
@@ -198,7 +202,7 @@ export function ChatBot() {
       {!isOpen && (
         <Button style={{ zIndex: 2147483647 }}
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-20 sm:bottom-4 right-4 rounded-full w-12 h-12 p-0 shadow-lg"
+          className="fixed bottom-24 right-4 rounded-full w-12 h-12 p-0 shadow-lg"
         >
           <MessageCircle />
         </Button>
@@ -206,7 +210,7 @@ export function ChatBot() {
 
       {/* Ventana de chat */}
       {isOpen && (
-        <Card className="fixed bottom-20 sm:bottom-4 right-4 shadow-lg flex flex-col border border-border w-96 h-[32rem]"
+        <Card className="fixed bottom-24 right-4 shadow-lg flex flex-col border border-border w-96 h-[32rem]"
           style={{ zIndex: 2147483647 }}>
           <CardHeader className="p-3 border-b flex justify-between items-center shadow-lg">
             <h3 className="font-medium">Asistente OptisaveAI</h3>
@@ -246,7 +250,14 @@ export function ChatBot() {
                 );
               }
 
-              // Mensaje normal (burbuja)
+              if (message.component) {
+                return (
+                  <div key={message.id} className="flex justify-start">
+                    {message.component}
+                  </div>
+                );
+              }
+              
               return (
                 <div
                   key={message.id}

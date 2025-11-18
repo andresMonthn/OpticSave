@@ -231,20 +231,25 @@ export async function POST(req: Request) {
     const ollamaData = await ollamaResp.json();
     const responseText = ollamaData?.response ?? "";
 
-    let action: any;
+    let parsed: any;
     try {
-      action = JSON.parse(responseText);
+      parsed = JSON.parse(responseText);
     } catch {
-      // Si el modelo no devolvió JSON válido
       return NextResponse.json({
-        response:
-          "No se pudo interpretar la solicitud. Intenta formularla de nuevo.",
+        response: "No se pudo interpretar la solicitud. Intenta formularla de nuevo.",
       });
     }
 
-    const accion = String(action.accion || "").toLowerCase();
-    const tipo = String(action.tipo || "").toLowerCase();
-    const datos = action.datos || {};
+    const validated = validateAction(parsed);
+    if (!validated) {
+      return NextResponse.json({
+        response: "No se pudo interpretar la solicitud. Intenta formularla de nuevo.",
+      });
+    }
+
+    const accion = validated.accion;
+    const tipo = validated.tipo;
+    const datos = validated.datos;
     // Fusionar: cookie prefill + prefill del cliente + nuevos datos del modelo
     const datosMerged = { ...(cookiePrefill || {}), ...(prefill || {}), ...(datos || {}) };
 
@@ -271,6 +276,8 @@ export async function POST(req: Request) {
           res.cookies.set(COOKIE_NAME, JSON.stringify(datosNorm), {
             path: "/",
             httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
             maxAge: 60 * 60 * 12,
           });
         }
@@ -293,6 +300,8 @@ export async function POST(req: Request) {
           res.cookies.set(COOKIE_NAME, JSON.stringify(datosNorm), {
             path: "/",
             httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
             maxAge: 60 * 60 * 12,
           });
         }
@@ -336,6 +345,8 @@ export async function POST(req: Request) {
           res.cookies.set(COOKIE_NAME, JSON.stringify(datosNorm), {
             path: "/",
             httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
             maxAge: 60 * 60 * 12,
           });
         }
@@ -529,7 +540,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       response: "No se reconoció la acción del asistente.",
-      raw: action,
+      raw: accion,
     });
   } catch (err: any) {
     console.error("Error en /api/chat:", err);
@@ -690,4 +701,48 @@ function getRouteUrl(key: string): string | null {
 
 function safeJoin(items: Array<string | null | undefined>): string {
   return items.filter((x) => !!String(x || "").trim()).join(" • ");
+}
+
+const ACTION_TYPES: Record<string, string[]> = {
+  crear: ["paciente"],
+  navegar: ["ruta"],
+  responder: ["texto"],
+  buscar: ["paciente"],
+  consultar: ["pacientes", "estadisticas"],
+};
+
+function safeText(s: any, max: number = 1000): string {
+  const str = String(s ?? "");
+  const clean = str.replace(/[\u0000-\u001F\u007F]/g, "");
+  return clean.length > max ? clean.slice(0, max) : clean;
+}
+
+function validateAction(a: any): { accion: string; tipo: string; datos: any } | null {
+  if (!a || typeof a !== "object") return null;
+  const accion = String(a.accion || "").toLowerCase();
+  const tipo = String(a.tipo || "").toLowerCase();
+  const allowed = ACTION_TYPES[accion];
+  if (!allowed || !allowed.includes(tipo)) return null;
+  let datos: any = {};
+  if (accion === "crear" && tipo === "paciente") {
+    const src = a.datos || {};
+    for (const k of PATIENT_FIELDS) {
+      const v = src?.[k];
+      if (v !== undefined) {
+        datos[k] = typeof v === "string" ? safeText(v) : v;
+      }
+    }
+  } else if (accion === "navegar" && tipo === "ruta") {
+    const dest = safeText(a?.datos?.destino || "");
+    datos = { destino: dest.toLowerCase() };
+  } else if (accion === "responder" && tipo === "texto") {
+    datos = { mensaje: safeText(a?.datos?.mensaje || "", 500) };
+  } else if (accion === "buscar" && tipo === "paciente") {
+    datos = { nombre: safeText(a?.datos?.nombre || "") };
+  } else if (accion === "consultar") {
+    datos = { filtros: safeText(a?.datos?.filtros || "") };
+  } else {
+    return null;
+  }
+  return { accion, tipo, datos };
 }

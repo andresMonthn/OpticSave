@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { ChatBot } from "~/components/chat-bot/chat-bot";
 
 export default function ChatBotOverlay() {
-  const containerRef = useRef<HTMLElement | null>(null);
+  const [container, setContainer] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     let el = document.getElementById("optisave-chatbot-overlay-container");
@@ -14,9 +14,9 @@ export default function ChatBotOverlay() {
       el.id = "optisave-chatbot-overlay-container";
       document.body.appendChild(el);
     }
-    containerRef.current = el;
+    setContainer(el);
   }, []);
 
-  if (!containerRef.current) return null;
-  return ReactDOM.createPortal(<ChatBot />, containerRef.current);
+  if (!container) return null;
+  return ReactDOM.createPortal(<ChatBot />, container);
 }
