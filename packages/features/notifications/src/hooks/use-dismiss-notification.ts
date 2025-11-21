@@ -9,7 +9,7 @@ export function useDismissNotification() {
     async (notification: number) => {
       const { error } = await client
         .from('notifications')
-        .update({ dismissed: false })
+        .update({ dismissed: true })
         .eq('id', notification);
 
       if (error) {

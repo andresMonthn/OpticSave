@@ -26,9 +26,7 @@ import {
     AlertDialogTrigger,
 } from "@kit/ui/alert-dialog";
 import { Button } from "@kit/ui/button";
-import { Calendar } from "@kit/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@kit/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@kit/ui/tabs";
 import { Badge } from "@kit/ui/badge";
 import {
     Accordion,
@@ -39,7 +37,7 @@ import {
 import { TeamAccountLayoutPageHeader } from '../../../[account]/_components/team-account-layout-page-header';
 import { Trans } from '@kit/ui/trans';
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
-import { Paciente, Diagnostico, Rx } from '@/app/home/(user)/dashboard/historialclinico/[id]/types';
+import { Paciente, Diagnostico } from '@/app/home/(user)/dashboard/historialclinico/[id]/types';
 import { formatDateSafe } from '@/app/home/(user)/dashboard/historialclinico/[id]/utils/helpers';
 import { useAlerts } from '@/app/home/(user)/dashboard/historialclinico/[id]/hooks/useAlerts';
 import { usePaciente } from '@/app/home/(user)/dashboard/historialclinico/[id]/hooks/usePaciente';
@@ -66,6 +64,161 @@ const ProximaVisitaSelector = dynamic(() => import("./ProximaVisitaSelector").th
 
 // Tipos y entidades extraídos a './types'
 
+function AlertSection({ alertInfo }: { alertInfo: { show: boolean; type: string; title: string; message: string } }) {
+    if (!alertInfo?.show) return null as any;
+    return (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md animate-in fade-in slide-in-from-top-5">
+            <Alert className="bg-white text-gray-700 shadow-lg">
+                {alertInfo.type === 'success' && <CheckCircle2Icon className="h-4 w-4" />}
+                {alertInfo.type === 'warning' && <AlertCircleIcon className="h-4 w-4" />}
+                {alertInfo.type === 'error' && <XCircleIcon className="h-4 w-4" />}
+                <AlertTitle className="text-gray-800">{alertInfo.title}</AlertTitle>
+                <AlertDescription className="text-gray-700">{alertInfo.message}</AlertDescription>
+            </Alert>
+        </div>
+    ) as any;
+}
+
+function OfflineSection({ isOnline }: { isOnline: boolean }) {
+    if (isOnline) return null as any;
+    return (
+        <Alert variant="destructive" className="mb-4">
+            <AlertCircleIcon className="h-4 w-4" />
+            <AlertTitle>Modo offline</AlertTitle>
+            <AlertDescription>
+                Sin conexión. Tus cambios no se sincronizarán hasta reconectar.
+            </AlertDescription>
+        </Alert>
+    ) as any;
+}
+
+function BackButton({ onBack }: { onBack: () => void }) {
+    return (
+        <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+            onClick={onBack}
+        >
+            <ArrowLeft className="h-4 w-4" /> Volver a la lista de pacientes
+        </Button>
+    ) as any;
+}
+
+function PatientInfoCard({ paciente, onEdit, onDelete, formatDateSafe }: { paciente: any; onEdit: () => void; onDelete: () => void; formatDateSafe: (d: any, f: string) => string }) {
+    const estado = String(paciente?.estado || '').toLowerCase();
+    const variant = estado === 'completado' ? 'success' : estado === 'pendiente' ? 'warning' : estado === 'programado' ? 'secondary' : estado === 'activo' ? 'success' : 'default';
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                        <CardTitle className="text-2xl truncate">{paciente.nombre}</CardTitle>
+                        <CardDescription className="truncate">{paciente.edad && `${paciente.edad} años`} {paciente.sexo && `• ${paciente.sexo}`}</CardDescription>
+                    </div>
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
+                        <Badge variant={variant}>{paciente?.estado || 'Sin estado'}</Badge>
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={onEdit}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /><span>{paciente.telefono || 'No disponible'}</span></div>
+                        <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /><span>{paciente.domicilio || 'No disponible'}</span></div>
+                        <div className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-muted-foreground" /><span>Ocupación: {paciente.ocupacion || 'No disponible'}</span></div>
+                        <div className="flex items-center gap-2"><Eye className="h-4 w-4 text-muted-foreground" /><span>Síntomas visuales: {paciente.sintomas_visuales || 'No disponible'}</span></div>
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2"><CalendarIcon className="h-4 w-4 text-muted-foreground" /><span>{formatDateSafe(paciente.fecha_de_cita, 'Sin fecha de cita')}</span></div>
+                        <div className="flex items-center gap-2"><CalendarIcon className="h-4 w-4 text-muted-foreground" /><span>Fecha de nacimiento: {formatDateSafe(paciente.fecha_nacimiento as any, 'No disponible')}</span></div>
+                        <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /><span>Motivo de consulta: {paciente.motivo_consulta || 'No especificado'}</span></div>
+                        <div className="flex items-center gap-2"><CalendarCheck className="h-4 w-4 text-muted-foreground" /><span>Último examen visual: {paciente.ultimo_examen_visual || 'No disponible'}</span></div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    ) as any;
+}
+
+function AppointmentStatusCards({ diasRestantes }: { diasRestantes: number | null }) {
+    if (diasRestantes === null) return null as any;
+    if (diasRestantes > 0) {
+        return (
+            <Card className="mt-4 border-2 border-blue-400 bg-blue-50">
+                <CardHeader className="pb-2"><CardTitle className="text-lg text-blue-700">Programado (Faltan {diasRestantes} {diasRestantes === 1 ? 'día' : 'días'})</CardTitle></CardHeader>
+                <CardContent>
+                    <p className="text-blue-800 font-medium">El paciente tiene su cita programada en <span className="font-bold text-xl">{diasRestantes}</span> {diasRestantes === 1 ? 'día' : 'días'}.</p>
+                    <p className="text-sm text-blue-600 mt-1">No se podrá registrar diagnósticos hasta el día de la cita.</p>
+                </CardContent>
+            </Card>
+        ) as any;
+    }
+    if (diasRestantes < 0) {
+        return (
+            <Card className="mt-4 border-2 border-red-400 bg-red-50">
+                <CardHeader className="pb-2"><CardTitle className="text-lg text-red-700">Completado</CardTitle></CardHeader>
+                <CardContent>
+                    <p className="text-red-800" style={{ color: '#FF0000' }}>La fecha de consulta del paciente ya ha pasado.</p>
+                </CardContent>
+            </Card>
+        ) as any;
+    }
+    return null as any;
+}
+
+function AdditionalInfoCard({ paciente }: { paciente: any }) {
+    return (
+        <Card className="mt-4">
+            <CardHeader><CardTitle className="text-lg">Información adicional del paciente</CardTitle></CardHeader>
+            <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="lentes">
+                        <AccordionTrigger className="text-md font-semibold">Información de lentes</AccordionTrigger>
+                        <AccordionContent>
+                            <div className="space-y-2 pl-2 pt-2">
+                                <p><span className="font-medium">Uso de lentes:</span> {paciente.uso_lentes ? 'Sí' : 'No'}</p>
+                                <p><span className="font-medium">Tipos de lentes:</span> {paciente.tipos_de_lentes || 'No especificado'}</p>
+                                <p><span className="font-medium">Tiempo de uso:</span> {paciente.tiempo_de_uso_lentes || 'No especificado'}</p>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="antecedentes-medicos">
+                        <AccordionTrigger className="text-md font-semibold">Antecedentes médicos</AccordionTrigger>
+                        <AccordionContent>
+                            <div className="space-y-2 pl-2 pt-2">
+                                <p><span className="font-medium">Cirugías:</span> {paciente.cirujias || 'No especificado'}</p>
+                                <p><span className="font-medium">Traumatismos oculares:</span> {paciente.traumatismos_oculares ? 'Sí' : 'No'}</p>
+                                {paciente.traumatismos_oculares && (<p><span className="font-medium">Detalles de traumatismos:</span> {paciente.nombre_traumatismos_oculares || 'No especificado'}</p>)}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="antecedentes-familiares">
+                        <AccordionTrigger className="text-md font-semibold">Antecedentes familiares</AccordionTrigger>
+                        <AccordionContent>
+                            <div className="space-y-2 pl-2 pt-2">
+                                <p><span className="font-medium">Antecedentes visuales:</span> {paciente.antecedentes_visuales_familiares || 'No especificado'}</p>
+                                <p><span className="font-medium">Antecedentes de salud:</span> {paciente.antecedente_familiar_salud || 'No especificado'}</p>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="salud-general">
+                        <AccordionTrigger className="text-md font-semibold">Salud general</AccordionTrigger>
+                        <AccordionContent>
+                            <div className="space-y-2 pl-2 pt-2">
+                                <p><span className="font-medium">Hábitos visuales:</span> {paciente.habitos_visuales || 'No especificado'}</p>
+                                <p><span className="font-medium">Estado de salud:</span> {paciente.salud_general || 'No especificado'}</p>
+                                <p><span className="font-medium">Medicamentos actuales:</span> {paciente.medicamento_actual || 'No especificado'}</p>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </CardContent>
+        </Card>
+    ) as any;
+}
 export default function PacienteDetalle() {
     const params = useParams();
     const router = useRouter();
@@ -85,9 +238,7 @@ export default function PacienteDetalle() {
         const [editDialogOpen, setEditDialogOpen] = useState(false);
         const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
         const [isLoading, setIsLoading] = useState(false);
-        const [deleteDiagnosticoId, setDeleteDiagnosticoId] = useState<string | null>(null);
-        const [editDiagnosticoData, setEditDiagnosticoData] = useState<Partial<Diagnostico>>({});
-        const [editDiagnosticoDialogOpen, setEditDiagnosticoDialogOpen] = useState(false);
+        
 
         // Estado de conexión para alertar modo offline
         const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
@@ -109,7 +260,7 @@ export default function PacienteDetalle() {
             tipo: 'Uso',
             ojo: 'Derecho'
         });
-        const [editRxData, setEditRxData] = useState<Rx | null>(null);
+        
         // Flag para evitar múltiples actualizaciones de estado completado
         const estadoCompletoMarcadoRef = useRef(false);
     
@@ -198,16 +349,7 @@ export default function PacienteDetalle() {
             };
         }, [pacienteId]);
 
-        // Función para obtener las recetas del paciente
-        const fetchRxWrapper = async () => {
-            try {
-                await fetchRx();
-            } catch (err: any) {
-                console.error('Error fetching rx:', err);
-                setError(err.message || 'Error al cargar las recetas');
-                showAlert('error', 'Error', err.message || 'Error al cargar las recetas');
-            }
-        };
+        
 
         // Función para verificar el estado de la cita y calcular días restantes
         const verificarEstadoCitaWrapper = (fechaCita: string | null) => {
@@ -420,341 +562,20 @@ export default function PacienteDetalle() {
 
         // Se eliminó la función fetchDiagnosticos para evitar solicitudes innecesarias a la API
 
-        const handleNuevoDiagnostico = () => {
-            // Verificar si el usuario está logueado
-            if (!user) {
-                showAlert('error', 'Acceso denegado', 'Debe iniciar sesión para agregar diagnósticos');
-                return;
-            }
         
-            // Verificar si la cita ya expiró
-            if (citaExpirada) {
-                showAlert('error', 'Cita expirada', 'No se pueden agregar diagnósticos a citas pasadas');
-                return;
-            }
+
         
-            // Verificar si aún no es el día de la cita
-            if (diasRestantes !== null && diasRestantes > 0) {
-                showAlert('error', 'Cita pendiente', `No se pueden agregar diagnósticos antes de la fecha de cita. Faltan ${diasRestantes} días.`);
-                return;
-            }
+
         
-            // Verificar si la fecha de cita es igual a la fecha actual
-            if (paciente?.fecha_de_cita) {
-                // Normalizar la fecha de cita para evitar problemas de zona horaria
-                const fechaCitaStr = paciente.fecha_de_cita || '';
-                // Verificar si la cadena existe antes de usar includes
-                const fechaPartes = fechaCitaStr && typeof fechaCitaStr === 'string' && fechaCitaStr.includes('T') ?
-                    (fechaCitaStr.split('T')[0]?.split('-') || []) :
-                    (typeof fechaCitaStr === 'string' ? fechaCitaStr.split('-') : []);
-                if (!fechaPartes || !Array.isArray(fechaPartes) || !fechaPartes.length || fechaPartes.length !== 3) return; // Validación para evitar errores
-            
-                // Usar valores predeterminados para evitar undefined
-                const parte0 = fechaPartes[0] || "0";
-                const parte1 = fechaPartes[1] || "0";
-                const parte2 = fechaPartes[2] || "0";
-            
-                const año = parseInt(parte0);
-                const mes = parseInt(parte1) - 1; // Los meses en JavaScript son 0-11
-                const día = parseInt(parte2);
-            
-                // Crear objeto de fecha con esos componentes en zona horaria local
-                let fechaCita = new Date(año, mes, día);
-                // Ya no necesitamos ajuste de zona horaria
-                fechaCita.setHours(0, 0, 0, 0);
-            
-                const hoy = new Date();
-                hoy.setHours(0, 0, 0, 0);
-            
-            }
+
         
-            setDialogOpen(true);
-        };
 
-        const handleEditDiagnostico = (diagnosticoId: string) => {
-            // Verificar si el usuario está logueado
-            if (!user) {
-                showAlert('error', 'Acceso denegado', 'Debe iniciar sesión para editar diagnósticos');
-                return;
-            }
-
-            // Buscar el diagnóstico seleccionado
-            const diagnosticoToEdit = diagnosticos.find(d => d.id === diagnosticoId);
-            if (diagnosticoToEdit) {
-                setEditDiagnosticoData(diagnosticoToEdit);
-                setEditDiagnosticoDialogOpen(true);
-            } else {
-                showAlert('error', 'Error', 'No se encontró el diagnóstico para editar');
-            }
-        };
-
-        const handleSaveEditedDiagnostico = async () => {
-            try {
-                if (!editDiagnosticoData.id) return;
-
-                // Verificar si el usuario está logueado
-                if (!user) {
-                    showAlert('error', 'Acceso denegado', 'Debe iniciar sesión para editar diagnósticos');
-                    return;
-                }
-
-                // Preparar los datos para actualizar
-                const diagnosticoActualizado = {
-                    ...editDiagnosticoData,
-                    fecha_diagnostico: editDiagnosticoData.fecha_diagnostico || new Date().toISOString().split('T')[0],
-                    tipo_diagnostico: editDiagnosticoData.tipo_diagnostico,
-                    diagnostico: editDiagnosticoData.diagnostico,
-                    tratamiento_refraactivo: editDiagnosticoData.tratamiento_refraactivo,
-                    tratamiento: editDiagnosticoData.tratamiento,
-                    observaciones: editDiagnosticoData.observaciones,
-                    proxima_visita: editDiagnosticoData.proxima_visita
-                        ? addDays(parseISO(editDiagnosticoData.proxima_visita), 1).toISOString().split('T')[0]
-                        : null,
-                    vb_salud_ocular: editDiagnosticoData.vb_salud_ocular,
-                    // La propiedad dip ya no se usa
-                    updated_at: new Date().toISOString()
-                };
-
-                // Eliminar campos que no deben actualizarse
-                delete diagnosticoActualizado.user_id; // No actualizamos el usuario que creó el diagnóstico
-                delete diagnosticoActualizado.paciente_id; // No actualizamos el paciente
-                delete diagnosticoActualizado.created_at; // No actualizamos la fecha de creación
-
-                // Eliminar campos UUID que son referencias a otras tablas si no se están modificando
-                const diagnosticoActualizadoAny = diagnosticoActualizado as any;
-                ['rx_uso_od_id', 'rx_uso_oi_id', 'rx_final_od_id', 'rx_final_oi_id'].forEach(field => {
-                    if (!diagnosticoActualizadoAny[field]) {
-                        delete diagnosticoActualizadoAny[field];
-                    }
-                });
-
-                const { error } = await supabase
-                    .from("diagnostico" as any)
-                    .update(diagnosticoActualizado)
-                    .eq("id", editDiagnosticoData.id);
-
-                if (error) throw error;
-
-                showAlert('success', 'Diagnóstico actualizado', 'El diagnóstico ha sido actualizado correctamente');
-                // Se eliminó la llamada a fetchDiagnosticos
-                setEditDiagnosticoDialogOpen(false);
-            } catch (err: any) {
-                console.error("Error al actualizar diagnóstico:", err);
-                showAlert('error', 'Error', err.message || "Error al actualizar el diagnóstico");
-            }
-        };
-
-        // Función para guardar la receta
-        const handleSaveRx = async () => {
-            try {
-                // Verificar si el usuario está logueado
-                if (!user) {
-                    showAlert('error', 'Acceso denegado', 'Debe iniciar sesión para agregar recetas');
-                    return;
-                }
-
-                // Preparar los datos para guardar
-                const rxDataToSave = {
-                    tipo: rxData.tipo,
-                    ojo: rxData.ojo,
-                    esf: rxData.esf,
-                    cil: rxData.cil,
-                    eje: rxData.eje,
-                    add: rxData.add,
-                    fecha: rxData.fecha,
-                    user_id: user.id
-                };
-
-                // Guardar en la base de datos
-                const { data, error } = await supabase
-                    .from("rx" as any)
-                    .insert(rxDataToSave)
-                    .select();
-
-                if (error) throw error;
-
-                // Actualizar el diagnóstico con la referencia a la receta
-                if (data && data.length > 0 && data[0] && 'id' in data[0]) {
-                    const rxId = data[0].id;
-
-                    // Obtener el diagnóstico actual
-                    const { data: diagData, error: diagError } = await supabase
-                        .from("diagnostico" as any)
-                        .select("*")
-                        .eq("paciente_id", pacienteId)
-                        .order("created_at", { ascending: false })
-                        .limit(1);
-
-                    if (diagError) throw diagError;
-
-                    if (diagData && diagData.length > 0 && diagData[0] && 'id' in diagData[0]) {
-                        const diagId = diagData[0].id || '';
-                    
-                        // Determinar el campo correcto según el tipo y ojo seleccionados
-                        let updateField = '';
-                    
-                        // Si es tipo 'uso' y ojo 'OI' (izquierdo)
-                        if (rxData.tipo === 'uso' && rxData.ojo === 'OI') {
-                            updateField = 'rx_uso_oi_id';
-                        }
-                        // Si es tipo 'uso' y ojo 'OD' (derecho)
-                        else if (rxData.tipo === 'uso' && rxData.ojo === 'OD') {
-                            updateField = 'rx_uso_od_id';
-                        }
-                        // Si es tipo 'final' y ojo 'OI' (izquierdo)
-                        else if (rxData.tipo === 'final' && rxData.ojo === 'OI') {
-                            updateField = 'rx_final_oi_id';
-                        }
-                        // Si es tipo 'final' y ojo 'OD' (derecho)
-                        else if (rxData.tipo === 'final' && rxData.ojo === 'OD') {
-                            updateField = 'rx_final_od_id';
-                        }
-
-                        // Actualizar el diagnóstico con la referencia a la receta
-                        const updateData = {} as any;
-                        updateData[updateField] = rxId;
-
-                        const { error: updateError } = await supabase
-                            .from("diagnostico" as any)
-                            .update(updateData)
-                            .eq("id", diagId);
-
-                        if (updateError) throw updateError;
-                    }
-                }
-
-                showAlert('success', 'Receta guardada', 'La receta ha sido guardada correctamente');
-                setRxDialogOpen(false);
-
-                // Resetear el formulario
-                setRxData({
-                    diagnosticoId: '',
-                    rxType: 'uso',
-                    eyeType: 'OD',
-                    rxId: '',
-                    esf: null,
-                    cil: null,
-                    eje: null,
-                    add: null,
-                    fecha: new Date().toISOString().split('T')[0],
-                    tipo: 'uso',
-                    ojo: 'OD'
-                });
-
-                // Se eliminó la recarga de diagnósticos
-            } catch (err: any) {
-                console.error("Error al guardar receta:", err);
-                showAlert('error', 'Error', err.message || "Error al guardar la receta");
-            }
-        };
-
-        const handleDeleteDiagnostico = (diagnosticoId: string) => {
-            // Verificar si el usuario está logueado
-            if (!user) {
-                showAlert('error', 'Acceso denegado', 'Debe iniciar sesión para eliminar diagnósticos');
-                return;
-            }
-            setDeleteDiagnosticoId(diagnosticoId);
-        };
+        
 
         // Interfaz para controlar y solucionar errores de tipado
-        interface DiagnosticoRxIds {
-            rx_uso_od_id: string | null;
-            rx_uso_oi_id: string | null;
-            rx_final_od_id: string | null;
-            rx_final_oi_id: string | null;
-        }
+        
 
-        const confirmDeleteDiagnostico = async () => {
-            if (!deleteDiagnosticoId) return;
-
-            try {
-                // Primero obtenemos el diagnóstico para identificar las recetas referenciadas
-                const { data, error: getDiagError } = await supabase
-                    .from("diagnostico" as any)
-                    .select("rx_uso_od_id, rx_uso_oi_id, rx_final_od_id, rx_final_oi_id")
-                    .eq("id", deleteDiagnosticoId)
-                    .single();
-
-                if (getDiagError) throw getDiagError;
-            
-                // Verificamos si data es un error antes de la conversión
-                if ('error' in data) {
-                    throw new Error(`Error al obtener datos del diagnóstico: ${JSON.stringify(data)}`);
-                }
-            
-                // Aseguramos que los datos tengan el tipo correcto
-                const diagnosticoData = data as unknown as DiagnosticoRxIds;
-
-                // Recopilamos los IDs de recetas a eliminar (filtrando los nulos)
-                const rxIdsToDelete = [
-                    diagnosticoData.rx_uso_od_id,
-                    diagnosticoData.rx_uso_oi_id,
-                    diagnosticoData.rx_final_od_id,
-                    diagnosticoData.rx_final_oi_id
-                ].filter(id => id !== null);
-
-                // Eliminamos las recetas referenciadas si existen
-                if (rxIdsToDelete.length > 0) {
-                    const { error: rxError } = await supabase
-                        .from("rx" as any)
-                        .delete()
-                        .in("id", rxIdsToDelete);
-
-                    if (rxError) throw rxError;
-                }
-
-                // Nota: No es necesario eliminar recetas por diagnostico_id ya que esta columna no existe en la tabla rx
-                // La eliminación de recetas relacionadas ya se maneja con los IDs específicos arriba
-
-                // Finalmente eliminamos el diagnóstico
-                const { error } = await supabase
-                    .from("diagnostico" as any)
-                    .delete()
-                    .eq("id", deleteDiagnosticoId);
-
-                if (error) throw error;
-
-                showAlert('success', 'Diagnóstico eliminado', 'El diagnóstico y sus recetas asociadas han sido eliminados correctamente');
-                // Se eliminó la recarga de diagnósticos
-                fetchRx(); // Recargar las recetas
-            } catch (err: any) {
-                console.error("Error al eliminar diagnóstico:", err);
-            
-                // Interfaz de control y solución de errores
-                let errorMessage = 'Error al eliminar el diagnóstico';
-                let errorTitle = 'Error';
-            
-                if (err.code) {
-                    switch (err.code) {
-                        case '23503': // Error de clave foránea
-                            errorMessage = 'No se puede eliminar el diagnóstico porque tiene datos relacionados';
-                            errorTitle = 'Error de relación';
-                            break;
-                        case '42P01': // Tabla no existe
-                            errorMessage = 'Error en la estructura de la base de datos';
-                            errorTitle = 'Error de estructura';
-                            break;
-                        case '42703': // Columna no existe
-                            errorMessage = 'Error en la estructura de la tabla';
-                            errorTitle = 'Error de estructura';
-                            break;
-                        case '23505': // Violación de unicidad
-                            errorMessage = 'Conflicto con datos existentes';
-                            errorTitle = 'Error de datos';
-                            break;
-                        default:
-                            errorMessage = `Error (${err.code}): ${err.message || 'Error desconocido'}`;
-                    }
-                } else if (err.message) {
-                    errorMessage = err.message;
-                }
-            
-                showAlert('error', errorTitle, errorMessage);
-            } finally {
-                setDeleteDiagnosticoId(null);
-            }
-        };
+        
     
         // Función para eliminar una receta
         const handleDeleteRx = (rxId?: string) => {
@@ -833,27 +654,7 @@ export default function PacienteDetalle() {
 
         // Función de edición eliminada por no ser utilizada
 
-        const handleDeletePaciente = async () => {
-            try {
-                setIsLoading(true);
-
-                // Verificar si el usuario está logueado
-                if (!user) {
-                    showAlert('error', 'Acceso denegado', 'Debe iniciar sesión para eliminar pacientes');
-                    setIsLoading(false);
-                    return;
-                }
-            
-                // Mostrar diálogo de confirmación con resumen de datos
-                setDeleteDialogOpen(true);
-                setIsLoading(false);
-                return;
-            } catch (err: any) {
-                console.error("Error al preparar eliminación:", err);
-                showAlert('error', 'Error', err.message || "Error al preparar la eliminación");
-                setIsLoading(false);
-            }
-        };
+        
     
         // Función para confirmar y ejecutar la eliminación del paciente
         const confirmarEliminacionPaciente = async () => {
@@ -906,8 +707,6 @@ export default function PacienteDetalle() {
             }
         };
 
-
-
         if (loading) return <div className="flex justify-center p-8"><p>Cargando información del paciente...</p></div>;
         if (error) return <div className="bg-destructive/20 p-4 rounded-md"><p>Error: {error}</p></div>;
         if (!paciente) return <div className="bg-destructive/20 p-4 rounded-md"><p>No se encontró el paciente</p></div>;
@@ -915,31 +714,9 @@ export default function PacienteDetalle() {
         return (
             <div className="space-y-6 mx-[45px] pt-4 sm:pt-8">
                 {/* Componente de alerta */}
-                {alertInfo.show && (
-                    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md animate-in fade-in slide-in-from-top-5">
-                        <Alert
-                            className="bg-white text-gray-700 shadow-lg"
-                        >
-                            {alertInfo.type === 'success' && <CheckCircle2Icon className="h-4 w-4" />}
-                            {alertInfo.type === 'warning' && <AlertCircleIcon className="h-4 w-4" />}
-                            {alertInfo.type === 'error' && <XCircleIcon className="h-4 w-4" />}
-                            <AlertTitle className="text-gray-800">{alertInfo.title}</AlertTitle>
-                            <AlertDescription className="text-gray-700">{alertInfo.message}</AlertDescription>
-                        </Alert>
-                    </div>
-                )}
-
+                <AlertSection alertInfo={alertInfo} />
                 {/* Banner de modo offline */}
-                {!isOnline && (
-                    <Alert variant="destructive" className="mb-4">
-                        <AlertCircleIcon className="h-4 w-4" />
-                        <AlertTitle>Modo offline</AlertTitle>
-                        <AlertDescription>
-                            Sin conexión. Tus cambios no se sincronizarán hasta reconectar.
-                        </AlertDescription>
-                    </Alert>
-                )}
-
+                <OfflineSection isOnline={isOnline} />
                 {/* Modal para editar diagnóstico */}
                
 
@@ -950,201 +727,35 @@ export default function PacienteDetalle() {
                 />
 
                 {/* Botón para volver */}
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                    onClick={() => router.push(`/home/view`)}
-                >
-                    <ArrowLeft className="h-4 w-4" /> Volver a la lista de pacientes
-                </Button>
+                <BackButton onBack={() => router.push(`/home/view`)} />
 
-                {/* Información del paciente */}
-                <Card>
-                    <CardHeader>
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                                <CardTitle className="text-2xl truncate">{paciente.nombre}</CardTitle>
-                                <CardDescription className="truncate">
-                                    {paciente.edad && `${paciente.edad} años`} {paciente.sexo && `• ${paciente.sexo}`}
-                                </CardDescription>
-                            </div>
-                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
-                                <Badge
-                                    variant={
-                                        paciente?.estado?.toLowerCase() === 'completado' ? 'success'
-                                        : paciente?.estado?.toLowerCase() === 'pendiente' ? 'warning'
-                                        : paciente?.estado?.toLowerCase() === 'programado' ? 'secondary'
-                                        : paciente?.estado?.toLowerCase() === 'activo' ? 'success'
-                                        : 'default'
-                                    }
-                                >
-                                    {paciente?.estado || 'Sin estado'}
-                                </Badge>
-                                {/* Botón de edición siempre visible */}
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => {
-                                        setEditForm({
-                                            nombre: paciente.nombre || '',
-                                            sexo: paciente.sexo || '',
-                                            telefono: paciente.telefono || '',
-                                            domicilio: paciente.domicilio || '',
-                                            fecha_nacimiento: paciente.fecha_nacimiento || '',
-                                            ocupacion: paciente.ocupacion || '',
-                                            motivo_consulta: paciente.motivo_consulta || ''
-                                        });
-                                        setAlertDialogOpen(true);
-                                    }}
-                                >
-                                    <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setDeleteDialogOpen(true)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <Phone className="h-4 w-4 text-muted-foreground" />
-                                    <span>{paciente.telefono || "No disponible"}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                                    <span>{paciente.domicilio || "No disponible"}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Briefcase className="h-4 w-4 text-muted-foreground" />
-                                    <span>Ocupación: {paciente.ocupacion || "No disponible"}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Eye className="h-4 w-4 text-muted-foreground" />
-                                    <span>Síntomas visuales: {paciente.sintomas_visuales || "No disponible"}</span>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                                    <span>
-                                        {formatDateSafe(paciente.fecha_de_cita, "Sin fecha de cita")}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                                    <span>Fecha de nacimiento: {formatDateSafe(paciente.fecha_nacimiento as any, "No disponible")}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <FileText className="h-4 w-4 text-muted-foreground" />
-                                    <span>Motivo de consulta: {paciente.motivo_consulta || "No especificado"}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <CalendarCheck className="h-4 w-4 text-muted-foreground" />
-                                    <span>Último examen visual: {paciente.ultimo_examen_visual || "No disponible"}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <PatientInfoCard
+                    paciente={paciente}
+                    onEdit={() => {
+                        setEditForm({
+                            nombre: paciente.nombre || '',
+                            sexo: paciente.sexo || '',
+                            telefono: paciente.telefono || '',
+                            domicilio: paciente.domicilio || '',
+                            fecha_nacimiento: paciente.fecha_nacimiento || '',
+                            ocupacion: paciente.ocupacion || '',
+                            motivo_consulta: paciente.motivo_consulta || ''
+                        });
+                        setAlertDialogOpen(true);
+                    }}
+                    onDelete={() => setDeleteDialogOpen(true)}
+                    formatDateSafe={formatDateSafe}
+                />
 
                 {/* Card para mostrar el estado de la cita */}
                 {paciente && paciente.fecha_de_cita && (
                     <>
-                        {/* Estado "Programado" - Mostrar cuando la fecha es futura */}
-                        {diasRestantes !== null && diasRestantes > 0 && (
-                            <Card className="mt-4 border-2 border-blue-400 bg-blue-50">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-lg text-blue-700">Programado (Faltan {diasRestantes} {diasRestantes === 1 ? 'día' : 'días'})</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-blue-800 font-medium">
-                                        El paciente tiene su cita programada en <span className="font-bold text-xl">{diasRestantes}</span> {diasRestantes === 1 ? 'día' : 'días'}.
-                                    </p>
-                                    <p className="text-sm text-blue-600 mt-1">
-                                        No se podrá registrar diagnósticos hasta el día de la cita.
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        )}
-                        
-                        {/* Estado "Completado" - Mostrar cuando la fecha es pasada */}
-                        {diasRestantes !== null && diasRestantes < 0 && (
-                            <Card className="mt-4 border-2 border-red-400 bg-red-50">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-lg text-red-700">Completado</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-red-800" style={{ color: "#FF0000" }}>
-                                        La fecha de consulta del paciente ya ha pasado.
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        )}
-                        
-                        {/* Estado "Pendiente" - No mostrar nada cuando la fecha es hoy */}
-                        {/* Si diasRestantes === 0, no se muestra ningún componente */}
+                        <AppointmentStatusCards diasRestantes={diasRestantes} />
                     </>
                 )}
 
                 {/* Información adicional del paciente */}
-                <Card className="mt-4">
-                    <CardHeader>
-                        <CardTitle className="text-lg">Información adicional del paciente</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <Accordion type="single" collapsible className="w-full">
-                            <AccordionItem value="lentes">
-                                <AccordionTrigger className="text-md font-semibold">Información de lentes</AccordionTrigger>
-                                <AccordionContent>
-                                    <div className="space-y-2 pl-2 pt-2">
-                                        <p><span className="font-medium">Uso de lentes:</span> {paciente.uso_lentes ? "Sí" : "No"}</p>
-                                        <p><span className="font-medium">Tipos de lentes:</span> {paciente.tipos_de_lentes || "No especificado"}</p>
-                                        <p><span className="font-medium">Tiempo de uso:</span> {paciente.tiempo_de_uso_lentes || "No especificado"}</p>
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        
-                            <AccordionItem value="antecedentes-medicos">
-                                <AccordionTrigger className="text-md font-semibold">Antecedentes médicos</AccordionTrigger>
-                                <AccordionContent>
-                                    <div className="space-y-2 pl-2 pt-2">
-                                        <p><span className="font-medium">Cirugías:</span> {paciente.cirujias || "No especificado"}</p>
-                                        <p><span className="font-medium">Traumatismos oculares:</span> {paciente.traumatismos_oculares ? "Sí" : "No"}</p>
-                                        {paciente.traumatismos_oculares && (
-                                            <p><span className="font-medium">Detalles de traumatismos:</span> {paciente.nombre_traumatismos_oculares || "No especificado"}</p>
-                                        )}
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        
-                            <AccordionItem value="antecedentes-familiares">
-                                <AccordionTrigger className="text-md font-semibold">Antecedentes familiares</AccordionTrigger>
-                                <AccordionContent>
-                                    <div className="space-y-2 pl-2 pt-2">
-                                        <p><span className="font-medium">Antecedentes visuales:</span> {paciente.antecedentes_visuales_familiares || "No especificado"}</p>
-                                        <p><span className="font-medium">Antecedentes de salud:</span> {paciente.antecedente_familiar_salud || "No especificado"}</p>
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        
-                            <AccordionItem value="salud-general">
-                                <AccordionTrigger className="text-md font-semibold">Salud general</AccordionTrigger>
-                                <AccordionContent>
-                                    <div className="space-y-2 pl-2 pt-2">
-                                        <p><span className="font-medium">Hábitos visuales:</span> {paciente.habitos_visuales || "No especificado"}</p>
-                                        <p><span className="font-medium">Estado de salud:</span> {paciente.salud_general || "No especificado"}</p>
-                                        <p><span className="font-medium">Medicamentos actuales:</span> {paciente.medicamento_actual || "No especificado"}</p>
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
-                    </CardContent>
-                </Card>
+                <AdditionalInfoCard paciente={paciente} />
 
                 {/* Recetas del paciente (solo si estado = Pendiente) */}
                 {paciente?.estado && paciente.estado.toLowerCase() === 'pendiente' && (

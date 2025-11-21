@@ -93,7 +93,7 @@ const featuresFlagConfig = FeatureFlagsSchema.parse({
   ),
   realtimeNotifications: getBoolean(
     process.env.NEXT_PUBLIC_REALTIME_NOTIFICATIONS,
-    false,
+    true,
   ),
   enableVersionUpdater: getBoolean(
     process.env.NEXT_PUBLIC_ENABLE_VERSION_UPDATER,

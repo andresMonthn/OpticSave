@@ -1,8 +1,8 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Home, Users } from "lucide-react";
+import { CheckCircle2, XCircle, RefreshCw, Calendar as CalendarIcon, Users } from "lucide-react";
 import { format, isSameDay, startOfDay, addDays } from "date-fns";
-import { es, id } from "date-fns/locale";
+import { es } from "date-fns/locale";
 import { useState, useEffect, useRef } from "react";
 import { HomeLayoutPageHeader } from '../../(user)/_components/home-page-header';
 import { Trans } from '@kit/ui/trans';
@@ -29,50 +29,534 @@ import { useOffline } from "../_lib/offline/useOffline";
 import { usePacientesDB } from "../_lib/offline/useDB";
 // Importaciones para notificaciones y correos
 
-// Definición de la interfaz para el tipo Paciente
-interface Paciente {
-  id?: string;
-  user_id?: string;
+import { Paciente, DomicilioCompleto, CitaInfo } from "./types";
+
+type DatosPersonalesProps = {
   nombre: string;
-  edad?: number;
-  sexo?: string;
-  domicilio?: string;
-  motivo_consulta?: string;
-  diagnostico_id?: string;
-  telefono?: string;
-  fecha_de_cita?: Date | string | null;
-  created_at?: string;
-  updated_at?: string;
-  estado?: string;
-  fecha_nacimiento?: Date | string | null;
-  ocupacion?: string;
-  sintomas_visuales?: string;
-  ultimo_examen_visual?: string;
-  uso_lentes?: boolean;
-  tipos_de_lentes?: string;
-  tiempo_de_uso_lentes?: string;
-  cirujias?: boolean;
-  traumatismos_oculares?: boolean;
-  nombre_traumatismos_oculares?: string;
-  antecedentes_visuales_familiares?: string;
-  antecedente_familiar_salud?: string;
-  habitos_visuales?: string;
-  salud_general?: string;
-  medicamento_actual?: string;
+  setNombre: (v: string) => void;
+  touched: Record<string, boolean>;
+  handleBlur: (field: string) => void;
+  fechaNacimientoOpen: boolean;
+  setFechaNacimientoOpen: (v: boolean) => void;
+  fechaNacimiento: Date | undefined;
+  setFechaNacimiento: (d: Date | undefined) => void;
+  edad: string;
+  setEdad: (v: string) => void;
+  telefono: string;
+  handleTelefonoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  telefonoError: string | null;
+  sexo: string;
+  setSexo: (v: string) => void;
+  nombreRef?: React.RefObject<HTMLInputElement | null>;
+  telefonoRef?: React.RefObject<HTMLInputElement | null>;
+};
+
+function DatosPersonalesSection({ nombre, setNombre, touched, handleBlur, fechaNacimientoOpen, setFechaNacimientoOpen, fechaNacimiento, setFechaNacimiento, edad, setEdad, telefono, handleTelefonoChange, telefonoError, sexo, setSexo, nombreRef, telefonoRef }: DatosPersonalesProps) {
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="nombre">Nombre <span className="text-red-500">*</span></Label>
+          <Input id="nombre" ref={nombreRef} value={nombre} onChange={(e) => setNombre(e.target.value)} onBlur={() => handleBlur('nombre')} placeholder="Ingrese el nombre" required autoComplete="off" className={touched['nombre'] && nombre.trim() === "" ? "border-red-300" : ""} />
+          {touched['nombre'] && nombre.trim() === "" && (
+            <p className="text-red-500 text-xs">Este campo es requerido</p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="fechaNacimiento">Fecha de Nacimiento</Label>
+          <Popover open={fechaNacimientoOpen} onOpenChange={setFechaNacimientoOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" id="fechaNacimiento" className="w-full justify-between font-normal">
+                {fechaNacimiento ? format(fechaNacimiento, "PPP", { locale: es }) : "Seleccionar fecha"}
+                <CalendarIcon className="h-4 w-4 ml-2" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+              <Calendar mode="single" selected={fechaNacimiento} captionLayout="dropdown" onSelect={(date) => {
+                setFechaNacimiento(date);
+                if (date) {
+                  const hoy = new Date();
+                  let edadCalculada = hoy.getFullYear() - date.getFullYear();
+                  const m = hoy.getMonth() - date.getMonth();
+                  if (m < 0 || (m === 0 && hoy.getDate() < date.getDate())) {
+                    edadCalculada--;
+                  }
+                  setEdad(edadCalculada.toString());
+                }
+                setFechaNacimientoOpen(false);
+              }} />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edad">Edad</Label>
+          <Input id="edad" type="number" value={edad} onChange={(e) => setEdad(e.target.value)} placeholder="Ingrese la edad" autoComplete="off" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="telefono">Teléfono</Label>
+          <Input id="telefono" ref={telefonoRef} value={telefono} onChange={handleTelefonoChange} onBlur={() => handleBlur('telefono')} placeholder="Ingrese el teléfono (10 dígitos)" maxLength={10} autoComplete="off" className={telefonoError ? "border-red-300" : ""} />
+          {telefonoError && (
+            <p className="text-red-500 text-xs">{telefonoError}</p>
+          )}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Sexo</Label>
+        <RadioGroup value={sexo} onValueChange={setSexo} className="flex space-x-4">
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="femenino" id="femenino" />
+            <Label htmlFor="femenino">Femenino</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="masculino" id="masculino" />
+            <Label htmlFor="masculino">Masculino</Label>
+          </div>
+        </RadioGroup>
+      </div>
+    </>
+  );
 }
 
-// Interfaz para los campos de domicilio completo
-interface DomicilioCompleto {
-  calle: string;
-  numero: string;
-  interior: string;
-  colonia: string;
+type DomicilioProps = {
+  domicilioCompleto: boolean;
+  setDomicilioCompleto: (v: boolean) => void;
+  domicilio: string;
+  setDomicilio: (v: string) => void;
+  domicilioFields: DomicilioCompleto;
+  handleDomicilioFieldChange: (field: keyof DomicilioCompleto, value: string) => void;
+};
+
+function DomicilioSection({ domicilioCompleto, setDomicilioCompleto, domicilio, setDomicilio, domicilioFields, handleDomicilioFieldChange }: DomicilioProps) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label htmlFor="domicilio-switch">Domicilio</Label>
+        <div className="flex items-center space-x-2">
+          <Label htmlFor="domicilio-switch" className="text-sm">Simple</Label>
+          <Switch id="domicilio-switch" checked={domicilioCompleto} onCheckedChange={setDomicilioCompleto} />
+          <Label htmlFor="domicilio-switch" className="text-sm">Completo</Label>
+        </div>
+      </div>
+      {!domicilioCompleto ? (
+        <Input id="domicilio" value={domicilio} onChange={(e) => setDomicilio(e.target.value)} placeholder="Ingrese el domicilio" autoComplete="off" />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="calle">Calle</Label>
+            <Input id="calle" value={domicilioFields.calle} onChange={(e) => handleDomicilioFieldChange('calle', e.target.value)} placeholder="Ingrese la calle" autoComplete="off" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="numero">Número</Label>
+            <Input id="numero" value={domicilioFields.numero} onChange={(e) => handleDomicilioFieldChange('numero', e.target.value)} placeholder="Número exterior" autoComplete="off" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="interior">Interior (opcional)</Label>
+            <Input id="interior" value={domicilioFields.interior} onChange={(e) => handleDomicilioFieldChange('interior', e.target.value)} placeholder="Número interior" autoComplete="off" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="colonia">Colonia</Label>
+            <Input id="colonia" value={domicilioFields.colonia} onChange={(e) => handleDomicilioFieldChange('colonia', e.target.value)} placeholder="Ingrese la colonia" autoComplete="off" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-// Interfaz para las citas
-interface CitaInfo {
-  fecha: Date;
-  cantidadPacientes: number;
+type MotivoProps = {
+  motivoConsulta: string;
+  setMotivoConsulta: (v: string) => void;
+  motivoConsultaOtro: string;
+  setMotivoConsultaOtro: (v: string) => void;
+};
+
+function MotivoConsultaSection({ motivoConsulta, setMotivoConsulta, motivoConsultaOtro, setMotivoConsultaOtro }: MotivoProps) {
+  return (
+    <div className="space-y-2">
+      <Label>Motivo de Consulta</Label>
+      <RadioGroup value={motivoConsulta} onValueChange={setMotivoConsulta} className="space-y-2 flex flex-col">
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem value="Revisión de rutina" id="revision-rutina" />
+          <Label htmlFor="revision-rutina" className="font-normal">Revisión de rutina</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem value="Visión borrosa" id="vision-borrosa" />
+          <Label htmlFor="vision-borrosa" className="font-normal">Visión borrosa</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem value="Dolor o molestia ocular" id="dolor-ocular" />
+          <Label htmlFor="dolor-ocular" className="font-normal">Dolor o molestia ocular</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem value="Revisión de lentes" id="revision-lentes" />
+          <Label htmlFor="revision-lentes" className="font-normal">Revisión de lentes</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem value="Otro" id="otro-motivo" />
+          <Label htmlFor="otro-motivo" className="font-normal">Otro</Label>
+        </div>
+        {motivoConsulta === "Otro" && (
+          <div className="pl-6 pt-2">
+            <Input placeholder="Especifique el motivo" value={motivoConsulta === "Otro" ? motivoConsultaOtro : ""} onChange={(e) => setMotivoConsultaOtro(e.target.value)} className="w-full" autoComplete="off" />
+          </div>
+        )}
+      </RadioGroup>
+    </div>
+  );
+}
+
+type OcupacionExamenProps = {
+  ocupacion: string;
+  setOcupacion: (v: string) => void;
+  ultimoExamenVisual: string;
+  setUltimoExamenVisual: (v: string) => void;
+};
+
+function OcupacionExamenSection({ ocupacion, setOcupacion, ultimoExamenVisual, setUltimoExamenVisual }: OcupacionExamenProps) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="ocupacion">Ocupación</Label>
+        <Input id="ocupacion" value={ocupacion} onChange={(e) => setOcupacion(e.target.value)} placeholder="Ingrese la ocupación" autoComplete="off" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="ultimoExamenVisual">Último Examen Visual</Label>
+        <Input id="ultimoExamenVisual" type="number" min={0} step={1} value={ultimoExamenVisual} onChange={(e) => { const v = e.target.value.replace(/\D/g, ""); setUltimoExamenVisual(v); }} placeholder="¿Cuántos años aproximadamente?" autoComplete="off" />
+        <div className="text-xs text-muted-foreground">
+          {ultimoExamenVisual ? `${parseInt(ultimoExamenVisual, 10)} ${parseInt(ultimoExamenVisual, 10) === 1 ? 'año' : 'años'}` : 'Indique un número entero, por ejemplo: 1, 2, 3'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type SintomasProps = {
+  sintomasVisualesSeleccionados: string[];
+  setSintomasVisualesSeleccionados: (v: string[]) => void;
+  sintomasVisualesOtro: string;
+  setSintomasVisualesOtro: (v: string) => void;
+};
+
+function SintomasVisualesSection({ sintomasVisualesSeleccionados, setSintomasVisualesSeleccionados, sintomasVisualesOtro, setSintomasVisualesOtro }: SintomasProps) {
+  const toggle = (checked: boolean, sintoma: string) => {
+    if (checked) setSintomasVisualesSeleccionados([...sintomasVisualesSeleccionados, sintoma]);
+    else setSintomasVisualesSeleccionados(sintomasVisualesSeleccionados.filter((item) => item !== sintoma));
+  };
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="sintomasVisuales">Síntomas Visuales</Label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+        {["Visión borrosa de lejos","Visión borrosa de cerca","Dolor de cabeza","Ardor o picazón ocular","Lagrimeo","Enrojecimiento ocular","Sensibilidad a la luz solar","Sensibilidad a la luz artificial","Ve doble (diplopía)","Moscas volantes o destellos","Pérdida momentánea de visión"].map((sintoma) => (
+          <div key={sintoma} className="flex items-center space-x-2">
+            <Checkbox id={`sintoma-${sintoma}`} checked={sintomasVisualesSeleccionados.includes(sintoma)} onCheckedChange={(checked) => toggle(!!checked, sintoma)} />
+            <Label htmlFor={`sintoma-${sintoma}`} className="font-normal">{sintoma}</Label>
+          </div>
+        ))}
+        <div className="flex items-center space-x-2">
+          <Checkbox id="sintoma-otro" checked={sintomasVisualesSeleccionados.includes("Otro")} onCheckedChange={(checked) => { if (checked) setSintomasVisualesSeleccionados([...sintomasVisualesSeleccionados, "Otro"]); else { setSintomasVisualesSeleccionados(sintomasVisualesSeleccionados.filter((item) => item !== "Otro")); setSintomasVisualesOtro(""); } }} />
+          <Label htmlFor="sintoma-otro" className="font-normal">Otro</Label>
+        </div>
+      </div>
+      {sintomasVisualesSeleccionados.includes("Otro") && (
+        <div className="pt-2">
+          <Input placeholder="Especifique otros síntomas visuales" value={sintomasVisualesOtro} onChange={(e) => setSintomasVisualesOtro(e.target.value)} className="w-full" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+type LentesProps = {
+  usaLentes: boolean;
+  setUsaLentes: (v: boolean) => void;
+  tipoLentesSeleccionados: string[];
+  setTipoLentesSeleccionados: (v: string[]) => void;
+  tiempoUsoLentes: string;
+  setTiempoUsoLentes: (v: string) => void;
+};
+
+function LentesSection({ usaLentes, setUsaLentes, tipoLentesSeleccionados, setTipoLentesSeleccionados, tiempoUsoLentes, setTiempoUsoLentes }: LentesProps) {
+  const toggleTipo = (checked: boolean, tipo: string) => {
+    if (checked) setTipoLentesSeleccionados([...tipoLentesSeleccionados, tipo]);
+    else setTipoLentesSeleccionados(tipoLentesSeleccionados.filter((t) => t !== tipo));
+  };
+  return (
+    <>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="usaLentes">¿Usa Lentes?</Label>
+          <div className="flex items-center gap-2"><span className="text-sm font-medium">{usaLentes ? "Sí" : "No"}</span><Switch id="usaLentes" checked={usaLentes} onCheckedChange={setUsaLentes} /></div>
+        </div>
+      </div>
+      {usaLentes && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Tipo de Lentes</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {[["Monofocales","lentes-monofocales"],["Bifocales","lentes-bifocales"],["Progresivos","lentes-progresivos"],["De contacto","lentes-contacto"]].map(([label,id]) => (
+                <div key={id as string} className="flex items-center space-x-2">
+                  <Checkbox id={id as string} checked={tipoLentesSeleccionados.includes(label as string)} onCheckedChange={(checked) => toggleTipo(!!checked, label as string)} />
+                  <Label htmlFor={id as string} className="font-normal">{label as string}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="tiempoUsoLentes">Tiempo de Uso de Lentes</Label>
+            <Input id="tiempoUsoLentes" value={tiempoUsoLentes} onChange={(e) => setTiempoUsoLentes(e.target.value)} placeholder="Tiempo que lleva usando lentes" className="h-full" />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+type CirugiasTraumaProps = {
+  cirugiasOculares: boolean;
+  setCirugiasOculares: (v: boolean) => void;
+  traumatismosOculares: boolean;
+  setTraumatismosOculares: (v: boolean) => void;
+  traumatismosDetalle: string;
+  setTraumatismosDetalle: (v: string) => void;
+};
+
+function CirugiasTraumatismosSection({ cirugiasOculares, setCirugiasOculares, traumatismosOculares, setTraumatismosOculares, traumatismosDetalle, setTraumatismosDetalle }: CirugiasTraumaProps) {
+  return (
+    <>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="cirugiasOculares">¿Ha tenido cirugías oculares?</Label>
+          <div className="flex items-center gap-2"><span className="text-sm font-medium">{cirugiasOculares ? "Sí" : "No"}</span><Switch id="cirugiasOculares" checked={cirugiasOculares} onCheckedChange={setCirugiasOculares} /></div>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="traumatismosOculares">¿Ha tenido traumatismos oculares?</Label>
+          <div className="flex items-center gap-2"><span className="text-sm font-medium">{traumatismosOculares ? "Sí" : "No"}</span><Switch id="traumatismosOculares" checked={traumatismosOculares} onCheckedChange={setTraumatismosOculares} /></div>
+        </div>
+      </div>
+      {traumatismosOculares && (
+        <div className="space-y-2">
+          <Label htmlFor="traumatismosDetalle">Detalles de Traumatismos Oculares</Label>
+          <Textarea id="traumatismosDetalle" value={traumatismosDetalle} onChange={(e) => setTraumatismosDetalle(e.target.value)} placeholder="Describa los traumatismos oculares" className="min-h-[80px]" />
+        </div>
+      )}
+    </>
+  );
+}
+
+type AntecedentesVisualesProps = {
+  antecedentesVisualesFamiliaresSeleccionados: string[];
+  setAntecedentesVisualesFamiliaresSeleccionados: (v: string[]) => void;
+  antecedentesVisualesFamiliaresOtros: string;
+  setAntecedentesVisualesFamiliaresOtros: (v: string) => void;
+  antecedentesVisualesFamiliaresError: string | null;
+  setAntecedentesVisualesFamiliaresError: (v: string | null) => void;
+};
+
+function AntecedentesVisualesSection({ antecedentesVisualesFamiliaresSeleccionados, setAntecedentesVisualesFamiliaresSeleccionados, antecedentesVisualesFamiliaresOtros, setAntecedentesVisualesFamiliaresOtros, antecedentesVisualesFamiliaresError, setAntecedentesVisualesFamiliaresError }: AntecedentesVisualesProps) {
+  const toggle = (checked: boolean, antecedente: string) => {
+    if (checked) {
+      if (antecedentesVisualesFamiliaresSeleccionados.includes("Ninguno")) {
+        setAntecedentesVisualesFamiliaresSeleccionados(antecedentesVisualesFamiliaresSeleccionados.filter(item => item !== "Ninguno").concat(antecedente));
+      } else {
+        setAntecedentesVisualesFamiliaresSeleccionados([...antecedentesVisualesFamiliaresSeleccionados, antecedente]);
+      }
+      setAntecedentesVisualesFamiliaresError(null);
+    } else {
+      setAntecedentesVisualesFamiliaresSeleccionados(antecedentesVisualesFamiliaresSeleccionados.filter((item) => item !== antecedente));
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="antecedentesVisualesFamiliares">Antecedentes Visuales Familiares</Label>
+      {antecedentesVisualesFamiliaresError && (
+        <p className="text-sm text-red-500">{antecedentesVisualesFamiliaresError}</p>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+        {["Miopía","Hipermetropía","Astigmatismo","Presbicia","Estrabismo","Ambliopía"].map((a) => (
+          <div key={a} className="flex items-center space-x-2">
+            <Checkbox id={`antecedente-${a}`} checked={antecedentesVisualesFamiliaresSeleccionados.includes(a)} onCheckedChange={(checked) => toggle(!!checked, a)} />
+            <Label htmlFor={`antecedente-${a}`} className="font-normal">{a}</Label>
+          </div>
+        ))}
+        <div className="flex items-center space-x-2">
+          <Checkbox id="antecedente-ninguno" checked={antecedentesVisualesFamiliaresSeleccionados.includes("Ninguno")} onCheckedChange={(checked) => { if (checked) { setAntecedentesVisualesFamiliaresSeleccionados(["Ninguno"]); setAntecedentesVisualesFamiliaresOtros(""); setAntecedentesVisualesFamiliaresError(null); } else { setAntecedentesVisualesFamiliaresSeleccionados([]); } }} />
+          <Label htmlFor="antecedente-ninguno" className="font-normal">Ninguno</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Checkbox id="antecedente-otros" checked={antecedentesVisualesFamiliaresSeleccionados.includes("Otros")} onCheckedChange={(checked) => { if (checked) { if (antecedentesVisualesFamiliaresSeleccionados.includes("Ninguno")) { setAntecedentesVisualesFamiliaresSeleccionados(["Otros"]); } else { setAntecedentesVisualesFamiliaresSeleccionados([...antecedentesVisualesFamiliaresSeleccionados, "Otros"]); } setAntecedentesVisualesFamiliaresError(null); } else { setAntecedentesVisualesFamiliaresSeleccionados(antecedentesVisualesFamiliaresSeleccionados.filter((item) => item !== "Otros")); setAntecedentesVisualesFamiliaresOtros(""); } }} />
+          <Label htmlFor="antecedente-otros" className="font-normal">Otros</Label>
+        </div>
+      </div>
+      {antecedentesVisualesFamiliaresSeleccionados.includes("Otros") && (
+        <div className="pt-2">
+          <Input placeholder="Especifique otros antecedentes visuales familiares" value={antecedentesVisualesFamiliaresOtros} onChange={(e) => { setAntecedentesVisualesFamiliaresOtros(e.target.value); if (!e.target.value.trim()) { setAntecedentesVisualesFamiliaresError("Debe especificar los otros antecedentes"); } else { setAntecedentesVisualesFamiliaresError(null); } }} className="w-full" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+type AntecedentesSaludProps = {
+  antecedentesFamiliaresSaludSeleccionados: string[];
+  setAntecedentesFamiliaresSaludSeleccionados: (v: string[]) => void;
+};
+
+function AntecedentesSaludSection({ antecedentesFamiliaresSaludSeleccionados, setAntecedentesFamiliaresSaludSeleccionados }: AntecedentesSaludProps) {
+  const toggle = (checked: boolean, antecedente: string) => {
+    if (checked) {
+      if (antecedentesFamiliaresSaludSeleccionados.includes("Ninguno")) {
+        setAntecedentesFamiliaresSaludSeleccionados(antecedentesFamiliaresSaludSeleccionados.filter(item => item !== "Ninguno").concat(antecedente));
+      } else {
+        setAntecedentesFamiliaresSaludSeleccionados([...antecedentesFamiliaresSaludSeleccionados, antecedente]);
+      }
+    } else {
+      setAntecedentesFamiliaresSaludSeleccionados(antecedentesFamiliaresSaludSeleccionados.filter((item) => item !== antecedente));
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <Label>Antecedentes Familiares de Salud</Label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
+        {["Diabetes","Hipertensión","Enfermedades tiroideas","Glaucoma","Catarata"].map((a) => (
+          <div key={a} className="flex items-center space-x-2">
+            <Checkbox id={`antecedenteSalud-${a}`} checked={antecedentesFamiliaresSaludSeleccionados.includes(a)} onCheckedChange={(checked) => toggle(!!checked, a)} />
+            <Label htmlFor={`antecedenteSalud-${a}`} className="font-normal">{a}</Label>
+          </div>
+        ))}
+        <div className="flex items-center space-x-2">
+          <Checkbox id="antecedenteSalud-ninguno" checked={antecedentesFamiliaresSaludSeleccionados.includes("Ninguno")} onCheckedChange={(checked) => { if (checked) { setAntecedentesFamiliaresSaludSeleccionados(["Ninguno"]); } else { setAntecedentesFamiliaresSaludSeleccionados([]); } }} />
+          <Label htmlFor="antecedenteSalud-ninguno" className="font-normal">Ninguno</Label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type HabitosProps = {
+  habitosVisualesSeleccionados: string[];
+  setHabitosVisualesSeleccionados: (v: string[]) => void;
+};
+
+function HabitosVisualesSection({ habitosVisualesSeleccionados, setHabitosVisualesSeleccionados }: HabitosProps) {
+  const toggle = (checked: boolean, habito: string) => {
+    if (checked) setHabitosVisualesSeleccionados([...habitosVisualesSeleccionados, habito]);
+    else setHabitosVisualesSeleccionados(habitosVisualesSeleccionados.filter((item) => item !== habito));
+  };
+  return (
+    <div className="space-y-2">
+      <Label>Hábitos Visuales</Label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
+        {["Usa computadora o celular más de 6 h al día","Lee con poca luz","Trabaja al aire libre","Expone sus ojos al sol sin protección","Usa lentes de protección en el trabajo"].map((h) => (
+          <div key={h} className="flex items-center space-x-2">
+            <Checkbox id={`habito-${h}`} checked={habitosVisualesSeleccionados.includes(h)} onCheckedChange={(checked) => toggle(!!checked, h)} />
+            <Label htmlFor={`habito-${h}`} className="font-normal">{h}</Label>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type SaludGeneralProps = {
+  saludGeneralSeleccionados: string[];
+  setSaludGeneralSeleccionados: (v: string[]) => void;
+};
+
+function SaludGeneralSection({ saludGeneralSeleccionados, setSaludGeneralSeleccionados }: SaludGeneralProps) {
+  const toggle = (checked: boolean, condicion: string) => {
+    if (checked) {
+      if (saludGeneralSeleccionados.includes("Ninguno")) {
+        setSaludGeneralSeleccionados(saludGeneralSeleccionados.filter(item => item !== "Ninguno").concat(condicion));
+      } else {
+        setSaludGeneralSeleccionados([...saludGeneralSeleccionados, condicion]);
+      }
+    } else {
+      setSaludGeneralSeleccionados(saludGeneralSeleccionados.filter((item) => item !== condicion));
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <Label>Salud General</Label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
+        {["Diabetes","Hipertensión","Enfermedades tiroideas","Glaucoma","Catarata"].map((c) => (
+          <div key={c} className="flex items-center space-x-2">
+            <Checkbox id={`saludGeneral-${c}`} checked={saludGeneralSeleccionados.includes(c)} onCheckedChange={(checked) => toggle(!!checked, c)} />
+            <Label htmlFor={`saludGeneral-${c}`} className="font-normal">{c}</Label>
+          </div>
+        ))}
+        <div className="flex items-center space-x-2">
+          <Checkbox id="saludGeneral-ninguno" checked={saludGeneralSeleccionados.includes("Ninguno")} onCheckedChange={(checked) => { if (checked) { setSaludGeneralSeleccionados(["Ninguno"]); } else { setSaludGeneralSeleccionados([]); } }} />
+          <Label htmlFor="saludGeneral-ninguno" className="font-normal">Ninguno</Label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type MedicamentosFechaProps = {
+  medicamentosActuales: string;
+  setMedicamentosActuales: (v: string) => void;
+  fechaCita: Date | undefined;
+  fechaCitaOpen: boolean;
+  setFechaCitaOpen: (v: boolean) => void;
+  setFechaCita: (d: Date | undefined) => void;
+  citasInfo: CitaInfo[];
+  cargandoCitas: boolean;
+  establecerFechaHoy: () => void;
+};
+
+function MedicamentosFechaSection({ medicamentosActuales, setMedicamentosActuales, fechaCita, fechaCitaOpen, setFechaCitaOpen, setFechaCita, citasInfo, cargandoCitas, establecerFechaHoy }: MedicamentosFechaProps) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="medicamentosActuales">Medicamentos Actuales</Label>
+        <Input id="medicamentosActuales" value={medicamentosActuales} onChange={(e) => setMedicamentosActuales(e.target.value)} placeholder="Describa los medicamentos que toma actualmente" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="fechaCita">Fecha de Cita</Label>
+        <div className="flex space-x-2">
+          <Popover open={fechaCitaOpen} onOpenChange={setFechaCitaOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={`w-full justify-start text-left font-normal ${!fechaCita ? "text-muted-foreground" : ""}`}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {fechaCita ? format(fechaCita, "PPP", { locale: es }) : <span>Seleccione una fecha</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <div className="p-2 flex items-center justify-between border-b">
+                <div className="flex items-center text-sm"><Users className="h-4 w-4 mr-1" /><span>Pacientes por día</span></div>
+                {cargandoCitas && (<div className="text-xs text-muted-foreground">Cargando...</div>)}
+              </div>
+              <Calendar mode="single" selected={fechaCita} onSelect={(date) => { setFechaCita(date); if (date) setFechaCitaOpen(false); }} initialFocus modifiers={{ booked: (date) => citasInfo.some(cita => isSameDay(date, cita.fecha)) }} modifiersClassNames={{ booked: "relative" }} components={{
+                Day: (props: any) => {
+                  const date = props.day?.date;
+                  const citaDelDia = citasInfo.find(cita => date && isSameDay(date, cita.fecha));
+                  return (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <td className="relative">
+                            <div {...props} className={props.className} role="button" tabIndex={0}>{props.children}</div>
+                            {citaDelDia && (
+                              <Badge variant="outline" className="absolute -bottom-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-[10px] bg-blue-100">{citaDelDia.cantidadPacientes}</Badge>
+                            )}
+                          </td>
+                        </TooltipTrigger>
+                        {citaDelDia && (<TooltipContent><p className="text-xs">{citaDelDia.cantidadPacientes} paciente(s) agendado(s)</p></TooltipContent>)}
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                }
+              }} />
+            </PopoverContent>
+          </Popover>
+          <Button type="button" onClick={establecerFechaHoy} className="flex items-center">Hoy</Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function CrearPacientePage() {
@@ -254,6 +738,8 @@ export default function CrearPacientePage() {
 
   // Prefill automático desde el chat (localStorage)
   useEffect(() => {
+    const qs = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    if (!qs || qs.get("prefill") !== "1") return;
     try {
       const raw = typeof window !== "undefined" ? localStorage.getItem("optisave.prefillPaciente") : null;
       if (!raw) return;
@@ -308,6 +794,8 @@ export default function CrearPacientePage() {
 
   // Cargar borrador local del formulario (modo offline)
   useEffect(() => {
+    const qs = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    if (!qs || qs.get("draft") !== "1") return;
     try {
       const raw = typeof window !== "undefined" ? localStorage.getItem("optisave.crearpaciente.draft") : null;
       if (!raw) return;
@@ -686,20 +1174,8 @@ export default function CrearPacientePage() {
         setError("No se pudo crear el paciente");
         return;
       }
-      // Se ha eliminado la creación automática de registros en las tablas rx y diagnóstico
-      // Solo se mantiene la creación del paciente
-
-      
-
-      // setSuccess(true);
-
-      // Verificar si la fecha de cita es hoy para determinar la redirección
-      // Usamos la constante FECHA_HOY para comparar
-
       // Normalizar la fecha de cita usando startOfDay para garantizar consistencia
       const fechaCitaObj = startOfDay(fechaCita ? new Date(fechaCita) : new Date());
-
-
       // Mostrar mensaje de éxito
       setSuccess(true);
 
@@ -745,44 +1221,25 @@ export default function CrearPacientePage() {
       setSexo("Masculino");
       setDomicilio("Calle de Prueba 123");
       setOcupacion("Desarrollador");
-      
-      // Fechas
       const hoy = startOfDay(new Date());
       const fechaNac = new Date();
       fechaNac.setFullYear(fechaNac.getFullYear() - 35); // 35 años atrás
       setFechaNacimiento(fechaNac);
       setFechaCita(hoy);
-      
-      // Último examen visual (hace 1 año aproximado)
       setUltimoExamenVisual("1");
-      
-      // Motivo de consulta
       setMotivoConsulta("Revisión rutinaria");
-      
-      // Síntomas visuales
       setSintomasVisualesSeleccionados(["Visión borrosa", "Fatiga visual"]);
-      
-      // Uso de lentes
       setUsaLentes(true);
       setTipoLentesSeleccionados(["Monofocales"]);
       setTiempoUsoLentes("5 años");
-      
-      // Cirugías y traumatismos
       setCirugiasOculares(false);
       setTraumatismosOculares(false);
-      
-      // Antecedentes
       setAntecedentesVisualesFamiliaresSeleccionados(["Miopía"]);
       setAntecedentesFamiliaresSaludSeleccionados(["Hipertensión"]);
-      
-      // Hábitos visuales y salud
       setHabitosVisualesSeleccionados(["Uso de computadora"]);
       setSaludGeneralSeleccionados(["Buena salud general"]);
-      
-      // Medicamentos
       setMedicamentosActuales("Ninguno");
     };
-  
 
   return (
     <>
@@ -791,7 +1248,7 @@ export default function CrearPacientePage() {
          description={<><Trans i18nKey={'common:homeTabDescription'} /> <AppBreadcrumbs /></>}
       />
       <PageBody>
-        <div className="container mx-auto px-4 sm:px-6 py-6">
+        <div className="container mx-auto px-4 sm:px-6 py-6 pr-[120px]">
       <OfflineIndicators />
       <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Crear Nuevo Paciente</h1>
 
@@ -810,9 +1267,9 @@ export default function CrearPacientePage() {
             : "La cita no es para hoy. Redirigiendo a la página principal..."}</span>
         </div>
           )}
-          <Button onClick={rellenarFormularioTest}>
+          {/** <Button onClick={rellenarFormularioTest}>
             Rellenar Formulario de Prueba
-          </Button>
+          </Button> **/}
 
       <Card className="shadow-md">
         <CardHeader className="px-4 sm:px-6 py-4 sm:py-5">
@@ -820,873 +1277,140 @@ export default function CrearPacientePage() {
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
               <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6" autoComplete="off">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Nombre - Campo requerido */}
-              <div className="space-y-2">
-                <Label htmlFor="nombre">
-                  Nombre <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="nombre"
-                  ref={nombreRef}
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  onBlur={() => handleBlur('nombre')}
-                  placeholder="Ingrese el nombre"
-                  required
-                      autoComplete="off"
-                  className={touched['nombre'] && nombre.trim() === "" ? "border-red-300" : ""}
+                <DatosPersonalesSection
+                  nombre={nombre}
+                  setNombre={setNombre}
+                  touched={touched}
+                  handleBlur={handleBlur}
+                  fechaNacimientoOpen={fechaNacimientoOpen}
+                  setFechaNacimientoOpen={setFechaNacimientoOpen}
+                  fechaNacimiento={fechaNacimiento}
+                  setFechaNacimiento={setFechaNacimiento}
+                  edad={edad}
+                  setEdad={setEdad}
+                  telefono={telefono}
+                  handleTelefonoChange={handleTelefonoChange}
+                  telefonoError={telefonoError}
+                  sexo={sexo}
+                  setSexo={setSexo}
+                  nombreRef={nombreRef}
+                  telefonoRef={telefonoRef}
                 />
-                {touched['nombre'] && nombre.trim() === "" && (
-                  <p className="text-red-500 text-xs">Este campo es requerido</p>
-                )}
-              </div>
 
-
-
-              {/* Fecha de Nacimiento */}
-              <div className="space-y-2">
-                <Label htmlFor="fechaNacimiento">Fecha de Nacimiento</Label>
-                <Popover open={fechaNacimientoOpen} onOpenChange={setFechaNacimientoOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      id="fechaNacimiento"
-                      className="w-full justify-between font-normal"
-                    >
-                      {fechaNacimiento ? format(fechaNacimiento, "PPP", { locale: es }) : "Seleccionar fecha"}
-                      <CalendarIcon className="h-4 w-4 ml-2" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto overflow-hidden p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={fechaNacimiento}
-                      captionLayout="dropdown"
-                      onSelect={(date) => {
-                        setFechaNacimiento(date);
-                        // Calcular edad automáticamente si se selecciona fecha
-                        if (date) {
-                          const hoy = new Date();
-                          let edadCalculada = hoy.getFullYear() - date.getFullYear();
-                          const m = hoy.getMonth() - date.getMonth();
-                          if (m < 0 || (m === 0 && hoy.getDate() < date.getDate())) {
-                            edadCalculada--;
-                          }
-                          setEdad(edadCalculada.toString());
-                        }
-                        setFechaNacimientoOpen(false);
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {/* Edad */}
-              <div className="space-y-2">
-                <Label htmlFor="edad">Edad</Label>
-                <Input
-                  id="edad"
-                  type="number"
-                  value={edad}
-                  onChange={(e) => setEdad(e.target.value)}
-                  placeholder="Ingrese la edad"
-                      autoComplete="off"
+                <DomicilioSection
+                  domicilioCompleto={domicilioCompleto}
+                  setDomicilioCompleto={setDomicilioCompleto}
+                  domicilio={domicilio}
+                  setDomicilio={setDomicilio}
+                  domicilioFields={domicilioFields}
+                  handleDomicilioFieldChange={handleDomicilioFieldChange}
                 />
-              </div>
 
-              {/* Teléfono */}
-              <div className="space-y-2">
-                <Label htmlFor="telefono">Teléfono</Label>
-                <Input
-                  id="telefono"
-                  ref={telefonoRef}
-                  value={telefono}
-                  onChange={handleTelefonoChange}
-                  onBlur={() => handleBlur('telefono')}
-                  placeholder="Ingrese el teléfono (10 dígitos)"
-                  maxLength={10}
-                      autoComplete="off"
-                  className={telefonoError ? "border-red-300" : ""}
+                <MotivoConsultaSection
+                  motivoConsulta={motivoConsulta}
+                  setMotivoConsulta={setMotivoConsulta}
+                  motivoConsultaOtro={motivoConsultaOtro}
+                  setMotivoConsultaOtro={setMotivoConsultaOtro}
                 />
-                {telefonoError && (
-                  <p className="text-red-500 text-xs">{telefonoError}</p>
-                )}
-              </div>
-            </div>
 
-            {/* Sexo - Radio buttons */}
-            <div className="space-y-2">
-              <Label>Sexo</Label>
-              <RadioGroup value={sexo} onValueChange={setSexo} className="flex space-x-4">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="femenino" id="femenino" />
-                  <Label htmlFor="femenino">Femenino</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="masculino" id="masculino" />
-                  <Label htmlFor="masculino">Masculino</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            {/* Domicilio con switch */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="domicilio-switch">Domicilio</Label>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="domicilio-switch" className="text-sm">Simple</Label>
-                      <Switch
-                        id="domicilio-switch"
-                        checked={domicilioCompleto}
-                        onCheckedChange={setDomicilioCompleto}
-                  />
-                  <Label htmlFor="domicilio-switch" className="text-sm">Completo</Label>
-                </div>
-              </div>
-
-              {!domicilioCompleto ? (
-                // Domicilio simple
-                <Input
-                  id="domicilio"
-                  value={domicilio}
-                  onChange={(e) => setDomicilio(e.target.value)}
-                  placeholder="Ingrese el domicilio"
-                      autoComplete="off"
+                <OcupacionExamenSection
+                  ocupacion={ocupacion}
+                  setOcupacion={setOcupacion}
+                  ultimoExamenVisual={ultimoExamenVisual}
+                  setUltimoExamenVisual={setUltimoExamenVisual}
                 />
-              ) : (
-                // Domicilio completo
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="calle">Calle</Label>
-                    <Input
-                      id="calle"
-                      value={domicilioFields.calle}
-                      onChange={(e) => handleDomicilioFieldChange('calle', e.target.value)}
-                      placeholder="Ingrese la calle"
-                            autoComplete="off"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="numero">Número</Label>
-                    <Input
-                      id="numero"
-                      value={domicilioFields.numero}
-                      onChange={(e) => handleDomicilioFieldChange('numero', e.target.value)}
-                      placeholder="Número exterior"
-                            autoComplete="off"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="interior">Interior (opcional)</Label>
-                    <Input
-                      id="interior"
-                      value={domicilioFields.interior}
-                      onChange={(e) => handleDomicilioFieldChange('interior', e.target.value)}
-                      placeholder="Número interior"
-                            autoComplete="off"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="colonia">Colonia</Label>
-                    <Input
-                      id="colonia"
-                      value={domicilioFields.colonia}
-                      onChange={(e) => handleDomicilioFieldChange('colonia', e.target.value)}
-                      placeholder="Ingrese la colonia"
-                            autoComplete="off"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
 
-            {/* Motivo de consulta */}
-            <div className="space-y-2">
-                  <Label>Motivo de Consulta</Label>
-                  <RadioGroup
-                    value={motivoConsulta}
-                    onValueChange={setMotivoConsulta}
-                    className="space-y-2 flex flex-col"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Revisión de rutina" id="revision-rutina" />
-                      <Label htmlFor="revision-rutina" className="font-normal">Revisión de rutina</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Visión borrosa" id="vision-borrosa" />
-                      <Label htmlFor="vision-borrosa" className="font-normal">Visión borrosa</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Dolor o molestia ocular" id="dolor-ocular" />
-                      <Label htmlFor="dolor-ocular" className="font-normal">Dolor o molestia ocular</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Revisión de lentes" id="revision-lentes" />
-                      <Label htmlFor="revision-lentes" className="font-normal">Revisión de lentes</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Otro" id="otro-motivo" />
-                      <Label htmlFor="otro-motivo" className="font-normal">Otro</Label>
-                    </div>
-                    {motivoConsulta === "Otro" && (
-                      <div className="pl-6 pt-2">
-                        <Input
-                          placeholder="Especifique el motivo"
-                          value={motivoConsulta === "Otro" ? motivoConsultaOtro : ""}
-                          onChange={(e) => setMotivoConsultaOtro(e.target.value)}
-                          className="w-full"
-                          autoComplete="off"
-                        />
-                      </div>
-                    )}
-                  </RadioGroup>
-                </div>
+                <SintomasVisualesSection
+                  sintomasVisualesSeleccionados={sintomasVisualesSeleccionados}
+                  setSintomasVisualesSeleccionados={setSintomasVisualesSeleccionados}
+                  sintomasVisualesOtro={sintomasVisualesOtro}
+                  setSintomasVisualesOtro={setSintomasVisualesOtro}
+                />
 
-                {/* Ocupación y Último examen visual en 2 columnas */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Ocupación */}
-                  <div className="space-y-2">
-                    <Label htmlFor="ocupacion">Ocupación</Label>
-                    <Input
-                      id="ocupacion"
-                      value={ocupacion}
-                      onChange={(e) => setOcupacion(e.target.value)}
-                      placeholder="Ingrese la ocupación"
-                      autoComplete="off"
-                    />
-                  </div>
+                <LentesSection
+                  usaLentes={usaLentes}
+                  setUsaLentes={setUsaLentes}
+                  tipoLentesSeleccionados={tipoLentesSeleccionados}
+                  setTipoLentesSeleccionados={setTipoLentesSeleccionados}
+                  tiempoUsoLentes={tiempoUsoLentes}
+                  setTiempoUsoLentes={setTiempoUsoLentes}
+                />
 
-                  {/* Último Examen Visual (años aproximados) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="ultimoExamenVisual">Último Examen Visual</Label>
-                    <Input
-                      id="ultimoExamenVisual"
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={ultimoExamenVisual}
-                      onChange={(e) => {
-                        const v = e.target.value.replace(/\D/g, "");
-                        setUltimoExamenVisual(v);
-                      }}
-                      placeholder="¿Cuántos años aproximadamente?"
-                      autoComplete="off"
-                    />
-                    <div className="text-xs text-muted-foreground">
-                      {ultimoExamenVisual
-                        ? `${parseInt(ultimoExamenVisual, 10)} ${parseInt(ultimoExamenVisual, 10) === 1 ? 'año' : 'años'}`
-                        : 'Indique un número entero, por ejemplo: 1, 2, 3'}
-                    </div>
-                  </div>
-                </div>
+                <CirugiasTraumatismosSection
+                  cirugiasOculares={cirugiasOculares}
+                  setCirugiasOculares={setCirugiasOculares}
+                  traumatismosOculares={traumatismosOculares}
+                  setTraumatismosOculares={setTraumatismosOculares}
+                  traumatismosDetalle={traumatismosDetalle}
+                  setTraumatismosDetalle={setTraumatismosDetalle}
+                />
 
-                {/* Síntomas Visuales */}
-                <div className="space-y-2">
-                  <Label htmlFor="sintomasVisuales">Síntomas Visuales</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                    {[
-                      "Visión borrosa de lejos",
-                      "Visión borrosa de cerca",
-                      "Dolor de cabeza",
-                      "Ardor o picazón ocular",
-                      "Lagrimeo",
-                      "Enrojecimiento ocular",
-                      "Sensibilidad a la luz solar",
-                      "Sensibilidad a la luz artificial",
-                      "Ve doble (diplopía)",
-                      "Moscas volantes o destellos",
-                      "Pérdida momentánea de visión"
-                    ].map((sintoma) => (
-                      <div key={sintoma} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`sintoma-${sintoma}`}
-                          checked={sintomasVisualesSeleccionados.includes(sintoma)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSintomasVisualesSeleccionados([...sintomasVisualesSeleccionados, sintoma]);
-                            } else {
-                              setSintomasVisualesSeleccionados(
-                                sintomasVisualesSeleccionados.filter((item) => item !== sintoma)
-                              );
-                            }
-                          }}
-                        />
-                        <Label htmlFor={`sintoma-${sintoma}`} className="font-normal">{sintoma}</Label>
-                      </div>
-                    ))}
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="sintoma-otro"
-                        checked={sintomasVisualesSeleccionados.includes("Otro")}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSintomasVisualesSeleccionados([...sintomasVisualesSeleccionados, "Otro"]);
-                          } else {
-                            setSintomasVisualesSeleccionados(
-                              sintomasVisualesSeleccionados.filter((item) => item !== "Otro")
-                            );
-                            setSintomasVisualesOtro("");
-                          }
-                        }}
-                      />
-                      <Label htmlFor="sintoma-otro" className="font-normal">Otro</Label>
-                    </div>
-                  </div>
-                  {sintomasVisualesSeleccionados.includes("Otro") && (
-                    <div className="pt-2">
-                      <Input
-                        placeholder="Especifique otros síntomas visuales"
-                        value={sintomasVisualesOtro}
-                        onChange={(e) => setSintomasVisualesOtro(e.target.value)}
-                        className="w-full"
-                      />
-                    </div>
+                <AntecedentesVisualesSection
+                  antecedentesVisualesFamiliaresSeleccionados={antecedentesVisualesFamiliaresSeleccionados}
+                  setAntecedentesVisualesFamiliaresSeleccionados={setAntecedentesVisualesFamiliaresSeleccionados}
+                  antecedentesVisualesFamiliaresOtros={antecedentesVisualesFamiliaresOtros}
+                  setAntecedentesVisualesFamiliaresOtros={setAntecedentesVisualesFamiliaresOtros}
+                  antecedentesVisualesFamiliaresError={antecedentesVisualesFamiliaresError}
+                  setAntecedentesVisualesFamiliaresError={setAntecedentesVisualesFamiliaresError}
+                />
+
+                <AntecedentesSaludSection
+                  antecedentesFamiliaresSaludSeleccionados={antecedentesFamiliaresSaludSeleccionados}
+                  setAntecedentesFamiliaresSaludSeleccionados={setAntecedentesFamiliaresSaludSeleccionados}
+                />
+
+                <HabitosVisualesSection
+                  habitosVisualesSeleccionados={habitosVisualesSeleccionados}
+                  setHabitosVisualesSeleccionados={setHabitosVisualesSeleccionados}
+                />
+
+                <SaludGeneralSection
+                  saludGeneralSeleccionados={saludGeneralSeleccionados}
+                  setSaludGeneralSeleccionados={setSaludGeneralSeleccionados}
+                />
+
+                <MedicamentosFechaSection
+                  medicamentosActuales={medicamentosActuales}
+                  setMedicamentosActuales={setMedicamentosActuales}
+                  fechaCita={fechaCita}
+                  fechaCitaOpen={fechaCitaOpen}
+                  setFechaCitaOpen={setFechaCitaOpen}
+                  setFechaCita={setFechaCita}
+                  citasInfo={citasInfo}
+                  cargandoCitas={cargandoCitas}
+                  establecerFechaHoy={establecerFechaHoy}
+                />
+
+            <div className="fixed bottom-0 left-0 right-0 md:left-[var(--sidebar-width)] md:right-auto md:w-[calc(100vw-var(--sidebar-width))] bg-white shadow-lg px-4 py-4 pr-[25px] z-[900]">
+              <div className="max-w-7xl mx-auto flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={limpiarFormulario}
+                  disabled={isSubmitting}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Limpiar datos
+                </Button>
+
+                <Button
+                  type="submit"
+                  disabled={!isFormValid || isSubmitting}
+                  className="bg-primary text-white"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Guardar paciente
+                    </>
                   )}
-                </div>
-
-
-
-                {/* Uso de Lentes */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="usaLentes">¿Usa Lentes?</Label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{usaLentes ? "Sí" : "No"}</span>
-                      <Switch
-                        id="usaLentes"
-                        checked={usaLentes}
-                        onCheckedChange={setUsaLentes}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {usaLentes && (
-                  <>
-                    {/* Contenedor de dos columnas para Tipo de Lentes y Tiempo de Uso */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Tipo de Lentes - Primera columna */}
-                      <div className="space-y-2">
-                        <Label>Tipo de Lentes</Label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id="lentes-monofocales"
-                              checked={tipoLentesSeleccionados.includes("Monofocales")}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setTipoLentesSeleccionados([...tipoLentesSeleccionados, "Monofocales"]);
-                                } else {
-                                  setTipoLentesSeleccionados(tipoLentesSeleccionados.filter(tipo => tipo !== "Monofocales"));
-                                }
-                              }}
-                            />
-                            <Label htmlFor="lentes-monofocales" className="font-normal">Monofocales</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id="lentes-bifocales"
-                              checked={tipoLentesSeleccionados.includes("Bifocales")}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setTipoLentesSeleccionados([...tipoLentesSeleccionados, "Bifocales"]);
-                                } else {
-                                  setTipoLentesSeleccionados(tipoLentesSeleccionados.filter(tipo => tipo !== "Bifocales"));
-                                }
-                              }}
-                            />
-                            <Label htmlFor="lentes-bifocales" className="font-normal">Bifocales</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id="lentes-progresivos"
-                              checked={tipoLentesSeleccionados.includes("Progresivos")}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setTipoLentesSeleccionados([...tipoLentesSeleccionados, "Progresivos"]);
-                                } else {
-                                  setTipoLentesSeleccionados(tipoLentesSeleccionados.filter(tipo => tipo !== "Progresivos"));
-                                }
-                              }}
-                            />
-                            <Label htmlFor="lentes-progresivos" className="font-normal">Progresivos</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id="lentes-contacto"
-                              checked={tipoLentesSeleccionados.includes("De contacto")}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setTipoLentesSeleccionados([...tipoLentesSeleccionados, "De contacto"]);
-                                } else {
-                                  setTipoLentesSeleccionados(tipoLentesSeleccionados.filter(tipo => tipo !== "De contacto"));
-                                }
-                              }}
-                            />
-                            <Label htmlFor="lentes-contacto" className="font-normal">De contacto</Label>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tiempo de Uso de Lentes - Segunda columna */}
-                      <div className="space-y-2">
-                        <Label htmlFor="tiempoUsoLentes">Tiempo de Uso de Lentes</Label>
-                        <Input
-                          id="tiempoUsoLentes"
-                          value={tiempoUsoLentes}
-                          onChange={(e) => setTiempoUsoLentes(e.target.value)}
-                          placeholder="Tiempo que lleva usando lentes"
-                          className="h-full"
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Cirugías Oculares */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="cirugiasOculares">¿Ha tenido cirugías oculares?</Label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{cirugiasOculares ? "Sí" : "No"}</span>
-                      <Switch
-                        id="cirugiasOculares"
-                        checked={cirugiasOculares}
-                        onCheckedChange={setCirugiasOculares}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Traumatismos Oculares */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="traumatismosOculares">¿Ha tenido traumatismos oculares?</Label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{traumatismosOculares ? "Sí" : "No"}</span>
-                      <Switch
-                        id="traumatismosOculares"
-                        checked={traumatismosOculares}
-                        onCheckedChange={setTraumatismosOculares}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {traumatismosOculares && (
-                  <div className="space-y-2">
-                    <Label htmlFor="traumatismosDetalle">Detalles de Traumatismos Oculares</Label>
-                    <Textarea
-                      id="traumatismosDetalle"
-                      value={traumatismosDetalle}
-                      onChange={(e) => setTraumatismosDetalle(e.target.value)}
-                      placeholder="Describa los traumatismos oculares"
-                      className="min-h-[80px]"
-                    />
-                  </div>
-                )}
-
-                {/* Antecedentes Visuales Familiares */}
-                <div className="space-y-2">
-                  <Label htmlFor="antecedentesVisualesFamiliares">Antecedentes Visuales Familiares</Label>
-                  {antecedentesVisualesFamiliaresError && (
-                    <p className="text-sm text-red-500">{antecedentesVisualesFamiliaresError}</p>
-                  )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                    {[
-                      "Miopía",
-                      "Hipermetropía",
-                      "Astigmatismo",
-                      "Presbicia",
-                      "Estrabismo",
-                      "Ambliopía"
-                    ].map((antecedente) => (
-                      <div key={antecedente} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`antecedente-${antecedente}`}
-                          checked={antecedentesVisualesFamiliaresSeleccionados.includes(antecedente)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              // Si seleccionamos una opción y "Ninguno" estaba seleccionado, quitamos "Ninguno"
-                              if (antecedentesVisualesFamiliaresSeleccionados.includes("Ninguno")) {
-                                setAntecedentesVisualesFamiliaresSeleccionados(
-                                  antecedentesVisualesFamiliaresSeleccionados
-                                    .filter(item => item !== "Ninguno")
-                                    .concat(antecedente)
-                                );
-                              } else {
-                                setAntecedentesVisualesFamiliaresSeleccionados([
-                                  ...antecedentesVisualesFamiliaresSeleccionados,
-                                  antecedente
-                                ]);
-                              }
-                              setAntecedentesVisualesFamiliaresError(null);
-                            } else {
-                              setAntecedentesVisualesFamiliaresSeleccionados(
-                                antecedentesVisualesFamiliaresSeleccionados.filter((item) => item !== antecedente)
-                              );
-                            }
-                          }}
-                        />
-                        <Label htmlFor={`antecedente-${antecedente}`} className="font-normal">{antecedente}</Label>
-                      </div>
-                    ))}
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="antecedente-ninguno"
-                        checked={antecedentesVisualesFamiliaresSeleccionados.includes("Ninguno")}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            // Si seleccionamos "Ninguno", deseleccionamos todas las demás opciones
-                            setAntecedentesVisualesFamiliaresSeleccionados(["Ninguno"]);
-                            setAntecedentesVisualesFamiliaresOtros("");
-                            setAntecedentesVisualesFamiliaresError(null);
-                          } else {
-                            setAntecedentesVisualesFamiliaresSeleccionados([]);
-                          }
-                        }}
-                      />
-                      <Label htmlFor="antecedente-ninguno" className="font-normal">Ninguno</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="antecedente-otros"
-                        checked={antecedentesVisualesFamiliaresSeleccionados.includes("Otros")}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            // Si seleccionamos "Otros" y "Ninguno" estaba seleccionado, quitamos "Ninguno"
-                            if (antecedentesVisualesFamiliaresSeleccionados.includes("Ninguno")) {
-                              setAntecedentesVisualesFamiliaresSeleccionados(["Otros"]);
-                            } else {
-                              setAntecedentesVisualesFamiliaresSeleccionados([
-                                ...antecedentesVisualesFamiliaresSeleccionados,
-                                "Otros"
-                              ]);
-                            }
-                            setAntecedentesVisualesFamiliaresError(null);
-                          } else {
-                            setAntecedentesVisualesFamiliaresSeleccionados(
-                              antecedentesVisualesFamiliaresSeleccionados.filter((item) => item !== "Otros")
-                            );
-                            setAntecedentesVisualesFamiliaresOtros("");
-                          }
-                        }}
-                      />
-                      <Label htmlFor="antecedente-otros" className="font-normal">Otros</Label>
-                    </div>
-                  </div>
-                  {antecedentesVisualesFamiliaresSeleccionados.includes("Otros") && (
-                    <div className="pt-2">
-                      <Input
-                        placeholder="Especifique otros antecedentes visuales familiares"
-                        value={antecedentesVisualesFamiliaresOtros}
-                        onChange={(e) => {
-                          setAntecedentesVisualesFamiliaresOtros(e.target.value);
-                          if (!e.target.value.trim()) {
-                            setAntecedentesVisualesFamiliaresError("Debe especificar los otros antecedentes");
-                          } else {
-                            setAntecedentesVisualesFamiliaresError(null);
-                          }
-                        }}
-                        className="w-full"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Antecedentes Familiares de Salud */}
-                <div className="space-y-2">
-                  <Label>Antecedentes Familiares de Salud</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
-                    {[
-                      "Diabetes",
-                      "Hipertensión",
-                      "Enfermedades tiroideas",
-                      "Glaucoma",
-                      "Catarata"
-                    ].map((antecedente) => (
-                      <div key={antecedente} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`antecedenteSalud-${antecedente}`}
-                          checked={antecedentesFamiliaresSaludSeleccionados.includes(antecedente)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              // Si seleccionamos una opción y "Ninguno" estaba seleccionado, quitamos "Ninguno"
-                              if (antecedentesFamiliaresSaludSeleccionados.includes("Ninguno")) {
-                                setAntecedentesFamiliaresSaludSeleccionados(
-                                  antecedentesFamiliaresSaludSeleccionados
-                                    .filter(item => item !== "Ninguno")
-                                    .concat(antecedente)
-                                );
-                              } else {
-                                setAntecedentesFamiliaresSaludSeleccionados([
-                                  ...antecedentesFamiliaresSaludSeleccionados,
-                                  antecedente
-                                ]);
-                              }
-                            } else {
-                              setAntecedentesFamiliaresSaludSeleccionados(
-                                antecedentesFamiliaresSaludSeleccionados.filter((item) => item !== antecedente)
-                              );
-                            }
-                          }}
-                        />
-                        <Label htmlFor={`antecedenteSalud-${antecedente}`} className="font-normal">{antecedente}</Label>
-                      </div>
-                    ))}
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="antecedenteSalud-ninguno"
-                        checked={antecedentesFamiliaresSaludSeleccionados.includes("Ninguno")}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            // Si seleccionamos "Ninguno", deseleccionamos todas las demás opciones
-                            setAntecedentesFamiliaresSaludSeleccionados(["Ninguno"]);
-                          } else {
-                            setAntecedentesFamiliaresSaludSeleccionados([]);
-                          }
-                        }}
-                      />
-                      <Label htmlFor="antecedenteSalud-ninguno" className="font-normal">Ninguno</Label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hábitos Visuales */}
-                <div className="space-y-2">
-                  <Label>Hábitos Visuales</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
-                    {[
-                      "Usa computadora o celular más de 6 h al día",
-                      "Lee con poca luz",
-                      "Trabaja al aire libre",
-                      "Expone sus ojos al sol sin protección",
-                      "Usa lentes de protección en el trabajo"
-                    ].map((habito) => (
-                      <div key={habito} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`habito-${habito}`}
-                          checked={habitosVisualesSeleccionados.includes(habito)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setHabitosVisualesSeleccionados([
-                                ...habitosVisualesSeleccionados,
-                                habito
-                              ]);
-                            } else {
-                              setHabitosVisualesSeleccionados(
-                                habitosVisualesSeleccionados.filter((item) => item !== habito)
-                              );
-                            }
-                          }}
-                        />
-                        <Label htmlFor={`habito-${habito}`} className="font-normal">{habito}</Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Salud General */}
-                <div className="space-y-2">
-                  <Label>Salud General</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3">
-                    {[
-                      "Diabetes",
-                      "Hipertensión",
-                      "Enfermedades tiroideas",
-                      "Glaucoma",
-                      "Catarata"
-                    ].map((condicion) => (
-                      <div key={condicion} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`saludGeneral-${condicion}`}
-                          checked={saludGeneralSeleccionados.includes(condicion)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              // Si seleccionamos una opción y "Ninguno" estaba seleccionado, quitamos "Ninguno"
-                              if (saludGeneralSeleccionados.includes("Ninguno")) {
-                                setSaludGeneralSeleccionados(
-                                  saludGeneralSeleccionados
-                                    .filter(item => item !== "Ninguno")
-                                    .concat(condicion)
-                                );
-                              } else {
-                                setSaludGeneralSeleccionados([
-                                  ...saludGeneralSeleccionados,
-                                  condicion
-                                ]);
-                              }
-                            } else {
-                              setSaludGeneralSeleccionados(
-                                saludGeneralSeleccionados.filter((item) => item !== condicion)
-                              );
-                            }
-                          }}
-                        />
-                        <Label htmlFor={`saludGeneral-${condicion}`} className="font-normal">{condicion}</Label>
-                      </div>
-                    ))}
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="saludGeneral-ninguno"
-                        checked={saludGeneralSeleccionados.includes("Ninguno")}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            // Si seleccionamos "Ninguno", deseleccionamos todas las demás opciones
-                            setSaludGeneralSeleccionados(["Ninguno"]);
-                          } else {
-                            setSaludGeneralSeleccionados([]);
-                          }
-                        }}
-                      />
-                      <Label htmlFor="saludGeneral-ninguno" className="font-normal">Ninguno</Label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Medicamentos Actuales y Fecha de Cita en 2 columnas */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Medicamentos Actuales */}
-                  <div className="space-y-2">
-                    <Label htmlFor="medicamentosActuales">Medicamentos Actuales</Label>
-                    <Input
-                      id="medicamentosActuales"
-                      value={medicamentosActuales}
-                      onChange={(e) => setMedicamentosActuales(e.target.value)}
-                      placeholder="Describa los medicamentos que toma actualmente"
-                    />
-                  </div>
-
-                  {/* Fecha de Cita */}
-                  <div className="space-y-2">
-                    <Label htmlFor="fechaCita">Fecha de Cita</Label>
-                    <div className="flex space-x-2">
-                      <Popover open={fechaCitaOpen} onOpenChange={setFechaCitaOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={`w-full justify-start text-left font-normal ${!fechaCita ? "text-muted-foreground" : ""
-                              }`}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {fechaCita ? (
-                              format(fechaCita, "PPP", { locale: es })
-                            ) : (
-                              <span>Seleccione una fecha</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <div className="p-2 flex items-center justify-between border-b">
-                            <div className="flex items-center text-sm">
-                              <Users className="h-4 w-4 mr-1" />
-                              <span>Pacientes por día</span>
-                            </div>
-                            {cargandoCitas && (
-                              <div className="text-xs text-muted-foreground">Cargando...</div>
-                            )}
-                          </div>
-                          <Calendar
-                            mode="single"
-                            selected={fechaCita}
-                            onSelect={(date) => {
-                              setFechaCita(date);
-                              // Solo cerramos el popover si se selecciona una fecha
-                              if (date) setFechaCitaOpen(false);
-                            }}
-                            initialFocus
-                            modifiers={{
-                              booked: (date) =>
-                                citasInfo.some(cita => isSameDay(date, cita.fecha))
-                            }}
-                            modifiersClassNames={{
-                              booked: "relative"
-                            }}
-                            components={{
-                              Day: (props: any) => {
-                                // Acceder a la fecha desde el objeto day
-                                const date = props.day?.date;
-                                const citaDelDia = citasInfo.find(cita =>
-                                  date && isSameDay(date, cita.fecha)
-                                );
-
-                                return (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <td className="relative">
-                                          <div
-                                            {...props}
-                                            className={props.className}
-                                            role="button"
-                                            tabIndex={0}
-                                          >
-                                            {props.children}
-                                          </div>
-                                          {citaDelDia && (
-                                            <Badge
-                                              variant="outline"
-                                              className="absolute -bottom-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-[10px] bg-blue-100"
-                                            >
-                                              {citaDelDia.cantidadPacientes}
-                                            </Badge>
-                                          )}
-                                        </td>
-                                      </TooltipTrigger>
-                                      {citaDelDia && (
-                                        <TooltipContent>
-                                          <p className="text-xs">{citaDelDia.cantidadPacientes} paciente(s) agendado(s)</p>
-                                        </TooltipContent>
-                                      )}
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                );
-                              }
-                            }}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <Button
-                        type="button"
-                        onClick={establecerFechaHoy}
-                        className="flex items-center"
-                      >
-                        Hoy
-                      </Button>
-                    </div>
+                </Button>
               </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-end gap-3 sm:space-x-4 mt-4 sm:mt-6">
-                  <Button
-                    type="button"
-                    variant="outline"
-                onClick={limpiarFormulario}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto order-2 sm:order-1 flex items-center justify-center"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Limpiar datos
-              </Button>
-
-                  <Button
-                    type="submit"
-                disabled={!isFormValid || isSubmitting}
-                className="bg-primary text-white w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center"
-              >
-                {isSubmitting ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Guardar paciente
-                  </>
-                )}
-              </Button>
             </div>
           </form>
         </CardContent>

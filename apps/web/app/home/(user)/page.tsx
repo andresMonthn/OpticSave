@@ -40,7 +40,7 @@ export default withI18n(async function UserHomePage() {
       />
       <PageBody>
         <div className="pb-[120px]">
-          <NotificacionesAPI />
+          {/* <NotificacionesAPI /> */}
           <div className="w-full flex items-end justify-end" style={{ height: "100px" }}>
             <div className="flex text-[0.425rem]">
               <DateTimeDisplay />

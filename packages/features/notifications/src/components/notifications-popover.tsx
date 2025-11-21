@@ -256,17 +256,18 @@ export function NotificationsPopover(params: {
                       className={'max-h-6 max-w-6'}
                       size={'icon'}
                       variant={'ghost'}
-                      onClick={() => {
-                        // Actualizar el estado local para marcar la notificación como dismissed
-                        setNotifications((existing) => {
-                          return existing.filter(
-                            (existingNotification) =>
-                              existingNotification.id !== notification.id,
-                          );
-                        });
-
-                        // Llamar a la función para actualizar en la base de datos
-                        return dismissNotification(notification.id);
+                      onClick={async () => {
+                        try {
+                          await dismissNotification(notification.id);
+                          setNotifications((existing) => {
+                            return existing.filter(
+                              (existingNotification) =>
+                                existingNotification.id !== notification.id,
+                            );
+                          });
+                        } catch (e) {
+                          console.error('Failed to dismiss notification', e);
+                        }
                       }}
                     >
                       <XIcon className={'h-3'} />
